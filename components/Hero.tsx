@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Flame, Sun, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe } from 'lucide-react';
+import { BookOpen, Flame, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe } from 'lucide-react';
 
 interface HeroProps {
   onRegister: () => void;
@@ -13,31 +13,16 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
       {/* 1. HERO SECTION (Above the fold) */}
       <div className="relative w-full min-h-[85vh] flex items-center justify-center overflow-hidden bg-white">
         
-        {/* Background Animated Elements - Redesigned for Visibility */}
+        {/* Background Animated Elements - Minimalist */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           
-          {/* Top Left - Book Group */}
+          {/* Top Left - Book Group (KEPT) */}
           <div className="absolute top-[10%] left-[5%] animate-float">
             <div className="absolute inset-0 bg-blue-400 blur-[80px] opacity-20 rounded-full w-64 h-64"></div>
             <BookOpen size={140} strokeWidth={1} className="text-royal-200 relative z-10 opacity-60" />
           </div>
 
-          {/* Top Right - Flame Group */}
-          <div className="absolute top-[15%] right-[10%] animate-float-delayed">
-            <div className="absolute inset-0 bg-gold-400 blur-[80px] opacity-20 rounded-full w-56 h-56"></div>
-             <Flame size={120} strokeWidth={1} className="text-gold-300 relative z-10 opacity-60" />
-          </div>
-
-          {/* Bottom Center - Sun/Light Group */}
-          <div className="absolute bottom-[-50px] left-1/2 -translate-x-1/2 animate-pulse-slow">
-             <div className="absolute inset-0 bg-royal-300 blur-[100px] opacity-10 rounded-full w-[600px] h-[300px] -translate-x-1/4"></div>
-             <Sun size={300} strokeWidth={0.5} className="text-royal-100 opacity-40" />
-          </div>
-
-          {/* Floating Particles */}
-          <div className="absolute top-1/3 left-1/3 text-gold-200 animate-bounce duration-[3000ms]">
-            <Sparkles size={24} />
-          </div>
+          {/* Bottom Right - Star/Sparkle Group (KEPT - Closest to Sign In) */}
           <div className="absolute bottom-1/3 right-1/4 text-royal-200 animate-bounce duration-[4000ms]">
             <Sparkles size={32} />
           </div>
@@ -47,7 +32,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
         <div className="relative z-10 text-center max-w-5xl px-6 flex flex-col items-center">
           
           <div className="mb-8 flex justify-center">
-            <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-royal-50 to-white border border-royal-100 inline-flex items-center gap-2 shadow-sm animate-fade-in-up">
+            <div className="px-4 py-1.5 rounded-full bg-gradient-to-r from-royal-50 to-white border border-royal-100 inline-flex items-center gap-2 shadow-sm">
                <span className="text-gold-500 text-xs">★</span>
                <span className="text-xs font-bold tracking-widest uppercase text-royal-800">The #1 Bible Quiz Platform</span>
                <span className="text-gold-500 text-xs">★</span>
@@ -68,16 +53,16 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center w-full">
             <button
               onClick={onRegister}
-              className="group relative px-8 py-4 bg-royal-700 text-white font-bold rounded-full shadow-xl shadow-royal-200 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden"
+              className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden border border-transparent"
             >
-              <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
+              <div className="absolute inset-0 bg-white/10 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
               <span className="relative flex items-center justify-center gap-2">
                 Get Started <ArrowRight size={18} />
               </span>
             </button>
             <button
               onClick={onSignIn}
-              className="px-8 py-4 bg-white border border-gray-200 text-gray-700 font-bold rounded-full shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1 min-w-[200px] hover:text-royal-700 hover:border-royal-100"
+              className="px-8 py-4 bg-royal-500 text-white font-bold rounded-full shadow-lg shadow-royal-500/30 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] hover:bg-royal-600 border border-transparent"
             >
               Sign In
             </button>

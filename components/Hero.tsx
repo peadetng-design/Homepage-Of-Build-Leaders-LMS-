@@ -45,7 +45,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
               Build Biblical Leaders
             </h1>
 
-            <p className="text-base md:text-xl text-orange-500 font-medium max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base md:text-xl text-orange-500 font-medium max-w-2xl mx-auto leading-relaxed animate-text-reveal">
               Empowering the next generation through interactive study, community competition, and spiritual growth.
             </p>
           </div>
@@ -143,13 +143,16 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
                       We believe that hiding God's word in young hearts creates a foundation for lifelong leadership.
                     </p>
                     <div className="grid grid-cols-2 gap-6">
-                       <div className="p-6 bg-white rounded-2xl shadow-sm border-l-4 border-royal-500 hover:shadow-md transition-shadow">
-                          <h4 className="font-bold text-gray-800 text-lg mb-1">Knowledge</h4>
-                          <p className="text-sm text-gray-500">Deep biblical literacy & understanding</p>
+                       {/* Knowledge Card */}
+                       <div className="p-6 bg-royal-500 rounded-2xl shadow-lg border-b-8 border-r-4 border-royal-800 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">Knowledge</h4>
+                          <p className="text-sm text-royal-100">Deep biblical literacy & understanding</p>
                        </div>
-                       <div className="p-6 bg-white rounded-2xl shadow-sm border-l-4 border-gold-500 hover:shadow-md transition-shadow">
-                          <h4 className="font-bold text-gray-800 text-lg mb-1">Community</h4>
-                          <p className="text-sm text-gray-500">Faith-based connection & growth</p>
+                       
+                       {/* Community Card */}
+                       <div className="p-6 bg-gold-500 rounded-2xl shadow-lg border-b-8 border-r-4 border-gold-600 hover:shadow-xl hover:-translate-y-1 transition-all group">
+                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">Community</h4>
+                          <p className="text-sm text-white/90">Faith-based connection & growth</p>
                        </div>
                     </div>
                  </div>
@@ -178,7 +181,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
               </div>
             </section>
 
-            {/* Resources */}
+            {/* Resources - REDESIGNED */}
             <section id="resources" className="scroll-mt-24">
                <div className="text-center mb-16 max-w-3xl mx-auto">
                   <span className="text-gold-600 font-bold uppercase tracking-widest text-xs mb-3 block">Study Materials</span>
@@ -187,21 +190,37 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {[
-                    { title: "Study Guides", icon: BookOpen, desc: "Comprehensive chapter-by-chapter breakdowns and commentaries." },
-                    { title: "Flashcards", icon: Library, desc: "Digital and printable sets optimized for spaced repetition." },
-                    { title: "Quiz Generator", icon: Flame, desc: "AI-powered custom quizzes to target your weak areas." },
-                  ].map((resource, idx) => (
-                    <div key={idx} className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all group duration-300">
-                       <div className="w-16 h-16 bg-royal-50 rounded-2xl flex items-center justify-center text-royal-600 mb-8 group-hover:scale-110 transition-transform group-hover:bg-royal-600 group-hover:text-white shadow-inner">
-                         <resource.icon size={32} />
-                       </div>
-                       <h3 className="text-2xl font-bold text-gray-900 mb-3">{resource.title}</h3>
-                       <p className="text-gray-500 mb-6 leading-relaxed">{resource.desc}</p>
-                       <span className="text-royal-600 font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer flex items-center gap-2">
-                         Access Now <ArrowRight size={16} />
-                       </span>
-                    </div>
-                  ))}
+                    { title: "Study Guides", icon: BookOpen, desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.", theme: "royal" },
+                    { title: "Flashcards", icon: Library, desc: "Digital and printable sets optimized for spaced repetition.", theme: "gold" },
+                    { title: "Quiz Generator", icon: Flame, desc: "AI-powered custom quizzes to target your weak areas.", theme: "royal" },
+                  ].map((resource, idx) => {
+                    const isRoyal = resource.theme === 'royal';
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`
+                           p-8 rounded-3xl shadow-lg border-b-8 transition-all group duration-300 hover:shadow-2xl hover:-translate-y-2
+                           ${isRoyal 
+                              ? 'bg-gradient-to-br from-royal-700 to-royal-900 border-royal-950' 
+                              : 'bg-gradient-to-br from-gold-400 to-gold-600 border-gold-700'}
+                        `}
+                      >
+                         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-8 group-hover:scale-110 transition-transform shadow-inner">
+                           <resource.icon size={32} strokeWidth={2} />
+                         </div>
+                         <h3 className="text-2xl font-bold text-white mb-3 tracking-wide">{resource.title}</h3>
+                         <p className={`mb-8 leading-relaxed font-medium ${isRoyal ? 'text-blue-100' : 'text-white/90'}`}>
+                           {resource.desc}
+                         </p>
+                         <span className={`
+                            font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer flex items-center gap-2
+                            ${isRoyal ? 'text-gold-400' : 'text-white'}
+                         `}>
+                           Access Now <ArrowRight size={16} />
+                         </span>
+                      </div>
+                    );
+                  })}
                </div>
             </section>
 
@@ -256,7 +275,20 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
       <footer className="bg-white py-12 border-t border-gray-100">
          <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-               <div className="w-8 h-8 bg-royal-800 rounded flex items-center justify-center text-white font-serif font-bold">B</div>
+              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-sm">
+                <rect width="40" height="40" rx="8" fill="url(#footerLogoGradient)" />
+                {/* Golden Chevron */}
+                <path d="M12 12L20 5L28 12" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Minimalist Human Frame */}
+                <circle cx="20" cy="19" r="4" stroke="white" strokeWidth="3" />
+                <path d="M10 33C10 27 15 25 20 25C25 25 30 27 30 33" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                <defs>
+                  <linearGradient id="footerLogoGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#4338ca" />
+                    <stop offset="1" stopColor="#312e81" />
+                  </linearGradient>
+                </defs>
+              </svg>
                <span className="font-bold text-gray-900">Build Biblical Leaders</span>
             </div>
             <p className="text-gray-400 text-sm">© 2023 Build Biblical Leaders. All rights reserved.</p>

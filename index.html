@@ -34,11 +34,23 @@
               'float': 'float 6s ease-in-out infinite',
               'float-delayed': 'float 6s ease-in-out 3s infinite',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'pop-in': 'pop-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'text-reveal': 'text-reveal 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
             },
             keyframes: {
               float: {
                 '0%, 100%': { transform: 'translateY(0)' },
                 '50%': { transform: 'translateY(-20px)' },
+              },
+              'pop-in': {
+                '0%': { opacity: '0', transform: 'translateY(20px) scale(0.95)' },
+                '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+              },
+              'text-reveal': {
+                '0%': { opacity: '0', transform: 'translateY(10px) scale(0.95)', filter: 'blur(4px)' },
+                '15%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+                '85%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+                '100%': { opacity: '0', transform: 'translateY(-10px) scale(1.05)', filter: 'blur(4px)' },
               }
             }
           }

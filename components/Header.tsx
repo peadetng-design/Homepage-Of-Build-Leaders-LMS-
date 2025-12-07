@@ -31,11 +31,14 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
           <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-lg hover:scale-105 transition-transform">
             <rect width="40" height="40" rx="10" fill="url(#headerLogoGradient)" />
-            {/* Golden Chevron (Leadership) */}
-            <path d="M12 12L20 5L28 12" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            {/* Minimalist Human Frame (The Leader) */}
-            <circle cx="20" cy="19" r="4" stroke="white" strokeWidth="3" />
-            <path d="M10 33C10 27 15 25 20 25C25 25 30 27 30 33" stroke="white" strokeWidth="3" strokeLinecap="round" />
+            {/* Three Golden Chevrons (Upward Growth) */}
+            <path d="M12 7 L20 3 L28 7" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 11 L20 7 L28 11" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M12 15 L20 11 L28 15" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            
+            {/* Minimalist Human Frame (The Leader) - Adjusted position */}
+            <circle cx="20" cy="21" r="3.5" stroke="white" strokeWidth="3" />
+            <path d="M10 35C10 30 15 27 20 27C25 27 30 30 30 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
             <defs>
               <linearGradient id="headerLogoGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
                 <stop stopColor="#4338ca" />

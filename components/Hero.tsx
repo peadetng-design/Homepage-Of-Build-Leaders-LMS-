@@ -201,21 +201,18 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
                         className={`
                            p-8 rounded-3xl shadow-lg border-b-8 transition-all group duration-300 hover:shadow-2xl hover:-translate-y-2
                            ${isRoyal 
-                              ? 'bg-gradient-to-br from-royal-700 to-royal-900 border-royal-950' 
+                              ? 'bg-royal-800 border-royal-900' // Corrected to royal-800 which is defined in theme
                               : 'bg-gradient-to-br from-gold-400 to-gold-600 border-gold-700'}
                         `}
                       >
                          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white mb-8 group-hover:scale-110 transition-transform shadow-inner">
                            <resource.icon size={32} strokeWidth={2} />
                          </div>
-                         <h3 className="text-2xl font-bold text-white mb-3 tracking-wide">{resource.title}</h3>
-                         <p className={`mb-8 leading-relaxed font-medium ${isRoyal ? 'text-blue-100' : 'text-white/90'}`}>
+                         <h3 className={`text-2xl font-bold mb-3 tracking-wide ${isRoyal ? 'text-white' : 'text-white'}`}>{resource.title}</h3>
+                         <p className={`mb-8 leading-relaxed font-medium ${isRoyal ? 'text-white' : 'text-white/95'}`}>
                            {resource.desc}
                          </p>
-                         <span className={`
-                            font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer flex items-center gap-2
-                            ${isRoyal ? 'text-gold-400' : 'text-white'}
-                         `}>
+                         <span className={`font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer flex items-center gap-2 ${isRoyal ? 'text-white' : 'text-white'}`}>
                            Access Now <ArrowRight size={16} />
                          </span>
                       </div>
@@ -277,11 +274,14 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
             <div className="flex items-center gap-2">
               <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-sm">
                 <rect width="40" height="40" rx="8" fill="url(#footerLogoGradient)" />
-                {/* Golden Chevron */}
-                <path d="M12 12L20 5L28 12" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Three Golden Chevrons */}
+                <path d="M12 7 L20 3 L28 7" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12 11 L20 7 L28 11" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M12 15 L20 11 L28 15" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                
                 {/* Minimalist Human Frame */}
-                <circle cx="20" cy="19" r="4" stroke="white" strokeWidth="3" />
-                <path d="M10 33C10 27 15 25 20 25C25 25 30 27 30 33" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                <circle cx="20" cy="21" r="3.5" stroke="white" strokeWidth="3" />
+                <path d="M10 35C10 30 15 27 20 27C25 27 30 30 30 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
                 <defs>
                   <linearGradient id="footerLogoGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
                     <stop stopColor="#4338ca" />

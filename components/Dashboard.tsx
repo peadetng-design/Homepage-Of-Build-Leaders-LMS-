@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { UserRole, User } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
+import AdminPanel from './AdminPanel';
 import {
   BookOpen, Star, Trophy, Clock, Calendar, ArrowUpRight,
   TrendingUp, Activity, CheckCircle, Play,
-  Users, Shield, Heart, FileText, AlertCircle, BarChart3, GraduationCap
+  Users, Shield, Heart, FileText, AlertCircle, BarChart3, Lock
 } from 'lucide-react';
 
 interface DashboardProps {
   user: User;
+  onChangePasswordClick?: () => void;
 }
 
 // Color mapping for safe Tailwind class usage
@@ -23,11 +25,14 @@ const colorVariants: Record<string, { bg: string, text: string, light: string, b
   red: { bg: 'bg-red-100', text: 'text-red-600', light: 'bg-red-50', border: 'border-red-100' },
 };
 
-const Dashboard: React.FC<DashboardProps> = ({ user }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) => {
   const [dailyVerse, setDailyVerse] = useState<{ verse: string; reference: string; reflection: string } | null>(null);
   const [loadingVerse, setLoadingVerse] = useState(true);
   const [quizQuestion, setQuizQuestion] = useState<{question: string, options: string[], answer: string} | null>(null);
   const [quizState, setQuizState] = useState<'idle' | 'correct' | 'incorrect'>('idle');
+
+  // If Admin and in Admin view, we show the Panel, but let's keep the dashboard components for overview
+  const isAdminView = user.role === UserRole.ADMIN;
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -179,16 +184,33 @@ const Dashboard: React.FC<DashboardProps> = ({ user }) => {
   const FeaturedIcon = roleContent.featured.icon;
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-gray-900">
-          Welcome back, {user.name}
-        </h1>
-        <p className="text-gray-500 mt-1">{roleContent.welcomeMsg}</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-serif font-bold text-gray-900">
+            Welcome back, {user.name}
+          </h1>
+          <p className="text-gray-500 mt-1">{roleContent.welcomeMsg}</p>
+        </div>
+        
+        {/* Account Security Action */}
+        <button 
+          onClick={onChangePasswordClick}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+        >
+          <Lock size={16} /> Change Password
+        </button>
       </div>
 
-      {/* Grid Layout */}
+      {/* ADMIN PANEL: Specific Integration */}
+      {isAdminView && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <AdminPanel currentUser={user} />
+        </div>
+      )}
+
+      {/* Grid Layout (Existing Dashboard Components) */}
       <div className="grid grid-cols-12 gap-6">
 
         {/* Top Stats Row - Spans full width */}

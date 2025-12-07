@@ -1,3 +1,4 @@
+
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -18,6 +19,32 @@ export interface User {
   verificationToken?: string;
   lastLogin?: string;
   authProvider?: 'email' | 'google' | 'apple';
+  
+  // Mentor/Student specific
+  classCode?: string; // For Mentors (unique 6-char code)
+  mentorId?: string; // For Students (id of the mentor they joined)
+  
+  // Parent specific
+  linkedStudentId?: string;
+}
+
+export interface JoinRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  mentorId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  timestamp: string;
+}
+
+export interface Lesson {
+  id: string;
+  title: string;
+  category: string;
+  author: string;
+  createdAt: string;
+  status: 'draft' | 'published';
+  views: number;
 }
 
 export interface AuthState {

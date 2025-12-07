@@ -1,19 +1,36 @@
+
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, AuditLog, Invite } from '../types';
+import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
 import { 
   Users, UserPlus, Shield, Activity, Search, Mail, 
-  Link, Copy, Check, AlertTriangle, RefreshCw, X 
+  Link, Copy, Check, AlertTriangle, RefreshCw, X,
+  BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX
 } from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User;
+  activeTab?: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests';
+  onTabChange?: (tab: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests') => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'logs'>('users');
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange }) => {
+  const [internalActiveTab, setInternalActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
+  
+  // Use prop if provided, otherwise internal state
+  const activeTab = propActiveTab || internalActiveTab;
+  const setActiveTab = (tab: any) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
+
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
@@ -22,6 +39,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
   const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.ADMIN);
   const [generatedLink, setGeneratedLink] = useState('');
 
+  // Lesson Form State
+  const [lessonTitle, setLessonTitle] = useState('');
+  const [lessonCategory, setLessonCategory] = useState('');
+
+  // Determine Permissions
+  const isAdmin = currentUser.role === UserRole.ADMIN;
+  const isMentor = currentUser.role === UserRole.MENTOR;
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
@@ -29,12 +54,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      if (activeTab === 'users') {
+      if (activeTab === 'users' && isAdmin) {
         const data = await authService.getAllUsers(currentUser);
         setUsers(data);
-      } else if (activeTab === 'logs') {
+      } else if (activeTab === 'logs' && isAdmin) {
         const data = await authService.getLogs(currentUser);
         setLogs(data);
+      } else if (activeTab === 'lessons') {
+        const data = await authService.getLessons();
+        setLessons(data);
+      } else if (activeTab === 'requests' && isMentor) {
+        const data = await authService.getJoinRequests(currentUser);
+        setRequests(data);
       }
     } catch (error) {
       console.error(error);
@@ -67,6 +98,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
     }
   };
 
+  const handleUploadLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await authService.addLesson(currentUser, lessonTitle, lessonCategory);
+      setNotification({ msg: 'Lesson uploaded successfully!', type: 'success' });
+      setLessonTitle('');
+      setLessonCategory('');
+      // Optional: switch to list view
+      // setActiveTab('lessons'); 
+    } catch (err: any) {
+      setNotification({ msg: err.message, type: 'error' });
+    }
+  };
+
+  const handleRequestResponse = async (reqId: string, status: 'accepted' | 'rejected') => {
+      try {
+          await authService.respondToRequest(reqId, status, currentUser);
+          setNotification({ msg: `Request ${status}`, type: 'success' });
+          fetchData(); // Refresh list
+      } catch (err: any) {
+          setNotification({ msg: err.message, type: 'error' });
+      }
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedLink);
     setNotification({ msg: 'Link copied to clipboard', type: 'success' });
@@ -75,32 +130,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[600px]">
       {/* Header */}
-      <div className="bg-royal-900 p-6 text-white flex justify-between items-center">
+      <div className="bg-royal-900 p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
-             <Shield className="text-gold-500" /> Admin Console
+             <Shield className={isMentor ? "text-blue-400" : "text-gold-500"} /> 
+             {isMentor ? "Mentor Content Manager" : "Admin Console"}
            </h2>
-           <p className="text-royal-200 text-sm mt-1">Security, User Management & System Logs</p>
+           <p className="text-royal-200 text-sm mt-1">
+             {isMentor ? "Manage Lessons & Team Resources" : "Security, User Management & System Logs"}
+           </p>
+           {isMentor && currentUser.classCode && (
+               <div className="mt-2 inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-lg border border-white/20">
+                   <span className="text-xs text-royal-200 uppercase font-bold">Your Class Code:</span>
+                   <span className="font-mono font-bold text-gold-400 tracking-wider text-lg">{currentUser.classCode}</span>
+               </div>
+           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+           {isAdmin && (
+             <>
+                <button 
+                  onClick={() => setActiveTab('users')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                >
+                  Users
+                </button>
+                <button 
+                  onClick={() => setActiveTab('invites')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'invites' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                >
+                  Invites
+                </button>
+             </>
+           )}
            <button 
-             onClick={() => setActiveTab('users')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+             onClick={() => setActiveTab('lessons')}
+             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
            >
-             Users
+             Lessons
            </button>
-           <button 
-             onClick={() => setActiveTab('invites')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'invites' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-           >
-             Invites
-           </button>
-           <button 
-             onClick={() => setActiveTab('logs')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-           >
-             Logs
-           </button>
+           {isMentor && (
+               <button 
+               onClick={() => setActiveTab('requests')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+             >
+               Requests
+             </button>
+           )}
+           {isAdmin && (
+             <button 
+               onClick={() => setActiveTab('logs')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+             >
+               Logs
+             </button>
+           )}
         </div>
       </div>
 
@@ -115,8 +199,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
       {/* Content */}
       <div className="p-6">
         
-        {/* USERS TAB */}
-        {activeTab === 'users' && (
+        {/* USERS TAB (Admin Only) */}
+        {activeTab === 'users' && isAdmin && (
           <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
               <div className="relative">
@@ -181,8 +265,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
           </div>
         )}
 
-        {/* INVITES TAB */}
-        {activeTab === 'invites' && (
+        {/* INVITES TAB (Admin Only) */}
+        {activeTab === 'invites' && isAdmin && (
           <div className="max-w-2xl mx-auto space-y-8">
              <div className="bg-royal-50 p-6 rounded-xl border border-royal-100">
                 <h3 className="text-lg font-bold text-royal-900 mb-4 flex items-center gap-2">
@@ -252,19 +336,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
                   </div>
                </div>
              )}
-
-             <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 flex items-start gap-3">
-               <AlertTriangle className="text-amber-500 shrink-0" size={20} />
-               <div className="text-sm text-amber-800">
-                 <p className="font-bold">Security Note</p>
-                 <p>Invited users will be required to set a strong password upon clicking the link. As an admin, ensure you are inviting to the correct email address.</p>
-               </div>
-             </div>
           </div>
         )}
 
-        {/* LOGS TAB */}
-        {activeTab === 'logs' && (
+        {/* LOGS TAB (Admin Only) */}
+        {activeTab === 'logs' && isAdmin && (
            <div className="space-y-4">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-gray-700">System Audit Trail</h3>
@@ -290,6 +366,209 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser }) => {
                     ))}
                   </div>
                 )}
+              </div>
+           </div>
+        )}
+
+        {/* REQUESTS TAB (Mentor Only) */}
+        {activeTab === 'requests' && isMentor && (
+            <div className="space-y-4">
+                <h3 className="font-bold text-gray-700 mb-4">Pending Class Join Requests</h3>
+                {requests.length === 0 ? (
+                    <div className="p-12 text-center text-gray-400 border border-dashed border-gray-300 rounded-xl">
+                        No pending requests. Share your class code to invite students.
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {requests.map(req => (
+                            <div key={req.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl bg-white shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                                        {req.studentName.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-900">{req.studentName}</p>
+                                        <p className="text-xs text-gray-500">Requested: {new Date(req.timestamp).toLocaleDateString()}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button 
+                                      onClick={() => handleRequestResponse(req.id, 'accepted')}
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-bold text-sm"
+                                    >
+                                        <UserCheck size={16} /> Accept
+                                    </button>
+                                    <button 
+                                      onClick={() => handleRequestResponse(req.id, 'rejected')}
+                                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-bold text-sm"
+                                    >
+                                        <UserX size={16} /> Reject
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
+
+        {/* UPLOAD LESSON TAB (Admin or Mentor) */}
+        {activeTab === 'upload' && (
+           <div className="max-w-3xl mx-auto bg-gray-50 p-8 rounded-xl border border-gray-200">
+             <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-gold-100 text-gold-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                   <BookOpen size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">Upload New Lesson</h3>
+                <p className="text-gray-500">Create content for students and mentors.</p>
+             </div>
+             
+             <form onSubmit={handleUploadLesson} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Lesson Title</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={lessonTitle}
+                    onChange={e => setLessonTitle(e.target.value)}
+                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none"
+                    placeholder="e.g. The Sermon on the Mount: Part 1"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
+                      <select 
+                        value={lessonCategory}
+                        onChange={e => setLessonCategory(e.target.value)}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none bg-white"
+                      >
+                         <option value="">Select Category...</option>
+                         <option value="Old Testament">Old Testament</option>
+                         <option value="New Testament">New Testament</option>
+                         <option value="Theology">Theology</option>
+                         <option value="Leadership">Leadership</option>
+                         <option value="Christian Living">Christian Living</option>
+                      </select>
+                   </div>
+                   <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Resource Type</label>
+                      <select className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none bg-white">
+                         <option>Text Article</option>
+                         <option>Video Lesson</option>
+                         <option>Quiz</option>
+                         <option>PDF Download</option>
+                      </select>
+                   </div>
+                </div>
+                <div>
+                   <label className="block text-sm font-bold text-gray-700 mb-2">Content (Optional)</label>
+                   <textarea 
+                     rows={4} 
+                     className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none"
+                     placeholder="Enter lesson description or content here..."
+                   ></textarea>
+                </div>
+                
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-white hover:bg-gray-50 cursor-pointer transition-colors">
+                   <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                   <p className="text-sm text-gray-500 font-medium">Drag and drop files here, or click to browse</p>
+                   <p className="text-xs text-gray-400 mt-1">PDF, MP4, DOCX (Max 10MB)</p>
+                </div>
+
+                <div className="flex gap-4">
+                   <button type="button" onClick={() => setActiveTab('lessons')} className="w-1/3 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
+                   <button type="submit" className="w-2/3 bg-gold-500 hover:bg-gold-600 text-white py-3 rounded-lg font-bold shadow-lg transition-colors">
+                     Publish Lesson
+                   </button>
+                </div>
+             </form>
+           </div>
+        )}
+
+        {/* LESSONS LIST TAB (Admin or Mentor) */}
+        {activeTab === 'lessons' && (
+           <div className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="Search lessons..." 
+                    className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-royal-500"
+                  />
+                </div>
+                <div className="flex gap-2">
+                   <button onClick={() => setActiveTab('upload')} className="flex items-center gap-2 px-4 py-2 bg-royal-600 text-white rounded-lg font-bold hover:bg-royal-700 transition-colors text-sm">
+                      <Plus size={16} /> Add New
+                   </button>
+                   <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+                </div>
+              </div>
+
+              <div className="border rounded-xl overflow-hidden bg-white">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                     <tr className="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        <th className="p-4">Title</th>
+                        <th className="p-4">Category</th>
+                        <th className="p-4">Author</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Actions</th>
+                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                     {lessons.length === 0 ? (
+                        <tr><td colSpan={5} className="p-8 text-center text-gray-400">No lessons found. Upload one to get started.</td></tr>
+                     ) : (
+                        lessons.map((lesson) => {
+                           // Logic: Mentor can only edit their own. Everyone sees everything.
+                           const canEdit = isAdmin || (isMentor && lesson.author === currentUser.name);
+                           
+                           return (
+                             <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
+                                <td className="p-4">
+                                   <div className="font-bold text-gray-900">{lesson.title}</div>
+                                   <div className="text-xs text-gray-400 flex items-center gap-1">
+                                      <Eye size={10} /> {lesson.views} views
+                                   </div>
+                                </td>
+                                <td className="p-4 text-sm text-gray-600">
+                                   <span className="px-2 py-1 bg-gray-100 rounded text-xs">{lesson.category}</span>
+                                </td>
+                                <td className="p-4 text-sm text-gray-600">{lesson.author}</td>
+                                <td className="p-4">
+                                   <span className={`px-2 py-1 rounded-full text-xs font-bold ${lesson.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                      {lesson.status}
+                                   </span>
+                                </td>
+                                <td className="p-4 text-right">
+                                   <div className="flex items-center justify-end gap-2">
+                                      {/* Mentor "Pick" Action */}
+                                      {isMentor && (
+                                         <button 
+                                            onClick={() => setNotification({msg: "Lesson added to your curated list!", type: 'success'})}
+                                            title="Add to My List"
+                                            className="p-2 text-gold-500 hover:bg-gold-50 rounded"
+                                          >
+                                            <ListPlus size={16} />
+                                          </button>
+                                      )}
+
+                                      {/* Edit Action (Conditional) */}
+                                      {canEdit ? (
+                                        <button className="p-2 text-blue-500 hover:bg-blue-50 rounded"><Edit2 size={16} /></button>
+                                      ) : (
+                                        <button className="p-2 text-gray-300 cursor-not-allowed" title="Read Only"><Edit2 size={16} /></button>
+                                      )}
+                                   </div>
+                                </td>
+                             </tr>
+                           );
+                        })
+                     )}
+                  </tbody>
+                </table>
               </div>
            </div>
         )}

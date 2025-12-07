@@ -1,11 +1,14 @@
+
 import React, { useEffect, useState } from 'react';
 import { UserRole, User } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
 import AdminPanel from './AdminPanel';
+import StudentPanel from './StudentPanel';
+import ParentOnboarding from './ParentOnboarding';
 import {
   BookOpen, Star, Trophy, Clock, Calendar, ArrowUpRight,
   TrendingUp, Activity, CheckCircle, Play,
-  Users, Shield, Heart, FileText, AlertCircle, BarChart3, Lock
+  Users, Shield, Heart, FileText, AlertCircle, BarChart3, Lock, Upload, List, UserPlus, Search
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -30,9 +33,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   const [loadingVerse, setLoadingVerse] = useState(true);
   const [quizQuestion, setQuizQuestion] = useState<{question: string, options: string[], answer: string} | null>(null);
   const [quizState, setQuizState] = useState<'idle' | 'correct' | 'incorrect'>('idle');
+  
+  // Admin View State
+  const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload'>('users');
+  
+  // Mentor View State
+  const [mentorActiveTab, setMentorActiveTab] = useState<'lessons' | 'upload' | 'requests'>('lessons');
 
-  // If Admin and in Admin view, we show the Panel, but let's keep the dashboard components for overview
+  // Student View State
+  const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons' | null>(null);
+
+  // If Admin and in Admin view, we show the Panel
   const isAdminView = user.role === UserRole.ADMIN;
+  const isMentorView = user.role === UserRole.MENTOR;
+  const isStudentView = user.role === UserRole.STUDENT;
+  const isParentView = user.role === UserRole.PARENT;
+
+  // --- PARENT ONBOARDING CHECK ---
+  // If user is a Parent but hasn't linked a student yet, BLOCK the dashboard with the onboarding screen.
+  if (isParentView && !user.linkedStudentId) {
+    return (
+       <ParentOnboarding 
+         user={user} 
+         onLinkSuccess={() => window.location.reload()} 
+       />
+    );
+  }
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -186,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Welcome Section */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
           <h1 className="text-3xl font-serif font-bold text-gray-900">
             Welcome back, {user.name}
@@ -203,10 +229,132 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         </button>
       </div>
 
-      {/* ADMIN PANEL: Specific Integration */}
+      {/* ADMIN ACTIONS ROW */}
+      {isAdminView && (
+        <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4">
+           {/* Conspicuous Gold Upload Button */}
+           <button 
+             onClick={() => setAdminActiveTab('upload')}
+             className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
+           >
+             <div className="bg-white/20 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                <Upload size={24} strokeWidth={3} />
+             </div>
+             <span className="text-lg">UPLOAD LESSON</span>
+           </button>
+
+           {/* Smaller Lessons Button */}
+           <button 
+             onClick={() => setAdminActiveTab('lessons')}
+             className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <List size={20} />
+             <span>Manage Lessons</span>
+           </button>
+        </div>
+      )}
+
+      {/* MENTOR ACTIONS ROW */}
+      {isMentorView && (
+        <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4">
+           {/* Conspicuous Gold Manage Lessons Button (Mentor Request) */}
+           <button 
+             onClick={() => setMentorActiveTab('lessons')}
+             className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
+           >
+             <div className="bg-white/20 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                <List size={24} strokeWidth={3} />
+             </div>
+             <div className="text-left">
+               <span className="block text-lg leading-tight">MANAGE LESSONS</span>
+               <span className="text-xs text-gold-100 font-normal">View & Curate</span>
+             </div>
+           </button>
+
+           {/* Smaller Upload Lessons Button (Mentor Request) */}
+           <button 
+             onClick={() => setMentorActiveTab('upload')}
+             className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <Upload size={20} />
+             <span>Upload Lessons</span>
+           </button>
+           
+           <button 
+             onClick={() => setMentorActiveTab('requests')}
+             className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <UserPlus size={20} />
+             <span>Requests</span>
+           </button>
+        </div>
+      )}
+
+      {/* STUDENT ACTIONS ROW */}
+      {isStudentView && (
+        <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4">
+           {/* Conspicuous Gold Join Class Button */}
+           <button 
+             onClick={() => setStudentActiveTab('join')}
+             className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
+           >
+             <div className="bg-white/20 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                <UserPlus size={24} strokeWidth={3} />
+             </div>
+             <div className="text-left">
+               <span className="block text-lg leading-tight">JOIN CLASS</span>
+               <span className="text-xs text-gold-100 font-normal">Enter Code</span>
+             </div>
+           </button>
+
+           {/* Smaller Browse Mentors Button */}
+           <button 
+             onClick={() => setStudentActiveTab('browse')}
+             className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <Search size={20} />
+             <span>Browse Mentors</span>
+           </button>
+
+           {/* Smaller View Lessons Button */}
+           <button 
+             onClick={() => setStudentActiveTab('lessons')}
+             className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <List size={20} />
+             <span>View Lessons</span>
+           </button>
+        </div>
+      )}
+
+      {/* ADMIN PANEL INTEGRATION: Used by both Admin and Mentor */}
       {isAdminView && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-           <AdminPanel currentUser={user} />
+           <AdminPanel 
+             currentUser={user} 
+             activeTab={adminActiveTab} 
+             onTabChange={setAdminActiveTab} 
+           />
+        </div>
+      )}
+
+      {isMentorView && mentorActiveTab && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <AdminPanel 
+             currentUser={user} 
+             activeTab={mentorActiveTab} 
+             onTabChange={(tab) => setMentorActiveTab(tab as any)} 
+           />
+        </div>
+      )}
+
+      {/* STUDENT PANEL INTEGRATION */}
+      {isStudentView && studentActiveTab && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <StudentPanel
+             currentUser={user} 
+             activeTab={studentActiveTab} 
+           />
         </div>
       )}
 

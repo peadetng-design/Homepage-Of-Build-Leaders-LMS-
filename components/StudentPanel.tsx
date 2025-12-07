@@ -1,0 +1,206 @@
+
+import React, { useState, useEffect } from 'react';
+import { User, Lesson, JoinRequest } from '../types';
+import { authService } from '../services/authService';
+import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users } from 'lucide-react';
+
+interface StudentPanelProps {
+  currentUser: User;
+  activeTab: 'join' | 'browse' | 'lessons';
+}
+
+const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) => {
+  const [classCode, setClassCode] = useState('');
+  const [mentors, setMentors] = useState<User[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      if (activeTab === 'browse') {
+        const data = await authService.getAllMentors();
+        setMentors(data);
+      } else if (activeTab === 'lessons') {
+        const data = await authService.getLessons();
+        setLessons(data);
+      }
+    } catch (error) {
+       console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinClass = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (classCode.length < 6) {
+        setNotification({ msg: "Code must be 6 characters", type: 'error' });
+        return;
+    }
+    try {
+        await authService.joinClass(currentUser, classCode);
+        setNotification({ msg: "Successfully joined class!", type: 'success' });
+        setClassCode('');
+        // Force refresh user in parent would be ideal, but for now notification is enough
+    } catch (err: any) {
+        setNotification({ msg: err.message, type: 'error' });
+    }
+  };
+
+  const handleRequestJoin = async (mentorId: string) => {
+    try {
+        await authService.requestJoinMentor(currentUser, mentorId);
+        setNotification({ msg: "Request sent successfully!", type: 'success' });
+    } catch (err: any) {
+        setNotification({ msg: err.message, type: 'error' });
+    }
+  };
+
+  const addToMyList = (lessonTitle: string) => {
+     setNotification({ msg: `"${lessonTitle}" added to your curated list!`, type: 'success' });
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px]">
+      {/* Header */}
+      <div className="bg-royal-900 p-6 text-white">
+        <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
+          <BookOpen className="text-gold-500" /> Student Portal
+        </h2>
+        <p className="text-royal-200 text-sm mt-1">
+          {activeTab === 'join' && "Enter a code to join a specific mentor's group."}
+          {activeTab === 'browse' && "Find a mentor to guide your studies."}
+          {activeTab === 'lessons' && "Browse available study materials."}
+        </p>
+      </div>
+
+       {/* Notification */}
+       {notification && (
+        <div className={`p-3 text-center text-sm font-bold flex justify-between items-center px-6 ${notification.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          <span>{notification.msg}</span>
+          <button onClick={() => setNotification(null)}><X size={16} /></button>
+        </div>
+      )}
+
+      <div className="p-6">
+        {/* JOIN CLASS TAB */}
+        {activeTab === 'join' && (
+            <div className="max-w-md mx-auto text-center py-12">
+               <div className="w-20 h-20 bg-royal-100 text-royal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <UserPlus size={40} />
+               </div>
+               <h3 className="text-2xl font-bold text-gray-900 mb-2">Join a Class</h3>
+               <p className="text-gray-500 mb-8">Enter the 6-digit code provided by your Mentor.</p>
+               
+               <form onSubmit={handleJoinClass} className="space-y-4">
+                  <input 
+                    type="text" 
+                    value={classCode}
+                    onChange={e => setClassCode(e.target.value.toUpperCase())}
+                    maxLength={6}
+                    className="w-full text-center text-4xl font-mono tracking-widest border-2 border-gray-200 rounded-xl p-4 focus:border-gold-500 focus:ring-4 focus:ring-gold-500/20 outline-none uppercase placeholder-gray-300"
+                    placeholder="XYZ123"
+                  />
+                  <button type="submit" className="w-full bg-gold-500 hover:bg-gold-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:-translate-y-1">
+                     Join Class Now
+                  </button>
+               </form>
+            </div>
+        )}
+
+        {/* BROWSE MENTORS TAB */}
+        {activeTab === 'browse' && (
+            <div className="space-y-6">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                  <input 
+                    type="text" 
+                    placeholder="Search by name..." 
+                    className="w-full pl-10 p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-royal-500 outline-none"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {mentors.map(mentor => (
+                        <div key={mentor.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white group">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                   <div className="w-12 h-12 rounded-full bg-royal-100 text-royal-700 flex items-center justify-center font-bold text-lg">
+                                     {mentor.name.charAt(0)}
+                                   </div>
+                                   <div>
+                                     <h4 className="font-bold text-gray-900">{mentor.name}</h4>
+                                     <p className="text-xs text-gray-500">Mentor</p>
+                                   </div>
+                                </div>
+                                <Shield size={20} className="text-gray-300" />
+                            </div>
+                            <button 
+                               onClick={() => handleRequestJoin(mentor.id)}
+                               className="w-full py-2 border-2 border-royal-600 text-royal-600 font-bold rounded-lg hover:bg-royal-600 hover:text-white transition-colors flex items-center justify-center gap-2"
+                            >
+                                <UserPlus size={18} /> Request to Join
+                            </button>
+                        </div>
+                    ))}
+                    {mentors.length === 0 && !isLoading && (
+                        <div className="col-span-3 text-center py-12 text-gray-400">No mentors found.</div>
+                    )}
+                </div>
+            </div>
+        )}
+
+        {/* VIEW LESSONS TAB */}
+        {activeTab === 'lessons' && (
+            <div>
+                 <div className="mb-6 flex gap-4">
+                    <input 
+                        type="text" 
+                        placeholder="Search lessons..." 
+                        className="flex-1 p-3 border border-gray-200 rounded-xl outline-none focus:border-royal-500"
+                    />
+                 </div>
+                 <div className="border border-gray-200 rounded-xl overflow-hidden">
+                     <table className="w-full text-left border-collapse">
+                        <thead className="bg-gray-50 text-gray-500 font-bold text-xs uppercase">
+                            <tr>
+                                <th className="p-4">Title</th>
+                                <th className="p-4">Category</th>
+                                <th className="p-4">Author</th>
+                                <th className="p-4 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {lessons.map(lesson => (
+                                <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="p-4 font-bold text-gray-900">{lesson.title}</td>
+                                    <td className="p-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-1 rounded">{lesson.category}</span></td>
+                                    <td className="p-4 text-sm text-gray-500">{lesson.author}</td>
+                                    <td className="p-4 text-right">
+                                        <button 
+                                           onClick={() => addToMyList(lesson.title)}
+                                           className="p-2 text-royal-600 hover:bg-royal-50 rounded-lg tooltip" 
+                                           title="Add to My List"
+                                        >
+                                            <ListPlus size={20} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                     </table>
+                 </div>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default StudentPanel;

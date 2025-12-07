@@ -1,9 +1,12 @@
-import { User, UserRole, AuditLog, Invite } from '../types';
+
+import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
 
 // STORAGE KEYS
 const DB_USERS_KEY = 'bbl_db_users';
 const DB_LOGS_KEY = 'bbl_db_logs';
 const DB_INVITES_KEY = 'bbl_db_invites';
+const DB_LESSONS_KEY = 'bbl_db_lessons';
+const DB_REQUESTS_KEY = 'bbl_db_requests';
 const SESSION_KEY = 'bbl_session_token';
 
 // DEFAULT ADMIN CREDENTIALS
@@ -23,6 +26,8 @@ class AuthService {
   private users: User[] = [];
   private logs: AuditLog[] = [];
   private invites: Invite[] = [];
+  private lessons: Lesson[] = [];
+  private requests: JoinRequest[] = [];
 
   constructor() {
     this.init();
@@ -52,6 +57,24 @@ class AuthService {
     // Load Invites
     const storedInvites = localStorage.getItem(DB_INVITES_KEY);
     if (storedInvites) this.invites = JSON.parse(storedInvites);
+
+    // Load Lessons
+    const storedLessons = localStorage.getItem(DB_LESSONS_KEY);
+    if (storedLessons) {
+      this.lessons = JSON.parse(storedLessons);
+    } else {
+      // Seed some initial lessons
+      this.lessons = [
+        { id: '1', title: 'Introduction to Genesis', category: 'Old Testament', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'published', views: 120 },
+        { id: '2', title: 'The Gospel of John: Chapter 1', category: 'New Testament', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'published', views: 85 },
+        { id: '3', title: 'Leadership Principles of David', category: 'Leadership', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'draft', views: 0 },
+      ];
+      this.saveLessons();
+    }
+
+    // Load Requests
+    const storedRequests = localStorage.getItem(DB_REQUESTS_KEY);
+    if (storedRequests) this.requests = JSON.parse(storedRequests);
   }
 
   private saveUsers() {
@@ -66,6 +89,14 @@ class AuthService {
     localStorage.setItem(DB_INVITES_KEY, JSON.stringify(this.invites));
   }
 
+  private saveLessons() {
+    localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons));
+  }
+
+  private saveRequests() {
+    localStorage.setItem(DB_REQUESTS_KEY, JSON.stringify(this.requests));
+  }
+
   private logAction(actor: User, action: string, details: string, severity: 'info' | 'warning' | 'critical' = 'info') {
     const log: AuditLog = {
       id: crypto.randomUUID(),
@@ -78,6 +109,10 @@ class AuthService {
     };
     this.logs.unshift(log);
     this.saveLogs();
+  }
+
+  private generateClassCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
   }
 
   // --- AUTHENTICATION ---
@@ -99,14 +134,13 @@ class AuthService {
         isVerified: false,
         verificationToken,
         lastLogin: undefined,
-        authProvider: 'email'
+        authProvider: 'email',
+        classCode: role === UserRole.MENTOR ? this.generateClassCode() : undefined
     };
 
     this.users.push(newUser);
     this.saveUsers();
     
-    // In a real app, we wouldn't have a user object to log as 'actor' before they exist, 
-    // but we can log it as a system event or temporary actor.
     this.logAction(newUser, 'REGISTER', `User registered, pending verification`);
 
     // Simulate Email Sending
@@ -176,7 +210,8 @@ class AuthService {
             role: role || UserRole.STUDENT, // Use selected role or default to Student
             authProvider: provider,
             isVerified: true, // Social accounts are trusted
-            lastLogin: new Date().toISOString()
+            lastLogin: new Date().toISOString(),
+            classCode: (role === UserRole.MENTOR) ? this.generateClassCode() : undefined
         };
         this.users.push(user);
         this.saveUsers();
@@ -226,13 +261,19 @@ class AuthService {
     const target = this.users.find(u => u.id === targetUserId);
     if (!target) throw new Error("User not found");
     
-    // Prevent removing own admin status if you are the only one (simplified check)
+    // Prevent removing own admin status
     if (target.email === DEFAULT_ADMIN.email && newRole !== UserRole.ADMIN) {
        throw new Error("Cannot demote the Super Admin.");
     }
 
     const oldRole = target.role;
     target.role = newRole;
+    
+    // Generate class code if promoting to Mentor
+    if (newRole === UserRole.MENTOR && !target.classCode) {
+        target.classCode = this.generateClassCode();
+    }
+
     this.saveUsers();
     
     this.logAction(adminUser, 'UPDATE_ROLE', `Changed ${target.email} from ${oldRole} to ${newRole}`, 'warning');
@@ -303,7 +344,8 @@ class AuthService {
       passwordHash: password,
       isVerified: true,
       lastLogin: new Date().toISOString(),
-      authProvider: 'email'
+      authProvider: 'email',
+      classCode: invite.role === UserRole.MENTOR ? this.generateClassCode() : undefined
     };
 
     this.users.push(newUser);
@@ -334,6 +376,114 @@ class AuthService {
   async getLogs(adminUser: User): Promise<AuditLog[]> {
     if (adminUser.role !== UserRole.ADMIN) throw new Error("Unauthorized");
     return this.logs;
+  }
+
+  // --- LESSONS MANAGEMENT ---
+  
+  async getLessons(): Promise<Lesson[]> {
+    return this.lessons;
+  }
+
+  async addLesson(user: User, title: string, category: string): Promise<void> {
+    // ALLOW ADMIN OR MENTOR
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.MENTOR) {
+      throw new Error("Unauthorized");
+    }
+
+    const newLesson: Lesson = {
+      id: crypto.randomUUID(),
+      title,
+      category,
+      author: user.name,
+      createdAt: new Date().toISOString(),
+      status: user.role === UserRole.ADMIN ? 'published' : 'draft', // Admin publishes directly, others might default to draft
+      views: 0
+    };
+    
+    this.lessons.unshift(newLesson);
+    this.saveLessons();
+    this.logAction(user, 'CREATE_LESSON', `Created lesson: ${title}`);
+  }
+
+  // --- CLASS & MENTOR MANAGEMENT (STUDENT) ---
+
+  async getAllMentors(): Promise<User[]> {
+      return this.users.filter(u => u.role === UserRole.MENTOR);
+  }
+
+  async joinClass(student: User, code: string): Promise<void> {
+      const mentor = this.users.find(u => u.classCode === code.toUpperCase() && u.role === UserRole.MENTOR);
+      if (!mentor) throw new Error("Invalid Class Code.");
+
+      if (student.role !== UserRole.STUDENT) throw new Error("Only students can join classes.");
+
+      const currentUserRecord = this.users.find(u => u.id === student.id);
+      if (currentUserRecord) {
+          currentUserRecord.mentorId = mentor.id;
+          this.saveUsers();
+          this.logAction(student, 'JOIN_CLASS', `Joined mentor ${mentor.name}'s class via code`);
+      }
+  }
+
+  async requestJoinMentor(student: User, mentorId: string): Promise<void> {
+      const mentor = this.users.find(u => u.id === mentorId);
+      if (!mentor) throw new Error("Mentor not found.");
+
+      // Check if already requested
+      const existing = this.requests.find(r => r.studentId === student.id && r.mentorId === mentorId && r.status === 'pending');
+      if (existing) throw new Error("Request already pending.");
+
+      const req: JoinRequest = {
+          id: crypto.randomUUID(),
+          studentId: student.id,
+          studentName: student.name,
+          mentorId: mentorId,
+          status: 'pending',
+          timestamp: new Date().toISOString()
+      };
+
+      this.requests.push(req);
+      this.saveRequests();
+      this.logAction(student, 'REQUEST_JOIN', `Requested to join ${mentor.name}`);
+  }
+
+  async getJoinRequests(mentor: User): Promise<JoinRequest[]> {
+      if (mentor.role !== UserRole.MENTOR) return [];
+      return this.requests.filter(r => r.mentorId === mentor.id && r.status === 'pending');
+  }
+
+  async respondToRequest(requestId: string, status: 'accepted' | 'rejected', mentor: User): Promise<void> {
+      const req = this.requests.find(r => r.id === requestId);
+      if (!req) throw new Error("Request not found");
+      if (req.mentorId !== mentor.id) throw new Error("Unauthorized");
+
+      req.status = status;
+      this.saveRequests();
+
+      if (status === 'accepted') {
+          const student = this.users.find(u => u.id === req.studentId);
+          if (student) {
+              student.mentorId = mentor.id;
+              this.saveUsers();
+          }
+      }
+  }
+
+  // --- PARENT MANAGEMENT ---
+
+  async linkParentToStudent(parent: User, studentEmail: string): Promise<void> {
+      // Find Student
+      const student = this.users.find(u => u.email.toLowerCase() === studentEmail.toLowerCase() && u.role === UserRole.STUDENT);
+      if (!student) {
+          throw new Error("Student email not found. Please ensure the student is registered.");
+      }
+      
+      const parentRecord = this.users.find(u => u.id === parent.id);
+      if (parentRecord) {
+          parentRecord.linkedStudentId = student.id;
+          this.saveUsers();
+          this.logAction(parent, 'LINK_STUDENT', `Linked to student account: ${student.email}`);
+      }
   }
 }
 

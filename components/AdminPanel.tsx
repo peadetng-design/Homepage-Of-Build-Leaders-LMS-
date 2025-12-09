@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
+import { lessonService } from '../services/lessonService';
+import LessonUpload from './LessonUpload';
 import { 
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
@@ -39,10 +41,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.ADMIN);
   const [generatedLink, setGeneratedLink] = useState('');
 
-  // Lesson Form State
-  const [lessonTitle, setLessonTitle] = useState('');
-  const [lessonCategory, setLessonCategory] = useState('');
-
   // Determine Permissions
   const isAdmin = currentUser.role === UserRole.ADMIN;
   const isMentor = currentUser.role === UserRole.MENTOR;
@@ -61,7 +59,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         const data = await authService.getLogs(currentUser);
         setLogs(data);
       } else if (activeTab === 'lessons') {
-        const data = await authService.getLessons();
+        const data = await lessonService.getLessons(); // Updated to use lessonService
         setLessons(data);
       } else if (activeTab === 'requests' && isMentor) {
         const data = await authService.getJoinRequests(currentUser);
@@ -93,20 +91,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       setNotification({ msg: 'Invite created! Share the link below.', type: 'success' });
       // In a real app, backend sends the email. Here we simulate it.
       console.log(`[SIMULATION] Email sent to ${inviteEmail} with link: ${link}`);
-    } catch (err: any) {
-      setNotification({ msg: err.message, type: 'error' });
-    }
-  };
-
-  const handleUploadLesson = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await authService.addLesson(currentUser, lessonTitle, lessonCategory);
-      setNotification({ msg: 'Lesson uploaded successfully!', type: 'success' });
-      setLessonTitle('');
-      setLessonCategory('');
-      // Optional: switch to list view
-      // setActiveTab('lessons'); 
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
     }
@@ -202,6 +186,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         {/* USERS TAB (Admin Only) */}
         {activeTab === 'users' && isAdmin && (
           <div className="space-y-4">
+            {/* ... Existing Users Table ... */}
             <div className="flex justify-between items-center mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
@@ -414,76 +399,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
         {/* UPLOAD LESSON TAB (Admin or Mentor) */}
         {activeTab === 'upload' && (
-           <div className="max-w-3xl mx-auto bg-gray-50 p-8 rounded-xl border border-gray-200">
-             <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gold-100 text-gold-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                   <BookOpen size={32} />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900">Upload New Lesson</h3>
-                <p className="text-gray-500">Create content for students and mentors.</p>
-             </div>
-             
-             <form onSubmit={handleUploadLesson} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Lesson Title</label>
-                  <input 
-                    type="text" 
-                    required
-                    value={lessonTitle}
-                    onChange={e => setLessonTitle(e.target.value)}
-                    className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none"
-                    placeholder="e.g. The Sermon on the Mount: Part 1"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Category</label>
-                      <select 
-                        value={lessonCategory}
-                        onChange={e => setLessonCategory(e.target.value)}
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none bg-white"
-                      >
-                         <option value="">Select Category...</option>
-                         <option value="Old Testament">Old Testament</option>
-                         <option value="New Testament">New Testament</option>
-                         <option value="Theology">Theology</option>
-                         <option value="Leadership">Leadership</option>
-                         <option value="Christian Living">Christian Living</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Resource Type</label>
-                      <select className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none bg-white">
-                         <option>Text Article</option>
-                         <option>Video Lesson</option>
-                         <option>Quiz</option>
-                         <option>PDF Download</option>
-                      </select>
-                   </div>
-                </div>
-                <div>
-                   <label className="block text-sm font-bold text-gray-700 mb-2">Content (Optional)</label>
-                   <textarea 
-                     rows={4} 
-                     className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-royal-500 outline-none"
-                     placeholder="Enter lesson description or content here..."
-                   ></textarea>
-                </div>
-                
-                <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-white hover:bg-gray-50 cursor-pointer transition-colors">
-                   <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                   <p className="text-sm text-gray-500 font-medium">Drag and drop files here, or click to browse</p>
-                   <p className="text-xs text-gray-400 mt-1">PDF, MP4, DOCX (Max 10MB)</p>
-                </div>
-
-                <div className="flex gap-4">
-                   <button type="button" onClick={() => setActiveTab('lessons')} className="w-1/3 py-3 rounded-lg font-bold text-gray-600 hover:bg-gray-100 transition-colors">Cancel</button>
-                   <button type="submit" className="w-2/3 bg-gold-500 hover:bg-gold-600 text-white py-3 rounded-lg font-bold shadow-lg transition-colors">
-                     Publish Lesson
-                   </button>
-                </div>
-             </form>
-           </div>
+           <LessonUpload 
+             currentUser={currentUser}
+             onSuccess={() => {
+                setNotification({ msg: "Lesson published successfully!", type: 'success' });
+                setActiveTab('lessons');
+             }}
+             onCancel={() => setActiveTab('lessons')}
+           />
         )}
 
         {/* LESSONS LIST TAB (Admin or Mentor) */}

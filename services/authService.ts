@@ -65,9 +65,45 @@ class AuthService {
     } else {
       // Seed some initial lessons
       this.lessons = [
-        { id: '1', title: 'Introduction to Genesis', category: 'Old Testament', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'published', views: 120 },
-        { id: '2', title: 'The Gospel of John: Chapter 1', category: 'New Testament', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'published', views: 85 },
-        { id: '3', title: 'Leadership Principles of David', category: 'Leadership', author: 'Main Admin', createdAt: new Date().toISOString(), status: 'draft', views: 0 },
+        { 
+          id: '1', 
+          title: 'Introduction to Genesis', 
+          category: 'Old Testament', 
+          author: 'Main Admin', 
+          created_at: new Date().toISOString(), 
+          updated_at: new Date().toISOString(),
+          lesson_type: 'Mixed',
+          status: 'published', 
+          views: 120,
+          description: 'A study of the beginning.',
+          sections: [] 
+        },
+        { 
+          id: '2', 
+          title: 'The Gospel of John: Chapter 1', 
+          category: 'New Testament', 
+          author: 'Main Admin', 
+          created_at: new Date().toISOString(), 
+          updated_at: new Date().toISOString(),
+          lesson_type: 'Mixed',
+          status: 'published', 
+          views: 85,
+          description: 'Understanding the Word.',
+          sections: [] 
+        },
+        { 
+          id: '3', 
+          title: 'Leadership Principles of David', 
+          category: 'Leadership', 
+          author: 'Main Admin', 
+          created_at: new Date().toISOString(), 
+          updated_at: new Date().toISOString(),
+          lesson_type: 'Leadership',
+          status: 'draft', 
+          views: 0,
+          description: 'Leadership lessons from King David.',
+          sections: [] 
+        },
       ];
       this.saveLessons();
     }
@@ -395,9 +431,13 @@ class AuthService {
       title,
       category,
       author: user.name,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      lesson_type: 'Mixed',
       status: user.role === UserRole.ADMIN ? 'published' : 'draft', // Admin publishes directly, others might default to draft
-      views: 0
+      views: 0,
+      description: '',
+      sections: []
     };
     
     this.lessons.unshift(newLesson);

@@ -39,6 +39,7 @@ export interface JoinRequest {
 
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
 export type SectionType = 'note' | 'quiz_group';
+export type TargetAudience = 'All' | 'Student' | 'Mentor' | 'Parent' | 'Organization';
 
 export interface QuizOption {
   id: string;
@@ -72,6 +73,7 @@ export interface Lesson {
   description: string;
   category?: string;
   lesson_type: LessonType;
+  targetAudience: TargetAudience; // NEW FIELD
   book?: string;
   chapter?: number;
   author: string;

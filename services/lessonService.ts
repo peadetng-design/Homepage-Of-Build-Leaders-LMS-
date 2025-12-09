@@ -17,7 +17,43 @@ class LessonService {
     if (storedLessons) {
       this.lessons = JSON.parse(storedLessons);
     } else {
-      this.lessons = [];
+      // Seed with some dummy data if empty
+      this.lessons = [
+        {
+            id: 'demo-lesson-1',
+            title: 'Advanced Leadership: Shepherd Leadership',
+            description: 'A deep dive into 1 Peter 5 for Mentors and Pastors.',
+            category: 'Leadership',
+            lesson_type: 'Leadership',
+            targetAudience: 'Mentor',
+            author: 'Main Admin',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'published',
+            views: 12,
+            sections: [
+                {
+                    id: 'sec-1', type: 'note', title: 'The Shepherd Model', sequence: 1, 
+                    body: '<p>Shepherding is not just about leading; it is about caring. 1 Peter 5 exhorts elders to be shepherds of God\'s flock...</p>'
+                },
+                {
+                    id: 'sec-2', type: 'quiz_group', title: 'Reflection', sequence: 2,
+                    quizzes: [
+                        {
+                            id: 'q1', type: 'Note Quiz', text: 'According to 1 Peter 5, what is the motivation for serving?', sequence: 1,
+                            options: [
+                                { id: 'o1', label: 'A', text: 'Greed', isCorrect: false, explanation: 'Incorrect.' },
+                                { id: 'o2', label: 'B', text: 'Willingness to serve', isCorrect: true, explanation: 'Correct. "Not because you must, but because you are willing."' },
+                                { id: 'o3', label: 'C', text: 'Power', isCorrect: false, explanation: 'Incorrect.' },
+                                { id: 'o4', label: 'D', text: 'Obligation', isCorrect: false, explanation: 'Incorrect.' }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+      ]; 
+      this.saveLessons();
     }
 
     const storedAttempts = localStorage.getItem(DB_ATTEMPTS_KEY);
@@ -66,7 +102,8 @@ class LessonService {
         description: "A study of Genesis chapter 1 with leadership insights",
         book: "Genesis",
         chapter: 1,
-        lesson_type: "Mixed"
+        lesson_type: "Mixed",
+        targetAudience: "All" // Default for imports
       },
       leadershipNote: {
         title: "The Leadership Mindset in Creation",
@@ -184,6 +221,7 @@ class LessonService {
       title: draft.metadata.title || "Untitled Lesson",
       description: draft.metadata.description || "",
       lesson_type: draft.metadata.lesson_type || "Mixed",
+      targetAudience: draft.metadata.targetAudience || 'All',
       book: draft.metadata.book,
       chapter: draft.metadata.chapter,
       author: author.name,

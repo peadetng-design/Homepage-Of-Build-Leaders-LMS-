@@ -5,10 +5,11 @@ import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
 import { lessonService } from '../services/lessonService';
 import AdminPanel from './AdminPanel';
 import StudentPanel from './StudentPanel';
-import OrganizationPanel from './OrganizationPanel'; // Import new panel
+import OrganizationPanel from './OrganizationPanel'; 
 import LessonView from './LessonView'; 
 import ParentOnboarding from './ParentOnboarding';
 import ExportModal from './ExportModal';
+import LessonBrowser from './LessonBrowser';
 import {
   BookOpen, Star, Trophy, Clock, Calendar, ArrowUpRight,
   TrendingUp, Activity, CheckCircle, Play,
@@ -38,6 +39,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   const [quizQuestion, setQuizQuestion] = useState<{question: string, options: string[], answer: string} | null>(null);
   const [quizState, setQuizState] = useState<'idle' | 'correct' | 'incorrect'>('idle');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showLessonBrowser, setShowLessonBrowser] = useState(false);
   
   // Admin View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload'>('users');
@@ -47,7 +49,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   // Student View State
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons' | null>(null);
-  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); // For student view
+  const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
 
   // Roles
   const isAdminView = user.role === UserRole.ADMIN;
@@ -66,8 +68,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
     );
   }
 
-  // --- STUDENT LESSON VIEW CHECK ---
-  if (isStudentView && activeLesson) {
+  // --- GLOBAL LESSON VIEW CHECK (Any user can now take a lesson) ---
+  if (activeLesson) {
      return (
         <LessonView 
            lesson={activeLesson} 
@@ -340,7 +342,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              <UserPlus size={20} />
              <span>Requests</span>
            </button>
+           
+           {/* TAKE LESSONS BUTTON (MENTOR) */}
+           <button 
+             onClick={() => setShowLessonBrowser(true)}
+             className="bg-white border-2 border-royal-600 text-royal-600 hover:bg-royal-50 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
+           >
+             <Play size={20} fill="currentColor" />
+             <span>TAKE LESSONS</span>
+           </button>
         </div>
+      )}
+
+      {/* PARENT/ORG ACTIONS ROW (For non-mentors/admins/students) */}
+      {(isParentView || isOrgView) && (
+         <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4 mb-4">
+             <button 
+               onClick={() => setShowLessonBrowser(true)}
+               className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
+             >
+               <div className="bg-white/20 p-2 rounded-lg group-hover:scale-110 transition-transform">
+                  <Play size={24} strokeWidth={3} fill="currentColor" />
+               </div>
+               <span className="text-lg">TAKE LESSONS</span>
+             </button>
+         </div>
       )}
 
       {/* STUDENT ACTIONS ROW */}
@@ -377,8 +403,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         </div>
       )}
       
+      {/* GLOBAL LESSON BROWSER */}
+      {showLessonBrowser && (
+         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mb-8">
+            <LessonBrowser 
+               currentUser={user}
+               onLessonSelect={(lessonId) => {
+                  lessonService.getLessonById(lessonId).then(l => {
+                      if(l) setActiveLesson(l);
+                  });
+               }}
+               onClose={() => setShowLessonBrowser(false)}
+            />
+         </div>
+      )}
+
       {/* ORGANIZATION PANEL INTEGRATION */}
-      {isOrgView && (
+      {isOrgView && !showLessonBrowser && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
           <OrganizationPanel currentUser={user} />
         </div>
@@ -395,7 +436,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         </div>
       )}
 
-      {isMentorView && mentorActiveTab && (
+      {isMentorView && mentorActiveTab && !showLessonBrowser && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
            <AdminPanel 
              currentUser={user} 
@@ -421,7 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       )}
 
       {/* Grid Layout for Stats & Sidebar */}
-      {!isOrgView && (
+      {!isOrgView && !showLessonBrowser && (
       <div className="grid grid-cols-12 gap-6">
 
         {/* Top Stats Row */}

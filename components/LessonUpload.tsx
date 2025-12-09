@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType } from '../types';
+import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, FileText, Check, AlertTriangle, X, Loader2, Eye, Save, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, FileText, Check, AlertTriangle, X, Loader2, Eye, Save, Plus, Trash2, ChevronDown, ChevronUp, Users } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -22,6 +22,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     title: '',
     description: '',
     lesson_type: 'Mixed',
+    targetAudience: 'All', // Default
     book: '',
     chapter: 1,
     sections: []
@@ -165,6 +166,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
         title: manualLesson.title,
         description: manualLesson.description || '',
         lesson_type: manualLesson.lesson_type || 'Mixed',
+        targetAudience: manualLesson.targetAudience || 'All',
         book: manualLesson.book,
         chapter: manualLesson.chapter,
         author: currentUser.name,
@@ -224,6 +226,36 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                            placeholder="e.g. Genesis Chapter 1"
                         />
                       </div>
+                      
+                      {/* TARGET AUDIENCE SELECTOR */}
+                      <div className="col-span-1">
+                        <label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><Users size={12}/> Target Audience</label>
+                        <select
+                           className="w-full p-2 border border-gray-300 rounded bg-white"
+                           value={manualLesson.targetAudience}
+                           onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}
+                        >
+                            <option value="All">All Users</option>
+                            <option value="Student">Student Only</option>
+                            <option value="Mentor">Mentor Only</option>
+                            <option value="Parent">Parent Only</option>
+                            <option value="Organization">Organization Only</option>
+                        </select>
+                      </div>
+
+                      <div className="col-span-1">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Lesson Type</label>
+                        <select
+                           className="w-full p-2 border border-gray-300 rounded bg-white"
+                           value={manualLesson.lesson_type}
+                           onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}
+                        >
+                            <option value="Mixed">Mixed (Note + Quiz)</option>
+                            <option value="Bible">Bible Only</option>
+                            <option value="Leadership">Leadership Only</option>
+                        </select>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Bible Book</label>
                         <input 

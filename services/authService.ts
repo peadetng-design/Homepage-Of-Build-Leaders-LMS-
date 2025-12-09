@@ -22,6 +22,48 @@ const DEFAULT_ADMIN = {
   authProvider: 'email' as const
 };
 
+// DEFAULT MENTOR CREDENTIALS (FOR DEMO)
+const DEFAULT_MENTOR = {
+  id: 'usr_demo_mentor',
+  name: 'Demo Mentor',
+  email: 'mentor@demo.com',
+  passwordHash: 'mentor123',
+  role: UserRole.MENTOR,
+  isVerified: true,
+  avatarUrl: '',
+  lastLogin: new Date().toISOString(),
+  authProvider: 'email' as const,
+  classCode: 'DEMO01'
+};
+
+// DEFAULT STUDENT CREDENTIALS (FOR DEMO)
+const DEFAULT_STUDENT = {
+  id: 'usr_demo_student',
+  name: 'Demo Student',
+  email: 'student@demo.com',
+  passwordHash: 'student123',
+  role: UserRole.STUDENT,
+  isVerified: true,
+  avatarUrl: '',
+  lastLogin: new Date().toISOString(),
+  authProvider: 'email' as const,
+  mentorId: 'usr_demo_mentor' // Pre-linked to the demo mentor
+};
+
+// DEFAULT PARENT CREDENTIALS (FOR DEMO)
+const DEFAULT_PARENT = {
+  id: 'usr_demo_parent',
+  name: 'Demo Parent',
+  email: 'parent@demo.com',
+  passwordHash: 'parent123',
+  role: UserRole.PARENT,
+  isVerified: true,
+  avatarUrl: '',
+  lastLogin: new Date().toISOString(),
+  authProvider: 'email' as const,
+  linkedStudentId: 'usr_demo_student' // Pre-linked to the demo student
+};
+
 class AuthService {
   private users: User[] = [];
   private logs: AuditLog[] = [];
@@ -39,14 +81,29 @@ class AuthService {
     if (storedUsers) {
       this.users = JSON.parse(storedUsers);
       
-      // Ensure default admin always exists and has correct credentials in case local storage is old
-      const adminIndex = this.users.findIndex(u => u.email === DEFAULT_ADMIN.email);
-      if (adminIndex === -1) {
+      // Ensure default admin always exists
+      if (!this.users.find(u => u.email === DEFAULT_ADMIN.email)) {
         this.users.push(DEFAULT_ADMIN);
-        this.saveUsers();
       }
+      
+      // Ensure default mentor always exists
+      if (!this.users.find(u => u.email === DEFAULT_MENTOR.email)) {
+        this.users.push(DEFAULT_MENTOR);
+      }
+
+      // Ensure default student always exists
+      if (!this.users.find(u => u.email === DEFAULT_STUDENT.email)) {
+        this.users.push(DEFAULT_STUDENT);
+      }
+
+      // Ensure default parent always exists
+      if (!this.users.find(u => u.email === DEFAULT_PARENT.email)) {
+        this.users.push(DEFAULT_PARENT);
+      }
+      
+      this.saveUsers();
     } else {
-      this.users = [DEFAULT_ADMIN];
+      this.users = [DEFAULT_ADMIN, DEFAULT_MENTOR, DEFAULT_STUDENT, DEFAULT_PARENT];
       this.saveUsers();
     }
 

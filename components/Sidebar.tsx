@@ -1,8 +1,9 @@
+
 import React from 'react';
 import {
   Home, Book, Users, Award, MessageCircle, Settings,
   LogOut, Shield, Heart, ChevronLeft, ChevronRight,
-  Library
+  Library, Building2, UserPlus
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -36,6 +37,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
     [UserRole.ADMIN]: [
       { label: 'Admin Panel', icon: Shield, path: 'admin' },
       { label: 'User Mgmt', icon: Users, path: 'users' },
+    ],
+    [UserRole.ORGANIZATION]: [
+      { label: 'Ministry Panel', icon: Building2, path: 'org-panel' },
+      { label: 'Staff Mgmt', icon: UserPlus, path: 'staff' },
     ],
     [UserRole.PARENT]: [
       { label: 'Child Progress', icon: Heart, path: 'child-progress' },

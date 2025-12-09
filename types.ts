@@ -4,7 +4,8 @@ export enum UserRole {
   STUDENT = 'STUDENT',
   MENTOR = 'MENTOR',
   ADMIN = 'ADMIN',
-  PARENT = 'PARENT'
+  PARENT = 'PARENT',
+  ORGANIZATION = 'ORGANIZATION'
 }
 
 export interface User {
@@ -18,9 +19,11 @@ export interface User {
   verificationToken?: string;
   lastLogin?: string;
   authProvider?: 'email' | 'google' | 'apple';
-  classCode?: string;
-  mentorId?: string;
-  linkedStudentId?: string;
+  classCode?: string; // For Mentors
+  organizationCode?: string; // For Organizations
+  mentorId?: string; // For Students
+  organizationId?: string; // For Mentors and Students
+  linkedStudentId?: string; // For Parents
 }
 
 export interface JoinRequest {
@@ -142,6 +145,7 @@ export interface Invite {
   email: string;
   role: UserRole;
   invitedBy: string;
+  organizationId?: string; // If invited by Org Admin
   createdAt: string;
   expiresAt: string;
   status: 'pending' | 'accepted' | 'expired';

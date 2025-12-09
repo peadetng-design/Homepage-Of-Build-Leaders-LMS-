@@ -5,7 +5,8 @@ import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
 import { lessonService } from '../services/lessonService';
 import AdminPanel from './AdminPanel';
 import StudentPanel from './StudentPanel';
-import LessonView from './LessonView'; // Import new component
+import OrganizationPanel from './OrganizationPanel'; // Import new panel
+import LessonView from './LessonView'; 
 import ParentOnboarding from './ParentOnboarding';
 import {
   BookOpen, Star, Trophy, Clock, Calendar, ArrowUpRight,
@@ -46,14 +47,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons' | null>(null);
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); // For student view
 
-  // If Admin and in Admin view, we show the Panel
+  // Roles
   const isAdminView = user.role === UserRole.ADMIN;
   const isMentorView = user.role === UserRole.MENTOR;
   const isStudentView = user.role === UserRole.STUDENT;
   const isParentView = user.role === UserRole.PARENT;
+  const isOrgView = user.role === UserRole.ORGANIZATION;
 
   // --- PARENT ONBOARDING CHECK ---
-  // If user is a Parent but hasn't linked a student yet, BLOCK the dashboard with the onboarding screen.
   if (isParentView && !user.linkedStudentId) {
     return (
        <ParentOnboarding 
@@ -88,12 +89,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
     fetchContent();
   }, [user.role]);
 
-  // Handle student clicking "View Lessons" or a specific lesson in the panel
-  const handleStudentLessonSelect = async () => {
-     // For demo, if they are in 'lessons' tab, we might simulate them picking one.
-     // But StudentPanel displays a list. We need to pass a callback to StudentPanel.
-  }
-
   const handleQuizAnswer = (option: string) => {
     if(!quizQuestion) return;
     if (option === quizQuestion.answer) {
@@ -105,6 +100,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   const getRoleContent = () => {
     switch(user.role) {
+      case UserRole.ORGANIZATION:
+        return {
+          welcomeMsg: "Managing your ministry impact and staff resources.",
+          stats: [
+             { title: "Network Growth", value: "+8%", subtitle: "this month", icon: TrendingUp, color: "green" },
+             { title: "Active Groups", value: "12", subtitle: "Full Capacity", icon: Users, color: "indigo" },
+             { title: "Compliance", value: "100%", subtitle: "Verified", icon: Shield, color: "blue" },
+             { title: "Avg Engagement", value: "8.5/10", subtitle: "High", icon: Activity, color: "purple" }
+          ],
+          featured: {
+             label: "Executive Summary",
+             title: "Quarterly Ministry Report",
+             description: "Your organization has reached 150 new students this quarter. Download the full impact analysis.",
+             buttonText: "View Analytics",
+             icon: BarChart3,
+             bgGradient: "from-slate-800 to-slate-600"
+          },
+          recentTitle: "Organization Updates",
+          recentItems: [
+             { id: 1, title: "Mentor Added: John D.", meta: "Direct creation", type: "success", icon: UserPlus, iconColor: "text-green-600", bg: "bg-green-50" },
+             { id: 2, title: "Student Roster Sync", meta: "Completed", type: "info", icon: CheckCircle, iconColor: "text-blue-600", bg: "bg-blue-50" }
+          ]
+        };
       case UserRole.ADMIN:
         return {
           welcomeMsg: "Overview of system performance and district activities.",
@@ -263,7 +281,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              <span className="text-lg">UPLOAD LESSON</span>
            </button>
 
-           {/* Smaller Lessons Button */}
            <button 
              onClick={() => setAdminActiveTab('lessons')}
              className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
@@ -277,7 +294,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       {/* MENTOR ACTIONS ROW */}
       {isMentorView && (
         <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4">
-           {/* Conspicuous Gold Manage Lessons Button (Mentor Request) */}
            <button 
              onClick={() => setMentorActiveTab('lessons')}
              className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
@@ -291,7 +307,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              </div>
            </button>
 
-           {/* Smaller Upload Lessons Button (Mentor Request) */}
            <button 
              onClick={() => setMentorActiveTab('upload')}
              className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
@@ -313,7 +328,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       {/* STUDENT ACTIONS ROW */}
       {isStudentView && (
         <div className="flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-4">
-           {/* Conspicuous Gold Join Class Button */}
            <button 
              onClick={() => setStudentActiveTab('join')}
              className="bg-gold-500 hover:bg-gold-600 text-white shadow-lg shadow-gold-500/30 font-bold px-8 py-4 rounded-xl flex items-center gap-3 transform hover:-translate-y-1 transition-all group"
@@ -327,7 +341,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              </div>
            </button>
 
-           {/* Smaller Browse Mentors Button */}
            <button 
              onClick={() => setStudentActiveTab('browse')}
              className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
@@ -336,7 +349,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              <span>Browse Mentors</span>
            </button>
 
-           {/* Smaller View Lessons Button */}
            <button 
              onClick={() => setStudentActiveTab('lessons')}
              className="bg-white border-2 border-gray-200 text-gray-600 hover:border-royal-600 hover:text-royal-600 font-bold px-6 py-4 rounded-xl flex items-center gap-2 transition-all shadow-sm hover:shadow-md"
@@ -346,8 +358,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            </button>
         </div>
       )}
+      
+      {/* ORGANIZATION PANEL INTEGRATION */}
+      {isOrgView && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <OrganizationPanel currentUser={user} />
+        </div>
+      )}
 
-      {/* ADMIN PANEL INTEGRATION: Used by both Admin and Mentor */}
+      {/* ADMIN PANEL INTEGRATION */}
       {isAdminView && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
            <AdminPanel 
@@ -371,8 +390,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       {/* STUDENT PANEL INTEGRATION */}
       {isStudentView && studentActiveTab && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-           {/* Temporary Fix: StudentPanel is simplified in props in previous steps, but here we'll need to pass a callback 
-               Use StudentPanel from previous context but we need to modify it to allow selecting a lesson */}
            <StudentPanelExtended 
              currentUser={user} 
              activeTab={studentActiveTab}
@@ -385,10 +402,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         </div>
       )}
 
-      {/* Grid Layout (Existing Dashboard Components) */}
+      {/* Grid Layout for Stats & Sidebar */}
+      {!isOrgView && (
       <div className="grid grid-cols-12 gap-6">
 
-        {/* Top Stats Row - Spans full width */}
+        {/* Top Stats Row */}
         <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
            {roleContent.stats.map((stat, idx) => (
              <StatCard key={idx} {...stat} />
@@ -500,7 +518,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                       } else if (quizState === 'incorrect' && !isCorrect) {
                         btnClass += "border-gray-200 opacity-50";
                       } else if (quizState === 'incorrect' && isCorrect) {
-                         // Show correct answer even if they got it wrong
                          btnClass += "border-green-500 bg-green-50 text-green-700";
                       }
 
@@ -525,33 +542,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              )}
           </div>
 
-          {/* Calendar Widget (Static) */}
-           <div className="bg-indigo-900 text-white rounded-2xl p-6 relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <span className="text-indigo-300 text-xs font-bold uppercase">Next Event</span>
-                    <h3 className="font-bold text-lg">District Finals</h3>
-                  </div>
-                  <Calendar className="text-indigo-300" />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/10 backdrop-blur-md rounded-lg p-2 text-center min-w-[50px]">
-                    <span className="block text-xl font-bold">15</span>
-                    <span className="text-xs text-indigo-200">OCT</span>
-                  </div>
-                  <div className="text-sm text-indigo-100">
-                    <p>First Baptist Church</p>
-                    <p>09:00 AM</p>
-                  </div>
-                </div>
-              </div>
-              {/* Decorative Circle */}
-              <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-indigo-700 rounded-full opacity-50"></div>
-           </div>
-
         </div>
       </div>
+      )}
     </div>
   );
 };
@@ -562,10 +555,6 @@ const SparklesIcon = () => (
   </svg>
 );
 
-// EXTENDED STUDENT PANEL TO HANDLE SELECTION
-// We need to re-implement StudentPanel inside Dashboard or wrap it to capture selection
-// For cleanliness in this XML block, I'm defining a wrapper here.
-
 import { authService } from '../services/authService';
 
 const StudentPanelExtended: React.FC<{
@@ -573,11 +562,6 @@ const StudentPanelExtended: React.FC<{
   activeTab: 'join' | 'browse' | 'lessons',
   onLessonSelect: (id: string) => void
 }> = ({ currentUser, activeTab, onLessonSelect }) => {
-  // We reuse the logic from StudentPanel but with the callback
-  // Since we cannot "edit" StudentPanel.tsx in the same Change Block easily without duplication
-  // I will assume StudentPanel.tsx exposes the list and onLessonSelect logic in a real app.
-  // BUT for this specific prompt, I will duplicate the relevant parts of StudentPanel here 
-  // slightly modified to call onLessonSelect, effectively overriding the previous component usage.
   
   const [classCode, setClassCode] = useState('');
   const [mentors, setMentors] = useState<User[]>([]);
@@ -658,7 +642,6 @@ const StudentPanelExtended: React.FC<{
                  </div>
             </div>
         )}
-        {/* Simplified browse for brevity */}
          {activeTab === 'browse' && <div className="text-center p-8 text-gray-500">Mentor browser (see previous impl)</div>}
       </div>
     </div>

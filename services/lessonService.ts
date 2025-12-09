@@ -1,5 +1,5 @@
 
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
@@ -215,6 +215,12 @@ class LessonService {
 
   async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> {
     return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId);
+  }
+
+  // Check if a user has attempted ANY quiz in a specific lesson
+  async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
+      const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
+      return userAttempts.length > 0;
   }
 }
 

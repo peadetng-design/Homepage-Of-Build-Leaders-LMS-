@@ -8,10 +8,11 @@ import StudentPanel from './StudentPanel';
 import OrganizationPanel from './OrganizationPanel'; // Import new panel
 import LessonView from './LessonView'; 
 import ParentOnboarding from './ParentOnboarding';
+import ExportModal from './ExportModal';
 import {
   BookOpen, Star, Trophy, Clock, Calendar, ArrowUpRight,
   TrendingUp, Activity, CheckCircle, Play,
-  Users, Shield, Heart, FileText, AlertCircle, BarChart3, Lock, Upload, List, UserPlus, Search
+  Users, Shield, Heart, FileText, AlertCircle, BarChart3, Lock, Upload, List, UserPlus, Search, Printer
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -36,6 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   const [loadingVerse, setLoadingVerse] = useState(true);
   const [quizQuestion, setQuizQuestion] = useState<{question: string, options: string[], answer: string} | null>(null);
   const [quizState, setQuizState] = useState<'idle' | 'correct' | 'incorrect'>('idle');
+  const [showExportModal, setShowExportModal] = useState(false);
   
   // Admin View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload'>('users');
@@ -258,14 +260,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
           <p className="text-gray-500 mt-1">{roleContent.welcomeMsg}</p>
         </div>
         
-        {/* Account Security Action */}
-        <button 
-          onClick={onChangePasswordClick}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <Lock size={16} /> Change Password
-        </button>
+        <div className="flex gap-3">
+            {/* PRINT/EXPORT BUTTON */}
+            <button
+               onClick={() => setShowExportModal(true)}
+               className="flex items-center gap-2 px-4 py-2 bg-gold-500 text-white rounded-lg text-sm font-bold hover:bg-gold-600 transition-colors shadow-sm"
+            >
+               <Printer size={18} /> PRINT / EXPORT
+            </button>
+
+            {/* Account Security Action */}
+            <button 
+            onClick={onChangePasswordClick}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-gray-600 text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+            >
+            <Lock size={16} /> Change Password
+            </button>
+        </div>
       </div>
+
+      <ExportModal 
+        isOpen={showExportModal} 
+        onClose={() => setShowExportModal(false)} 
+        currentUser={user} 
+      />
 
       {/* ADMIN ACTIONS ROW */}
       {isAdminView && (

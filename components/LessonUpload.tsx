@@ -16,6 +16,9 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // New state for Bulk Import Audience
+  const [bulkTargetAudience, setBulkTargetAudience] = useState<TargetAudience>('All');
 
   // --- MANUAL BUILDER STATE ---
   const [manualLesson, setManualLesson] = useState<Partial<Lesson>>({
@@ -52,6 +55,9 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const commitImport = async () => {
     if (!draft) return;
     try {
+      // Apply the selected audience to the draft metadata
+      draft.metadata.targetAudience = bulkTargetAudience;
+      
       const lesson = lessonService.convertDraftToLesson(draft, currentUser);
       await lessonService.publishLesson(lesson);
       onSuccess();
@@ -183,6 +189,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     }
   };
 
+  // Helper for Audience Options
+  const renderAudienceOptions = () => (
+    <>
+        <option value="All">All Users</option>
+        <option value="Student">Student Only</option>
+        <option value="Mentor">Mentor Only</option>
+        <option value="Parent">Parent Only</option>
+        <option value="Organization">Organization Only</option>
+        <option value="Advanced">Mentor, Parent, and Organization</option>
+    </>
+  );
+
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-[80vh]">
        {/* Header */}
@@ -235,11 +253,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                            value={manualLesson.targetAudience}
                            onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}
                         >
-                            <option value="All">All Users</option>
-                            <option value="Student">Student Only</option>
-                            <option value="Mentor">Mentor Only</option>
-                            <option value="Parent">Parent Only</option>
-                            <option value="Organization">Organization Only</option>
+                            {renderAudienceOptions()}
                         </select>
                       </div>
 
@@ -389,6 +403,27 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
              </div>
           ) : (
              <div className="space-y-8 max-w-4xl mx-auto">
+                {/* BULK IMPORT AUDIENCE SELECTOR */}
+                <div className="bg-royal-50 p-6 rounded-xl border border-royal-100 flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                         <div className="p-2 bg-white rounded-lg text-royal-600 shadow-sm"><Users size={24}/></div>
+                         <div>
+                             <h3 className="font-bold text-royal-900">Import Configuration</h3>
+                             <p className="text-xs text-royal-600">Apply to all lessons in this package</p>
+                         </div>
+                     </div>
+                     <div className="min-w-[250px]">
+                        <label className="block text-xs font-bold text-royal-600 mb-1">Target Audience</label>
+                        <select 
+                           value={bulkTargetAudience}
+                           onChange={(e) => setBulkTargetAudience(e.target.value as TargetAudience)}
+                           className="w-full p-2 rounded-lg border border-royal-200 text-sm font-medium focus:ring-2 focus:ring-royal-500 outline-none"
+                        >
+                           {renderAudienceOptions()}
+                        </select>
+                     </div>
+                </div>
+
                 {/* File Drop Area */}
                 {!draft && (
                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:bg-gray-50 transition-colors relative">
@@ -449,6 +484,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div><span className="text-gray-500">Title:</span> <span className="font-bold">{draft.metadata.title}</span></div>
                             <div><span className="text-gray-500">Book/Ch:</span> <span className="font-bold">{draft.metadata.book} {draft.metadata.chapter}</span></div>
+                            <div><span className="text-gray-500">Audience:</span> <span className="font-bold text-royal-600">{bulkTargetAudience}</span></div>
                          </div>
                          
                          {/* Counts */}

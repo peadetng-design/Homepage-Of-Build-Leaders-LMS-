@@ -38,6 +38,12 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
           if (l.targetAudience === 'All') return true;
           if (l.targetAudience === currentUser.role) return true;
           
+          // Advanced: Visible to Mentors, Parents, and Organizations
+          if (l.targetAudience === 'Advanced' && 
+             (currentUser.role === UserRole.MENTOR || 
+              currentUser.role === UserRole.PARENT || 
+              currentUser.role === UserRole.ORGANIZATION)) return true;
+          
           return false;
       });
       setLessons(roleSpecificLessons);
@@ -70,6 +76,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
           case 'Mentor': return 'bg-indigo-100 text-indigo-700';
           case 'Organization': return 'bg-slate-100 text-slate-700';
           case 'Parent': return 'bg-rose-100 text-rose-700';
+          case 'Advanced': return 'bg-purple-100 text-purple-700';
           default: return 'bg-blue-100 text-blue-700';
       }
   };

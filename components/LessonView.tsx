@@ -25,6 +25,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     let totalCount = 0;
 
     history.forEach(h => {
+      // Prevent overwriting if already exists (though backend should handle unique)
       if (!attemptMap[h.quizId]) {
         attemptMap[h.quizId] = h.selectedOptionId;
         if (h.isCorrect) correctCount++;
@@ -37,16 +38,20 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   };
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
+    // Canvas-like: No reattempts. If already attempted, do nothing.
     if (attempts[quiz.id]) return;
 
+    // 1. Immediately record selection locally
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
 
+    // 2. Update Score state
     if (option.isCorrect) {
       setScore(prev => ({ ...prev, total: prev.total + 1, correct: prev.correct + 1 }));
     } else {
       setScore(prev => ({ ...prev, total: prev.total + 1 }));
     }
 
+    // 3. Persist to Backend
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, option.isCorrect);
   };
 
@@ -170,23 +175,31 @@ const QuizCard: React.FC<{
              const isSelected = selectedOptionId === option.id;
              const isCorrect = option.isCorrect;
              
-             let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all relative ";
+             // Base Button Classes
+             let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all relative flex flex-col ";
+             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-colors ";
              
              if (!isAnswered) {
+                // PRE-ATTEMPT: No Clues
                 btnClass += "border-gray-100 hover:border-royal-300 hover:bg-royal-50 cursor-pointer";
+                circleClass += "border-gray-300 text-gray-500";
              } else {
-                // Post-attempt logic:
-                // Green if this is the Correct option
+                // POST-ATTEMPT: Reveal Logic
                 if (isCorrect) {
-                   btnClass += "border-[#2ecc71] bg-[#2ecc71]/10 text-green-900"; 
+                   // CORRECT OPTION: Specific Green #2ecc71
+                   // Using inline style for exact color requirement if Tailwind classes deviate
+                   btnClass += "bg-green-50 text-green-900 border-[#2ecc71]"; 
+                   circleClass += "bg-[#2ecc71] border-[#2ecc71] text-white";
                 } 
-                // Red if this was selected but is WRONG
                 else if (isSelected && !isCorrect) {
-                   btnClass += "border-[#e74c3c] bg-[#e74c3c]/10 text-red-900"; 
+                   // WRONG SELECTION: Specific Red #e74c3c
+                   btnClass += "bg-red-50 text-red-900 border-[#e74c3c]"; 
+                   circleClass += "bg-[#e74c3c] border-[#e74c3c] text-white";
                 } 
-                // Grey/Faded if this is wrong and wasn't selected
                 else {
+                   // UNSELECTED WRONG: Greyed out
                    btnClass += "border-gray-100 opacity-60"; 
+                   circleClass += "border-gray-200 text-gray-400";
                 }
              }
 
@@ -196,31 +209,36 @@ const QuizCard: React.FC<{
                    disabled={isAnswered}
                    onClick={() => onSelect(option)}
                    className={btnClass}
+                   // Ensure specific border colors for correct/wrong even if class fails
+                   style={isAnswered ? { borderColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined) } : {}}
                  >
-                   <div className="flex items-center justify-between">
+                   <div className="flex items-center justify-between w-full">
                      <div className="flex items-center gap-3">
-                       <span className={`w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm
-                          ${!isAnswered ? 'border-gray-300 text-gray-500' : 
-                            isCorrect ? 'border-[#2ecc71] bg-[#2ecc71] text-white' :
-                            isSelected ? 'border-[#e74c3c] bg-[#e74c3c] text-white' : 'border-gray-200 text-gray-400'}
-                       `}>
+                       {/* Option Label Circle */}
+                       <span 
+                         className={circleClass}
+                         style={isAnswered ? { backgroundColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined), borderColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined) } : {}}
+                       >
                           {option.label}
                        </span>
-                       <span className="font-medium">{option.text}</span>
+                       <span className="font-medium text-lg">{option.text}</span>
                      </div>
-                     {isAnswered && isCorrect && <CheckCircle size={20} className="text-[#2ecc71]" />}
-                     {isAnswered && isSelected && !isCorrect && <AlertCircle size={20} className="text-[#e74c3c]" />}
+                     
+                     {/* Result Icons */}
+                     {isAnswered && isCorrect && <CheckCircle size={24} color="#2ecc71" />}
+                     {isAnswered && isSelected && !isCorrect && <X size={24} color="#e74c3c" />}
                    </div>
+
+                   {/* REVEAL EXPLANATION: Shown for ALL options under the choice */}
+                   {isAnswered && (
+                     <div className="mt-3 pt-3 border-t border-black/10 w-full animate-in fade-in slide-in-from-top-1">
+                        <div 
+                          className={`text-sm ${isCorrect ? 'text-green-800' : 'text-gray-600'}`}
+                          dangerouslySetInnerHTML={{ __html: `<strong>Explanation:</strong> ${option.explanation}` }} 
+                        />
+                     </div>
+                   )}
                  </button>
-                 
-                 {/* REVEAL EXPLANATION: Show for ALL options if answered */}
-                 {isAnswered && (
-                   <div className={`mt-2 ml-4 pl-4 border-l-2 text-sm italic animate-in fade-in slide-in-from-top-1
-                     ${isCorrect ? 'border-[#2ecc71] text-green-700' : 'border-gray-300 text-gray-600'}
-                   `}>
-                     <span className="font-bold not-italic mr-1">Explanation:</span> {option.explanation}
-                   </div>
-                 )}
                </div>
              );
            })}

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Lesson, User, UserRole } from '../types';
+import { Lesson, User, UserRole, TargetAudience } from '../types';
 import { lessonService } from '../services/lessonService';
-import { BookOpen, Search, Filter, Play, Clock, ArrowRight, Book } from 'lucide-react';
+import { BookOpen, Search, Filter, Play, Clock, ArrowRight, Book, Users } from 'lucide-react';
 
 interface LessonBrowserProps {
   currentUser: User;
@@ -29,21 +29,31 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
     setIsLoading(true);
     try {
       const allLessons = await lessonService.getLessons();
-      // Filter lessons relevant to the user's role + 'All'
+      
       const roleSpecificLessons = allLessons.filter(l => {
-          // Admin sees all
+          // Admin sees everything
           if (currentUser.role === UserRole.ADMIN) return true;
           
-          // Match 'All' or specific role
-          if (l.targetAudience === 'All') return true;
-          if (l.targetAudience === currentUser.role) return true;
-          
-          // Advanced: Visible to Mentors, Parents, and Organizations
-          if (l.targetAudience === 'Advanced' && 
-             (currentUser.role === UserRole.MENTOR || 
-              currentUser.role === UserRole.PARENT || 
-              currentUser.role === UserRole.ORGANIZATION)) return true;
-          
+          const audience = l.targetAudience as TargetAudience;
+
+          // 'All' is public
+          if (audience === 'All') return true;
+
+          // Exact Match
+          if (audience === 'Student' && currentUser.role === UserRole.STUDENT) return true;
+          if (audience === 'Mentor' && currentUser.role === UserRole.MENTOR) return true;
+          if (audience === 'Organization' && currentUser.role === UserRole.ORGANIZATION) return true;
+          if (audience === 'Parent' && currentUser.role === UserRole.PARENT) return true;
+
+          // Composite Match (Mentors, Organization, and Parent Only)
+          if (audience === 'Mentors_Org_Parents') {
+             return (
+                currentUser.role === UserRole.MENTOR || 
+                currentUser.role === UserRole.ORGANIZATION || 
+                currentUser.role === UserRole.PARENT
+             );
+          }
+
           return false;
       });
       setLessons(roleSpecificLessons);
@@ -76,13 +86,22 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
           case 'Mentor': return 'bg-indigo-100 text-indigo-700';
           case 'Organization': return 'bg-slate-100 text-slate-700';
           case 'Parent': return 'bg-rose-100 text-rose-700';
-          case 'Advanced': return 'bg-purple-100 text-purple-700';
-          default: return 'bg-blue-100 text-blue-700';
+          case 'Mentors_Org_Parents': return 'bg-purple-100 text-purple-700';
+          case 'Student': return 'bg-blue-100 text-blue-700';
+          default: return 'bg-gray-100 text-gray-700';
       }
   };
 
+  const getRoleLabel = (target: string) => {
+     switch(target) {
+        case 'Mentors_Org_Parents': return 'Advanced (M/Org/P)';
+        case 'All': return 'Everyone';
+        default: return `${target} Only`;
+     }
+  };
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[600px] flex flex-col">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 min-h-[600px] flex flex-col animate-in fade-in zoom-in-95 duration-200">
        <div className="bg-royal-900 p-8 text-white flex justify-between items-center rounded-t-2xl">
           <div>
             <h2 className="text-3xl font-serif font-bold flex items-center gap-3">
@@ -123,13 +142,14 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
            </div>
        </div>
 
-       <div className="p-8 flex-1 bg-gray-50/30 overflow-y-auto">
+       <div className="p-8 flex-1 bg-gray-50/30 overflow-y-auto min-h-[400px]">
           {isLoading ? (
              <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-royal-600"></div></div>
           ) : filteredLessons.length === 0 ? (
              <div className="text-center py-20 text-gray-400">
                 <Book size={48} className="mx-auto mb-4 opacity-30" />
                 <p>No lessons found matching your criteria.</p>
+                <p className="text-sm mt-2">Try clearing filters or check back later.</p>
              </div>
           ) : (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -138,7 +158,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
                       <div className="p-6 flex-1">
                          <div className="flex justify-between items-start mb-4">
                             <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${getRoleBadge(lesson.targetAudience)}`}>
-                               For {lesson.targetAudience}
+                               {getRoleLabel(lesson.targetAudience)}
                             </span>
                             <span className="text-gray-400 text-xs flex items-center gap-1">
                                <Clock size={12} /> 15 min

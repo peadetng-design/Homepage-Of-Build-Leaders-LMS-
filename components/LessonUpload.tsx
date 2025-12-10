@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, FileText, Check, AlertTriangle, X, Loader2, Eye, Save, Plus, Trash2, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Upload, FileText, Check, AlertTriangle, X, Loader2, Save, Plus, Trash2, Users } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -189,37 +189,47 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     }
   };
 
-  // Helper for Audience Options
+  // Audience Options Render - EXACTLY AS REQUESTED
   const renderAudienceOptions = () => (
     <>
-        <option value="All">All Users</option>
-        <option value="Student">Student Only</option>
-        <option value="Mentor">Mentor Only</option>
-        <option value="Parent">Parent Only</option>
-        <option value="Organization">Organization Only</option>
-        <option value="Advanced">Mentor, Parent, and Organization</option>
+        <option value="All">All Users (Public)</option>
+        <option value="Student">(Student Only)</option>
+        <option value="Mentors_Org_Parents">(Mentors, Organization, and Parent Only)</option>
+        <option value="Mentor">(Mentors Only)</option>
+        <option value="Organization">(Organization Only)</option>
+        <option value="Parent">(Parent Only)</option>
     </>
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-[80vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col h-[85vh] w-full max-w-5xl animate-in zoom-in-95 duration-200">
+       
        {/* Header */}
        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
-          <h2 className="font-bold text-gray-800 text-lg">Upload Lesson</h2>
+          <div className="flex items-center gap-3">
+             <div className="bg-royal-600 text-white p-2 rounded-lg"><Upload size={20} /></div>
+             <h2 className="font-bold text-gray-800 text-lg">Upload Lesson</h2>
+          </div>
+          
           <div className="flex bg-gray-200 rounded-lg p-1">
              <button 
                onClick={() => { setMode('bulk'); setDraft(null); }}
-               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500'}`}
+               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
              >
                Excel Import
              </button>
              <button 
                onClick={() => { setMode('manual'); setDraft(null); }}
-               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500'}`}
+               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
              >
                Manual Builder
              </button>
           </div>
+
+          <button onClick={onCancel} className="p-2 hover:bg-gray-200 rounded-full text-gray-500">
+             <X size={20} />
+          </button>
        </div>
 
        <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -238,18 +248,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div className="col-span-2">
                         <label className="block text-xs font-bold text-gray-500 mb-1">Lesson Title</label>
                         <input 
-                           className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-royal-500"
+                           className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-royal-500 outline-none"
                            value={manualLesson.title}
                            onChange={e => setManualLesson({...manualLesson, title: e.target.value})}
                            placeholder="e.g. Genesis Chapter 1"
                         />
                       </div>
                       
-                      {/* TARGET AUDIENCE SELECTOR */}
-                      <div className="col-span-1">
-                        <label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><Users size={12}/> Target Audience</label>
+                      {/* TARGET AUDIENCE SELECTOR - MANUAL */}
+                      <div className="col-span-1 bg-yellow-50 p-2 rounded border border-yellow-200">
+                        <label className="block text-xs font-bold text-yellow-800 mb-1 flex items-center gap-1"><Users size={12}/> Select User Type (Audience)</label>
                         <select
-                           className="w-full p-2 border border-gray-300 rounded bg-white"
+                           className="w-full p-2 border border-yellow-300 rounded bg-white outline-none focus:ring-2 focus:ring-royal-500"
                            value={manualLesson.targetAudience}
                            onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}
                         >
@@ -260,7 +270,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div className="col-span-1">
                         <label className="block text-xs font-bold text-gray-500 mb-1">Lesson Type</label>
                         <select
-                           className="w-full p-2 border border-gray-300 rounded bg-white"
+                           className="w-full p-2 border border-gray-300 rounded bg-white outline-none focus:ring-2 focus:ring-royal-500"
                            value={manualLesson.lesson_type}
                            onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}
                         >
@@ -273,7 +283,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-1">Bible Book</label>
                         <input 
-                           className="w-full p-2 border border-gray-300 rounded"
+                           className="w-full p-2 border border-gray-300 rounded outline-none focus:ring-2 focus:ring-royal-500"
                            value={manualLesson.book}
                            onChange={e => setManualLesson({...manualLesson, book: e.target.value})}
                            placeholder="Genesis"
@@ -283,7 +293,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                         <label className="block text-xs font-bold text-gray-500 mb-1">Chapter</label>
                         <input 
                            type="number"
-                           className="w-full p-2 border border-gray-300 rounded"
+                           className="w-full p-2 border border-gray-300 rounded outline-none focus:ring-2 focus:ring-royal-500"
                            value={manualLesson.chapter}
                            onChange={e => setManualLesson({...manualLesson, chapter: parseInt(e.target.value)})}
                         />
@@ -291,7 +301,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div className="col-span-2">
                         <label className="block text-xs font-bold text-gray-500 mb-1">Description</label>
                         <textarea 
-                           className="w-full p-2 border border-gray-300 rounded h-20"
+                           className="w-full p-2 border border-gray-300 rounded h-20 outline-none focus:ring-2 focus:ring-royal-500"
                            value={manualLesson.description}
                            onChange={e => setManualLesson({...manualLesson, description: e.target.value})}
                         />
@@ -304,10 +314,10 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                    <div className="flex justify-between items-center">
                      <h3 className="font-bold text-gray-800">Lesson Content</h3>
                      <div className="flex gap-2">
-                        <button onClick={() => addSection('note')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-100">
+                        <button onClick={() => addSection('note')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-bold hover:bg-blue-100 transition-colors">
                            <FileText size={16} /> Add Note
                         </button>
-                        <button onClick={() => addSection('quiz_group')} className="flex items-center gap-1 px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-sm font-bold hover:bg-purple-100">
+                        <button onClick={() => addSection('quiz_group')} className="flex items-center gap-1 px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg text-sm font-bold hover:bg-purple-100 transition-colors">
                            <Check size={16} /> Add Quiz Group
                         </button>
                      </div>
@@ -321,12 +331,12 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                   {section.type === 'note' ? 'NOTE' : 'QUIZ GROUP'}
                                </span>
                                <input 
-                                  className="bg-transparent font-bold text-gray-800 outline-none focus:bg-white px-1 rounded"
+                                  className="bg-transparent font-bold text-gray-800 outline-none focus:bg-white px-1 rounded transition-colors"
                                   value={section.title}
                                   onChange={e => updateSection(section.id, { title: e.target.value })}
                                />
                             </div>
-                            <button onClick={() => removeSection(section.id)} className="text-gray-400 hover:text-red-500">
+                            <button onClick={() => removeSection(section.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                                <Trash2 size={16} />
                             </button>
                          </div>
@@ -334,7 +344,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <div className="p-4">
                             {section.type === 'note' ? (
                                <textarea 
-                                  className="w-full h-40 p-3 border border-gray-200 rounded-lg font-mono text-sm"
+                                  className="w-full h-40 p-3 border border-gray-200 rounded-lg font-mono text-sm outline-none focus:border-royal-500"
                                   placeholder="Enter note content (HTML supported)..."
                                   value={section.body}
                                   onChange={e => updateSection(section.id, { body: e.target.value })}
@@ -346,13 +356,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                         <div className="mb-3">
                                            <label className="block text-xs font-bold text-gray-500 mb-1">Question {qIdx + 1}</label>
                                            <input 
-                                              className="w-full p-2 border border-gray-300 rounded mb-2"
+                                              className="w-full p-2 border border-gray-300 rounded mb-2 outline-none focus:border-royal-500"
                                               value={quiz.text}
                                               onChange={e => updateQuiz(section.id, quiz.id, { text: e.target.value })}
                                               placeholder="Question text..."
                                            />
                                            <input 
-                                              className="w-full p-2 border border-gray-300 rounded text-sm"
+                                              className="w-full p-2 border border-gray-300 rounded text-sm outline-none focus:border-royal-500"
                                               value={quiz.reference}
                                               onChange={e => updateQuiz(section.id, quiz.id, { reference: e.target.value })}
                                               placeholder="Bible Reference (e.g. John 3:16)"
@@ -372,7 +382,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                  </div>
                                                  <div className="col-span-5">
                                                     <input 
-                                                       className="w-full p-1.5 border border-gray-300 rounded text-sm"
+                                                       className="w-full p-1.5 border border-gray-300 rounded text-sm outline-none focus:border-royal-500"
                                                        value={opt.text}
                                                        onChange={e => updateOption(section.id, quiz.id, opt.id, { text: e.target.value })}
                                                        placeholder={`Option ${opt.label}`}
@@ -380,7 +390,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                  </div>
                                                  <div className="col-span-6">
                                                     <input 
-                                                       className="w-full p-1.5 border border-gray-300 rounded text-sm bg-yellow-50"
+                                                       className="w-full p-1.5 border border-gray-300 rounded text-sm bg-yellow-50 outline-none focus:border-yellow-400"
                                                        value={opt.explanation}
                                                        onChange={e => updateOption(section.id, quiz.id, opt.id, { explanation: e.target.value })}
                                                        placeholder="Explanation..."
@@ -391,7 +401,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                         </div>
                                      </div>
                                   ))}
-                                  <button onClick={() => addQuizToSection(section.id)} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-royal-500 hover:text-royal-600 font-bold text-sm">
+                                  <button onClick={() => addQuizToSection(section.id)} className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-royal-500 hover:text-royal-600 font-bold text-sm transition-colors">
                                      + Add Question
                                   </button>
                                </div>
@@ -403,21 +413,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
              </div>
           ) : (
              <div className="space-y-8 max-w-4xl mx-auto">
-                {/* BULK IMPORT AUDIENCE SELECTOR */}
-                <div className="bg-royal-50 p-6 rounded-xl border border-royal-100 flex items-center justify-between">
+                {/* BULK IMPORT AUDIENCE SELECTOR - PROMINENT */}
+                <div className="bg-royal-50 p-6 rounded-xl border border-royal-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                      <div className="flex items-center gap-3">
                          <div className="p-2 bg-white rounded-lg text-royal-600 shadow-sm"><Users size={24}/></div>
                          <div>
                              <h3 className="font-bold text-royal-900">Import Configuration</h3>
-                             <p className="text-xs text-royal-600">Apply to all lessons in this package</p>
+                             <p className="text-xs text-royal-600">This audience setting will apply to all lessons in the file.</p>
                          </div>
                      </div>
-                     <div className="min-w-[250px]">
-                        <label className="block text-xs font-bold text-royal-600 mb-1">Target Audience</label>
+                     <div className="w-full md:w-auto min-w-[300px]">
+                        <label className="block text-xs font-bold text-royal-600 mb-1 uppercase tracking-wider">Select User Type (Audience)</label>
                         <select 
                            value={bulkTargetAudience}
                            onChange={(e) => setBulkTargetAudience(e.target.value as TargetAudience)}
-                           className="w-full p-2 rounded-lg border border-royal-200 text-sm font-medium focus:ring-2 focus:ring-royal-500 outline-none"
+                           className="w-full p-3 rounded-lg border-2 border-royal-200 text-sm font-bold focus:ring-2 focus:ring-royal-500 outline-none bg-white shadow-sm"
                         >
                            {renderAudienceOptions()}
                         </select>
@@ -523,6 +533,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
              </button>
           )}
        </div>
+    </div>
     </div>
   );
 };

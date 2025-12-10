@@ -39,7 +39,15 @@ export interface JoinRequest {
 
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
 export type SectionType = 'note' | 'quiz_group';
-export type TargetAudience = 'All' | 'Student' | 'Mentor' | 'Parent' | 'Organization' | 'Advanced';
+
+// Exact options requested
+export type TargetAudience = 
+  'Student' | 
+  'Mentor' | 
+  'Parent' | 
+  'Organization' | 
+  'Mentors_Org_Parents' | 
+  'All';
 
 export interface QuizOption {
   id: string;

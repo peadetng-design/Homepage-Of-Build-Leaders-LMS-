@@ -14,7 +14,7 @@ import StudentPanel from './StudentPanel';
 import { authService } from '../services/authService';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
-  Users, Upload, Play, Printer, Lock, TrendingUp
+  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -117,7 +117,7 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
 );
 
 // VIEW STATE ENUM to prevent hook errors
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding';
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons';
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) => {
   // 1. ALL STATE HOOKS
@@ -219,7 +219,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
             currentUser={user}
             onSuccess={() => {
                 setCurrentView('dashboard');
-                // Refresh logic if needed
+                // Auto switch to manage view to see the new lesson
+                if (isOrgView) {
+                    setCurrentView('manage-lessons'); // Org logic
+                } else if (isAdminView) {
+                    setAdminActiveTab('lessons');
+                } else if (isMentorView) {
+                    setMentorActiveTab('lessons');
+                }
             }}
             onCancel={() => setCurrentView('dashboard')}
         />
@@ -243,7 +250,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
       
       {/* Header with Title and Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900">
             Hello, <span className="text-royal-600">{user.name}</span>
@@ -252,15 +259,41 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
              {loadingVerse ? "Loading daily inspiration..." : `"${dailyVerse?.verse}"`}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
            {/* UPLOAD LESSONS BUTTON (For Admin, Mentor, Parent, Org) */}
            {!isStudentView && (
               <button 
                 onClick={() => setCurrentView('upload')}
-                className="flex items-center gap-2 px-6 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
+                className="flex items-center gap-2 px-5 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
               >
                  <Upload size={18} /> 
                  <span>UPLOAD LESSONS</span>
+              </button>
+           )}
+
+           {/* MANAGE LESSONS BUTTON (For Admin, Mentor, Org) */}
+           {/* Used to toggle to the Lesson Management view specifically */}
+           {isOrgView && currentView !== 'manage-lessons' && (
+              <button 
+                onClick={() => setCurrentView('manage-lessons')}
+                className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5"
+              >
+                 <Edit3 size={18} /> 
+                 <span>MANAGE LESSONS</span>
+              </button>
+           )}
+           {/* For Admin/Mentor, this button just resets them to the lessons tab if they drifted */}
+           {(isAdminView || isMentorView) && (
+              <button 
+                onClick={() => {
+                    setCurrentView('dashboard');
+                    if (isAdminView) setAdminActiveTab('lessons');
+                    if (isMentorView) setMentorActiveTab('lessons');
+                }}
+                className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5"
+              >
+                 <Edit3 size={18} /> 
+                 <span>MANAGE LESSONS</span>
               </button>
            )}
 
@@ -268,7 +301,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            {!isStudentView && (
               <button 
                 onClick={() => setCurrentView('lesson-browser')}
-                className="flex items-center gap-2 px-6 py-3 bg-royal-600 text-white rounded-xl font-bold hover:bg-royal-700 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
+                className="flex items-center gap-2 px-5 py-3 bg-royal-600 text-white rounded-xl font-bold hover:bg-royal-700 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
               >
                  <Play size={18} fill="currentColor" /> 
                  <span>TAKE LESSONS</span>
@@ -278,7 +311,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            {/* PRINT / EXPORT BUTTON (For All) */}
            <button 
              onClick={() => setShowExportModal(true)}
-             className="flex items-center gap-2 px-6 py-3 bg-gold-500 text-white rounded-xl font-bold hover:bg-gold-600 shadow-lg shadow-gold-500/30 transition-all transform hover:-translate-y-0.5"
+             className="flex items-center gap-2 px-5 py-3 bg-gold-500 text-white rounded-xl font-bold hover:bg-gold-600 shadow-lg shadow-gold-500/30 transition-all transform hover:-translate-y-0.5"
            >
               <Printer size={18} /> 
               <span>PRINT / EXPORT</span>
@@ -338,10 +371,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
          </div>
       )}
 
-       {/* ORGANIZATION VIEW */}
+       {/* ORGANIZATION VIEW - DUAL MODE (Panel or Lessons) */}
        {isOrgView && (
           <div className="grid grid-cols-1 gap-8">
-             <OrganizationPanel currentUser={user} />
+             {currentView === 'manage-lessons' ? (
+                // Re-use AdminPanel for lesson management
+                <AdminPanel 
+                    currentUser={user} 
+                    activeTab='lessons'
+                    onTabChange={(tab) => {
+                        // If they click something else, handle it or force 'lessons'
+                        if (tab !== 'lessons' && tab !== 'upload') {
+                            setCurrentView('dashboard'); // Return to Org Panel
+                        }
+                    }}
+                />
+             ) : (
+                <OrganizationPanel currentUser={user} />
+             )}
           </div>
        )}
 
@@ -372,7 +419,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="flex border-b border-gray-100">
-                      <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>My Lessons</button>
+                      <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>VIEW LESSONS</button>
                       <button onClick={() => setStudentActiveTab('join')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'join' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>Join Class</button>
                       <button onClick={() => setStudentActiveTab('browse')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'browse' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>Find Mentor</button>
                    </div>

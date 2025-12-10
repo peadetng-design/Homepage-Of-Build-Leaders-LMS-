@@ -44,6 +44,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   // Determine Permissions
   const isAdmin = currentUser.role === UserRole.ADMIN;
   const isMentor = currentUser.role === UserRole.MENTOR;
+  const isOrg = currentUser.role === UserRole.ORGANIZATION;
 
   useEffect(() => {
     fetchData();
@@ -59,7 +60,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         const data = await authService.getLogs(currentUser);
         setLogs(data);
       } else if (activeTab === 'lessons') {
-        const data = await lessonService.getLessons(); // Updated to use lessonService
+        const data = await lessonService.getLessons(); 
         setLessons(data);
       } else if (activeTab === 'requests' && isMentor) {
         const data = await authService.getJoinRequests(currentUser);
@@ -89,7 +90,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       const link = `${window.location.origin}?invite=${token}`;
       setGeneratedLink(link);
       setNotification({ msg: 'Invite created! Share the link below.', type: 'success' });
-      // In a real app, backend sends the email. Here we simulate it.
       console.log(`[SIMULATION] Email sent to ${inviteEmail} with link: ${link}`);
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
@@ -100,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       try {
           await authService.respondToRequest(reqId, status, currentUser);
           setNotification({ msg: `Request ${status}`, type: 'success' });
-          fetchData(); // Refresh list
+          fetchData(); 
       } catch (err: any) {
           setNotification({ msg: err.message, type: 'error' });
       }
@@ -118,10 +118,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
              <Shield className={isMentor ? "text-blue-400" : "text-gold-500"} /> 
-             {isMentor ? "Mentor Content Manager" : "Admin Console"}
+             {isOrg ? "Organization Lessons" : isMentor ? "Mentor Content Manager" : "Admin Console"}
            </h2>
            <p className="text-royal-200 text-sm mt-1">
-             {isMentor ? "Manage Lessons & Team Resources" : "Security, User Management & System Logs"}
+             {isOrg ? "Manage the curriculum for your organization." : isMentor ? "Manage Lessons & Team Resources" : "Security, User Management & System Logs"}
            </p>
            {isMentor && currentUser.classCode && (
                <div className="mt-2 inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-lg border border-white/20">
@@ -137,7 +137,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                   onClick={() => setActiveTab('users')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
                 >
-                  Users
+                  Manage Users
                 </button>
                 <button 
                   onClick={() => setActiveTab('invites')}
@@ -149,16 +149,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            )}
            <button 
              onClick={() => setActiveTab('lessons')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
            >
-             Lessons
+             MANAGE LESSONS
            </button>
            {isMentor && (
                <button 
                onClick={() => setActiveTab('requests')}
                className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
              >
-               Requests
+               Join Requests
              </button>
            )}
            {isAdmin && (
@@ -186,7 +186,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         {/* USERS TAB (Admin Only) */}
         {activeTab === 'users' && isAdmin && (
           <div className="space-y-4">
-            {/* ... Existing Users Table ... */}
             <div className="flex justify-between items-center mb-4">
               <div className="relative">
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
@@ -446,7 +445,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                      ) : (
                         lessons.map((lesson) => {
                            // Logic: Mentor can only edit their own. Everyone sees everything.
-                           const canEdit = isAdmin || (isMentor && lesson.author === currentUser.name);
+                           // Admin can edit all. Org can edit their own.
+                           const canEdit = isAdmin || (lesson.author === currentUser.name);
                            
                            return (
                              <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">

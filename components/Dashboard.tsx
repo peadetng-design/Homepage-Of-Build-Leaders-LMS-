@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { UserRole, User, Lesson } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
@@ -11,7 +10,6 @@ import ExportModal from './ExportModal';
 import LessonBrowser from './LessonBrowser';
 import LessonUpload from './LessonUpload';
 import StudentPanel from './StudentPanel';
-import { authService } from '../services/authService';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3
@@ -56,7 +54,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color }: any) => {
 const DailyVerseCard = ({ verse, loading }: any) => (
   <div className="bg-gradient-to-br from-royal-900 to-royal-800 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
     <div className="absolute top-0 right-0 opacity-10"><BookOpen size={100} /></div>
-    <h3 className="text-royal-200 font-bold uppercase text-xs tracking-widest mb-4">Verse of the Day</h3>
+    <h3 className="text-indigo-200 font-bold uppercase text-xs tracking-widest mb-4">Verse of the Day</h3>
     {loading ? (
       <div className="animate-pulse space-y-3">
         <div className="h-4 bg-white/20 rounded w-3/4"></div>
@@ -67,7 +65,7 @@ const DailyVerseCard = ({ verse, loading }: any) => (
         <p className="text-xl md:text-2xl font-serif leading-relaxed mb-4">"{verse?.verse}"</p>
         <div className="flex justify-between items-end">
           <span className="text-gold-400 font-bold">{verse?.reference}</span>
-          <span className="text-xs text-royal-300 italic max-w-[60%] text-right">{verse?.reflection}</span>
+          <span className="text-xs text-indigo-200 italic max-w-[60%] text-right">{verse?.reflection}</span>
         </div>
       </>
     )}
@@ -93,7 +91,7 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
                    onClick={() => onAnswer(opt)}
                    className={`w-full text-left p-3 rounded-lg text-sm font-medium transition-all
                      ${state === 'idle' 
-                        ? 'bg-gray-50 hover:bg-royal-50 hover:text-royal-700' 
+                        ? 'bg-gray-50 hover:bg-royal-50 hover:text-royal-800' 
                         : state === 'correct' && opt === question.answer 
                            ? 'bg-green-100 text-green-700 border border-green-200'
                            : state === 'incorrect' && opt === question.answer
@@ -185,6 +183,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
      }
   };
 
+  const handleManageLessons = () => {
+    if (isOrgView) {
+        setCurrentView('manage-lessons');
+    } else {
+        // For Admin/Mentor, ensure they are on the dashboard view but switch the tab
+        setCurrentView('dashboard');
+        if (isAdminView) setAdminActiveTab('lessons');
+        if (isMentorView) setMentorActiveTab('lessons');
+    }
+  };
+
   // 4. RENDER Logic based on currentView
 
   if (currentView === 'lesson-view' && activeLesson) {
@@ -206,7 +215,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         currentUser={user}
         onLessonSelect={(id) => {
            startLesson(id);
-           // startLesson sets view to lesson-view
         }}
         onClose={() => setCurrentView('dashboard')}
       />
@@ -238,7 +246,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       <ParentOnboarding 
         user={user} 
         onLinkSuccess={() => {
-             // Reload to update user state or just switch view
              window.location.reload();
         }} 
       />
@@ -253,14 +260,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
         <div>
           <h1 className="text-2xl md:text-3xl font-serif font-bold text-gray-900">
-            Hello, <span className="text-royal-600">{user.name}</span>
+            Hello, <span className="text-royal-500">{user.name}</span>
           </h1>
           <p className="text-gray-500 mt-1">
              {loadingVerse ? "Loading daily inspiration..." : `"${dailyVerse?.verse}"`}
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-           {/* UPLOAD LESSONS BUTTON (For Admin, Mentor, Parent, Org) */}
+           
+           {/* UPLOAD LESSONS BUTTON (For Admin, Mentor, Parent, Org) - NOT Student */}
            {!isStudentView && (
               <button 
                 onClick={() => setCurrentView('upload')}
@@ -272,41 +280,24 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            )}
 
            {/* MANAGE LESSONS BUTTON (For Admin, Mentor, Org) */}
-           {/* Used to toggle to the Lesson Management view specifically */}
-           {isOrgView && currentView !== 'manage-lessons' && (
+           {(isAdminView || isMentorView || isOrgView) && (
               <button 
-                onClick={() => setCurrentView('manage-lessons')}
-                className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5"
-              >
-                 <Edit3 size={18} /> 
-                 <span>MANAGE LESSONS</span>
-              </button>
-           )}
-           {/* For Admin/Mentor, this button just resets them to the lessons tab if they drifted */}
-           {(isAdminView || isMentorView) && (
-              <button 
-                onClick={() => {
-                    setCurrentView('dashboard');
-                    if (isAdminView) setAdminActiveTab('lessons');
-                    if (isMentorView) setMentorActiveTab('lessons');
-                }}
-                className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5"
+                onClick={handleManageLessons}
+                className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' ? 'ring-2 ring-indigo-400' : ''}`}
               >
                  <Edit3 size={18} /> 
                  <span>MANAGE LESSONS</span>
               </button>
            )}
 
-           {/* TAKE LESSONS BUTTON (For Mentor, Parent, Org) */}
-           {!isStudentView && (
-              <button 
+           {/* TAKE LESSONS BUTTON (For Everyone - Admin, Mentor, Student, Org, Parent) */}
+           <button 
                 onClick={() => setCurrentView('lesson-browser')}
-                className="flex items-center gap-2 px-5 py-3 bg-royal-600 text-white rounded-xl font-bold hover:bg-royal-700 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
-              >
-                 <Play size={18} fill="currentColor" /> 
-                 <span>TAKE LESSONS</span>
-              </button>
-           )}
+                className="flex items-center gap-2 px-5 py-3 bg-royal-500 text-white rounded-xl font-bold hover:bg-royal-800 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
+           >
+                <Play size={18} fill="currentColor" /> 
+                <span>TAKE LESSONS</span>
+           </button>
            
            {/* PRINT / EXPORT BUTTON (For All) */}
            <button 
@@ -419,14 +410,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                    <div className="flex border-b border-gray-100">
-                      <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>VIEW LESSONS</button>
-                      <button onClick={() => setStudentActiveTab('join')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'join' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>Join Class</button>
-                      <button onClick={() => setStudentActiveTab('browse')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'browse' ? 'bg-royal-50 text-royal-700 border-b-2 border-royal-700' : 'text-gray-500 hover:bg-gray-50'}`}>Find Mentor</button>
+                      <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-800 border-b-2 border-royal-800' : 'text-gray-500 hover:bg-gray-50'}`}>VIEW LESSONS</button>
+                      <button onClick={() => setStudentActiveTab('join')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'join' ? 'bg-royal-50 text-royal-800 border-b-2 border-royal-800' : 'text-gray-500 hover:bg-gray-50'}`}>JOIN CLASS</button>
+                      <button onClick={() => setStudentActiveTab('browse')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'browse' ? 'bg-royal-50 text-royal-800 border-b-2 border-royal-800' : 'text-gray-500 hover:bg-gray-50'}`}>FIND MENTOR</button>
                    </div>
                    <div className="p-0">
                       <StudentPanel 
                         currentUser={user} 
                         activeTab={studentActiveTab} 
+                        onTakeLesson={startLesson}
                       />
                    </div>
                </div>

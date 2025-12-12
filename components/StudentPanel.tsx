@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
-import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users } from 'lucide-react';
+import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users, Play } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
   activeTab: 'join' | 'browse' | 'lessons';
+  onTakeLesson?: (lessonId: string) => void;
 }
 
-const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) => {
+const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson }) => {
   const [classCode, setClassCode] = useState('');
   const [mentors, setMentors] = useState<User[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -73,7 +73,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) =
         <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
           <BookOpen className="text-gold-500" /> Student Portal
         </h2>
-        <p className="text-royal-200 text-sm mt-1">
+        <p className="text-indigo-200 text-sm mt-1">
           {activeTab === 'join' && "Enter a code to join a specific mentor's group."}
           {activeTab === 'browse' && "Find a mentor to guide your studies."}
           {activeTab === 'lessons' && "Browse available study materials."}
@@ -92,7 +92,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) =
         {/* JOIN CLASS TAB */}
         {activeTab === 'join' && (
             <div className="max-w-md mx-auto text-center py-12">
-               <div className="w-20 h-20 bg-royal-100 text-royal-600 rounded-full flex items-center justify-center mx-auto mb-6">
+               <div className="w-20 h-20 bg-royal-100 text-royal-500 rounded-full flex items-center justify-center mx-auto mb-6">
                   <UserPlus size={40} />
                </div>
                <h3 className="text-2xl font-bold text-gray-900 mb-2">Join a Class</h3>
@@ -131,7 +131,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) =
                         <div key={mentor.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white group">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex items-center gap-3">
-                                   <div className="w-12 h-12 rounded-full bg-royal-100 text-royal-700 flex items-center justify-center font-bold text-lg">
+                                   <div className="w-12 h-12 rounded-full bg-royal-100 text-royal-800 flex items-center justify-center font-bold text-lg">
                                      {mentor.name.charAt(0)}
                                    </div>
                                    <div>
@@ -143,7 +143,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) =
                             </div>
                             <button 
                                onClick={() => handleRequestJoin(mentor.id)}
-                               className="w-full py-2 border-2 border-royal-600 text-royal-600 font-bold rounded-lg hover:bg-royal-600 hover:text-white transition-colors flex items-center justify-center gap-2"
+                               className="w-full py-2 border-2 border-royal-500 text-royal-500 font-bold rounded-lg hover:bg-royal-500 hover:text-white transition-colors flex items-center justify-center gap-2"
                             >
                                 <UserPlus size={18} /> Request to Join
                             </button>
@@ -183,13 +183,24 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab }) =
                                     <td className="p-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-1 rounded">{lesson.category}</span></td>
                                     <td className="p-4 text-sm text-gray-500">{lesson.author}</td>
                                     <td className="p-4 text-right">
-                                        <button 
-                                           onClick={() => addToMyList(lesson.title)}
-                                           className="p-2 text-royal-600 hover:bg-royal-50 rounded-lg tooltip" 
-                                           title="Add to My List"
-                                        >
-                                            <ListPlus size={20} />
-                                        </button>
+                                        <div className="flex justify-end gap-2">
+                                            {onTakeLesson && (
+                                                <button 
+                                                    onClick={() => onTakeLesson(lesson.id)}
+                                                    className="flex items-center gap-1 px-3 py-1.5 bg-royal-500 text-white rounded-lg hover:bg-royal-800 text-xs font-bold"
+                                                    title="Start Lesson"
+                                                >
+                                                    <Play size={14} fill="currentColor" /> Take
+                                                </button>
+                                            )}
+                                            <button 
+                                            onClick={() => addToMyList(lesson.title)}
+                                            className="p-1.5 text-gray-400 hover:text-royal-500 hover:bg-royal-50 rounded-lg tooltip" 
+                                            title="Add to My List"
+                                            >
+                                                <ListPlus size={18} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

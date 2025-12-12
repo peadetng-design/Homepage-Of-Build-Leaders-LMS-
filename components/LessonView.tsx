@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -66,13 +65,13 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             </button>
             <div>
               <h1 className="text-xl md:text-2xl font-serif font-bold leading-tight">{lesson.title}</h1>
-              <p className="text-royal-200 text-xs md:text-sm">{lesson.book} {lesson.chapter} • {lesson.lesson_type}</p>
+              <p className="text-indigo-200 text-xs md:text-sm">{lesson.book} {lesson.chapter} • {lesson.lesson_type}</p>
             </div>
           </div>
           
           {score.total > 0 && (
              <div className="hidden md:flex flex-col items-end">
-                <span className="text-xs text-royal-300 uppercase font-bold tracking-wider">Your Performance</span>
+                <span className="text-xs text-indigo-300 uppercase font-bold tracking-wider">Your Performance</span>
                 <div className="flex items-baseline gap-1">
                    <span className="text-2xl font-bold text-gold-400">{Math.round((score.correct / score.total) * 100)}%</span>
                    <span className="text-sm text-gray-400">({score.correct}/{score.total})</span>
@@ -128,7 +127,7 @@ const QuizGroup: React.FC<{
 }> = ({ section, attempts, onSelect }) => (
   <div className="space-y-8 mt-12">
     <div className="flex items-center gap-3 mb-6">
-       <HelpCircle className="text-royal-600" size={28} />
+       <HelpCircle className="text-royal-500" size={28} />
        <h2 className="text-2xl font-bold text-gray-900">{section.title}</h2>
     </div>
     <div className="space-y-8">
@@ -157,7 +156,7 @@ const QuizCard: React.FC<{
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md">
       <div className="p-6">
         <div className="flex gap-4 mb-4">
-           <span className="flex-shrink-0 w-8 h-8 rounded-full bg-royal-50 text-royal-700 font-bold flex items-center justify-center text-sm">
+           <span className="flex-shrink-0 w-8 h-8 rounded-full bg-royal-50 text-royal-800 font-bold flex items-center justify-center text-sm">
              Q{index}
            </span>
            <div className="flex-1">
@@ -181,23 +180,22 @@ const QuizCard: React.FC<{
              
              if (!isAnswered) {
                 // PRE-ATTEMPT: No Clues
-                btnClass += "border-gray-100 hover:border-royal-300 hover:bg-royal-50 cursor-pointer";
+                btnClass += "border-gray-100 hover:border-royal-500 hover:bg-royal-50 cursor-pointer";
                 circleClass += "border-gray-300 text-gray-500";
              } else {
                 // POST-ATTEMPT: Reveal Logic
+                // 1. Correct Answer (Selected or Not) -> GREEN
                 if (isCorrect) {
-                   // CORRECT OPTION: Specific Green #2ecc71
-                   // Using inline style for exact color requirement if Tailwind classes deviate
                    btnClass += "bg-green-50 text-green-900 border-[#2ecc71]"; 
                    circleClass += "bg-[#2ecc71] border-[#2ecc71] text-white";
                 } 
+                // 2. Selected Wrong Answer -> RED
                 else if (isSelected && !isCorrect) {
-                   // WRONG SELECTION: Specific Red #e74c3c
                    btnClass += "bg-red-50 text-red-900 border-[#e74c3c]"; 
                    circleClass += "bg-[#e74c3c] border-[#e74c3c] text-white";
                 } 
+                // 3. Unselected Wrong Answer -> Faded
                 else {
-                   // UNSELECTED WRONG: Greyed out
                    btnClass += "border-gray-100 opacity-60"; 
                    circleClass += "border-gray-200 text-gray-400";
                 }
@@ -209,15 +207,20 @@ const QuizCard: React.FC<{
                    disabled={isAnswered}
                    onClick={() => onSelect(option)}
                    className={btnClass}
-                   // Ensure specific border colors for correct/wrong even if class fails
-                   style={isAnswered ? { borderColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined) } : {}}
+                   // Ensure specific border colors using inline styles to override Tailwind conflicts if any
+                   style={isAnswered ? { 
+                     borderColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined) 
+                   } : {}}
                  >
                    <div className="flex items-center justify-between w-full">
                      <div className="flex items-center gap-3">
                        {/* Option Label Circle */}
                        <span 
                          className={circleClass}
-                         style={isAnswered ? { backgroundColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined), borderColor: isCorrect ? '#2ecc71' : (isSelected ? '#e74c3c' : undefined) } : {}}
+                         style={isAnswered ? { 
+                            backgroundColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined),
+                            borderColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined)
+                         } : {}}
                        >
                           {option.label}
                        </span>
@@ -229,7 +232,7 @@ const QuizCard: React.FC<{
                      {isAnswered && isSelected && !isCorrect && <X size={24} color="#e74c3c" />}
                    </div>
 
-                   {/* REVEAL EXPLANATION: Shown for ALL options under the choice */}
+                   {/* REVEAL EXPLANATION: Shown for ALL options once answered */}
                    {isAnswered && (
                      <div className="mt-3 pt-3 border-t border-black/10 w-full animate-in fade-in slide-in-from-top-1">
                         <div 

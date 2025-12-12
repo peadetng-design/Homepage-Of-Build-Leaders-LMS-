@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Lesson, User, UserRole, TargetAudience } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -107,7 +106,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
             <h2 className="text-3xl font-serif font-bold flex items-center gap-3">
                <BookOpen className="text-gold-500" size={32} /> Lesson Library
             </h2>
-            <p className="text-royal-200 mt-2">
+            <p className="text-indigo-200 mt-2">
                Curated content specifically for <span className="font-bold text-white capitalize">{currentUser.role.toLowerCase()}s</span>.
             </p>
           </div>
@@ -134,7 +133,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
                   <button
                     key={type}
                     onClick={() => setCategoryFilter(type)}
-                    className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${categoryFilter === type ? 'bg-royal-600 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}`}
+                    className={`px-4 py-2 rounded-full text-sm font-bold transition-all whitespace-nowrap ${categoryFilter === type ? 'bg-royal-500 text-white shadow-md' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'}`}
                   >
                     {type}
                   </button>
@@ -144,7 +143,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
 
        <div className="p-8 flex-1 bg-gray-50/30 overflow-y-auto min-h-[400px]">
           {isLoading ? (
-             <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-royal-600"></div></div>
+             <div className="flex justify-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-royal-500"></div></div>
           ) : filteredLessons.length === 0 ? (
              <div className="text-center py-20 text-gray-400">
                 <Book size={48} className="mx-auto mb-4 opacity-30" />
@@ -164,7 +163,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
                                <Clock size={12} /> 15 min
                             </span>
                          </div>
-                         <h3 className="font-bold text-xl text-gray-900 mb-2 group-hover:text-royal-600 transition-colors">
+                         <h3 className="font-bold text-xl text-gray-900 mb-2 group-hover:text-royal-500 transition-colors">
                             {lesson.title}
                          </h3>
                          <p className="text-gray-500 text-sm line-clamp-3 mb-4">
@@ -184,7 +183,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
                       <div className="p-4 border-t border-gray-50 mt-auto">
                          <button 
                            onClick={() => onLessonSelect(lesson.id)}
-                           className="w-full py-3 bg-royal-50 text-royal-700 font-bold rounded-lg hover:bg-royal-600 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-md"
+                           className="w-full py-3 bg-royal-50 text-royal-800 font-bold rounded-lg hover:bg-royal-500 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-md"
                          >
                             <Play size={18} fill="currentColor" /> Take Lesson
                          </button>

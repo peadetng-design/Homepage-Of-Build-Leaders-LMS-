@@ -1,13 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
-import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users, Play } from 'lucide-react';
+import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users, Play, Clock } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
   activeTab: 'join' | 'browse' | 'lessons';
   onTakeLesson?: (lessonId: string) => void;
 }
+
+// --- NEW COMPONENT: LINEAR PROGRESS BAR ---
+const ProgressBar = ({ progress, label }: { progress: number, label?: string }) => {
+  return (
+    <div className="w-full">
+      {label && (
+        <div className="flex justify-between text-xs font-bold mb-1">
+          <span className="text-gray-500">{label}</span>
+          <span className={progress === 100 ? "text-green-600" : "text-gray-400"}>{progress}%</span>
+        </div>
+      )}
+      <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div 
+          className={`h-full rounded-full transition-all duration-1000 ease-out ${progress === 100 ? 'bg-green-500' : 'bg-royal-500'}`}
+          style={{ width: `${progress}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
 
 const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson }) => {
   const [classCode, setClassCode] = useState('');
@@ -170,27 +190,40 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                      <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 text-gray-500 font-bold text-xs uppercase">
                             <tr>
-                                <th className="p-4">Title</th>
-                                <th className="p-4">Category</th>
-                                <th className="p-4">Author</th>
+                                <th className="p-4 w-1/3">Title</th>
+                                <th className="p-4 w-1/6">Category</th>
+                                <th className="p-4 w-1/4">Progress</th>
                                 <th className="p-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {lessons.map(lesson => (
+                            {lessons.map((lesson, idx) => {
+                                // SIMULATED PROGRESS FOR DEMO UI: 
+                                // In a real app, calculate based on attempts
+                                // Randomly assigning some progress for visual variety
+                                const simulatedProgress = idx % 3 === 0 ? 100 : idx % 2 === 0 ? 45 : 0;
+                                const statusLabel = simulatedProgress === 100 ? 'Completed' : simulatedProgress > 0 ? 'In Progress' : 'Not Started';
+
+                                return (
                                 <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="p-4 font-bold text-gray-900">{lesson.title}</td>
+                                    <td className="p-4">
+                                        <div className="font-bold text-gray-900">{lesson.title}</div>
+                                        <div className="text-xs text-gray-400">{lesson.author}</div>
+                                    </td>
                                     <td className="p-4 text-sm text-gray-600"><span className="bg-gray-100 px-2 py-1 rounded">{lesson.category}</span></td>
-                                    <td className="p-4 text-sm text-gray-500">{lesson.author}</td>
+                                    <td className="p-4">
+                                        <ProgressBar progress={simulatedProgress} label={statusLabel} />
+                                    </td>
                                     <td className="p-4 text-right">
                                         <div className="flex justify-end gap-2">
                                             {onTakeLesson && (
                                                 <button 
                                                     onClick={() => onTakeLesson(lesson.id)}
-                                                    className="flex items-center gap-1 px-3 py-1.5 bg-royal-500 text-white rounded-lg hover:bg-royal-800 text-xs font-bold"
-                                                    title="Start Lesson"
+                                                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${simulatedProgress === 100 ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-royal-500 text-white hover:bg-royal-800'}`}
+                                                    title={simulatedProgress === 100 ? "Review Lesson" : "Start Lesson"}
                                                 >
-                                                    <Play size={14} fill="currentColor" /> Take
+                                                    {simulatedProgress === 100 ? <Check size={14} /> : <Play size={14} fill="currentColor" />} 
+                                                    {simulatedProgress === 100 ? 'Review' : simulatedProgress > 0 ? 'Resume' : 'Start'}
                                                 </button>
                                             )}
                                             <button 
@@ -203,7 +236,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                         </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )})}
                         </tbody>
                      </table>
                  </div>

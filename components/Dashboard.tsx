@@ -12,7 +12,7 @@ import LessonUpload from './LessonUpload';
 import StudentPanel from './StudentPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
-  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3
+  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -21,17 +21,73 @@ interface DashboardProps {
 }
 
 // Color mapping
-const colorVariants: Record<string, { bg: string, text: string, light: string, border: string }> = {
-  blue: { bg: 'bg-blue-100', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-100' },
-  green: { bg: 'bg-green-100', text: 'text-green-600', light: 'bg-green-50', border: 'border-green-100' },
-  purple: { bg: 'bg-purple-100', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-100' },
-  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600', light: 'bg-indigo-50', border: 'border-indigo-100' },
-  gold: { bg: 'bg-yellow-100', text: 'text-yellow-600', light: 'bg-yellow-50', border: 'border-yellow-100' },
+const colorVariants: Record<string, { bg: string, text: string, light: string, border: string, stroke: string }> = {
+  blue: { bg: 'bg-blue-100', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-100', stroke: '#2563eb' },
+  green: { bg: 'bg-green-100', text: 'text-green-600', light: 'bg-green-50', border: 'border-green-100', stroke: '#16a34a' },
+  purple: { bg: 'bg-purple-100', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-100', stroke: '#9333ea' },
+  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600', light: 'bg-indigo-50', border: 'border-indigo-100', stroke: '#4f46e5' },
+  gold: { bg: 'bg-yellow-100', text: 'text-yellow-600', light: 'bg-yellow-50', border: 'border-yellow-100', stroke: '#ca8a04' },
 };
 
-// Helper Component
-const StatCard = ({ title, value, subtitle, icon: Icon, color }: any) => {
+// --- NEW COMPONENT: CIRCULAR PROGRESS ---
+const CircularProgress = ({ percentage, color, size = 80, strokeWidth = 8, icon: Icon }: any) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (percentage / 100) * circumference;
+  const variants = colorVariants[color] || colorVariants.blue;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90 w-full h-full">
+        {/* Track */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          className="text-gray-100"
+        />
+        {/* Indicator */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={variants.stroke}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      {/* Center Content */}
+      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-700">
+        {Icon ? <Icon size={20} className={variants.text} /> : `${percentage}%`}
+      </div>
+    </div>
+  );
+};
+
+// Helper Component: Updated StatCard to support Ring type
+const StatCard = ({ title, value, subtitle, icon: Icon, color, type = 'card', progress }: any) => {
   const colors = colorVariants[color] || colorVariants.blue;
+
+  if (type === 'ring') {
+    return (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center gap-6">
+        <CircularProgress percentage={progress || 0} color={color} size={70} icon={Icon} />
+        <div>
+           <h3 className="text-gray-500 font-medium text-xs uppercase tracking-wider mb-1">{title}</h3>
+           <div className="text-2xl font-bold text-gray-900">{value}</div>
+           <div className={`text-xs font-bold mt-1 ${colors.text}`}>{subtitle}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
       <div className={`absolute top-0 right-0 w-24 h-24 ${colors.light} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
@@ -351,9 +407,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3 space-y-8">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <StatCard type="ring" title="Group Accuracy" value="92%" subtitle="Top 5% Rank" icon={Trophy} color="gold" progress={92} />
+                 <StatCard type="ring" title="Completion Rate" value="85%" subtitle="Assignments" icon={CheckCircle} color="green" progress={85} />
                  <StatCard title="My Students" value="24" subtitle="Active Learners" icon={Users} color="indigo" />
-                 <StatCard title="Assignments" value="85%" subtitle="Completion Rate" icon={CheckCircle} color="green" />
-                 <StatCard title="Avg Score" value="920" subtitle="Top 5% Rank" icon={Trophy} color="gold" />
                </div>
                <AdminPanel 
                  currentUser={user} 
@@ -394,7 +450,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
           <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                  <StatCard title="Linked Child" value="Demo Student" subtitle="Active" icon={Users} color="indigo" />
-                 <StatCard title="Recent Score" value="95%" subtitle="Genesis Ch 1" icon={CheckCircle} color="green" />
+                 <StatCard type="ring" title="Recent Accuracy" value="95%" subtitle="Genesis Ch 1" icon={CheckCircle} color="green" progress={95} />
                  <StatCard title="Weekly Activity" value="4h 30m" subtitle="On Track" icon={Activity} color="blue" />
                </div>
               <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center">
@@ -409,9 +465,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3 space-y-8">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <StatCard type="ring" title="Overall Accuracy" value="94%" subtitle="Last 5 Quizzes" icon={CheckCircle} color="green" progress={94} />
+                 <StatCard type="ring" title="Course Completion" value="12%" subtitle="Lessons Done" icon={BookOpen} color="blue" progress={12} />
                  <StatCard title="My Points" value="1,250" subtitle="Rank #5" icon={Trophy} color="gold" />
-                 <StatCard title="Lessons Done" value="12" subtitle="This Month" icon={BookOpen} color="blue" />
-                 <StatCard title="Accuracy" value="94%" subtitle="Last 5 Quizzes" icon={CheckCircle} color="green" />
                </div>
                
                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">

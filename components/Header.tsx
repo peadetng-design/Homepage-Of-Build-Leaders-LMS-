@@ -38,19 +38,19 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
   // Roles Logic: Filter based on current permissions or original permissions
   const getAvailableRoles = () => {
      if (!user) return [];
-     const allRoles = Object.values(UserRole).filter(r => r !== UserRole.GUEST);
      
-     // Check if user is EFFECTIVELY an admin (either currently, or originally before switching)
-     // Use originalRole if available to persist admin privileges during "View As"
+     // CRITICAL: Only allow "View As" logic if user is effectively an Admin.
+     // If user is Mentor/Student/etc by default, they do not see this menu.
+     // If user is Admin (even if viewing as Student), they SEE this menu and can switch back to ADMIN.
      const isEffectiveAdmin = user.role === UserRole.ADMIN || user.originalRole === UserRole.ADMIN;
 
-     // REQUIREMENT: REMOVE "ADMIN" FROM THE DROPDOWN OPTIONS OF mentor, student, parent and organization
-     // ONLY THE SYSTEM ADMIN SHOULD HAVE IT.
      if (isEffectiveAdmin) {
-        return allRoles;
-     } else {
-        return allRoles.filter(r => r !== UserRole.ADMIN);
-     }
+        // Return ALL roles including ADMIN so they can switch back
+        return Object.values(UserRole).filter(r => r !== UserRole.GUEST);
+     } 
+     
+     // Hide for everyone else
+     return [];
   };
 
   const availableRoles = getAvailableRoles();
@@ -95,35 +95,37 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
             <span>Create Group</span>
           </button>
 
-          {/* Role Switcher - Functional Click Dropdown */}
-          <div className="relative" ref={roleRef}>
-            <button 
-              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
-            >
-              {user.role} View <ChevronDown size={12} />
-            </button>
-            
-            {/* Dropdown Menu */}
-            {roleMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase">Switch Perspective</div>
-                {availableRoles.map(role => (
-                  <button
-                    key={role}
-                    onClick={() => {
-                      onRoleSwitch(role);
-                      setRoleMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${user.role === role ? 'bg-royal-50 text-royal-800 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    {role}
-                    {user.role === role && <UserIcon size={14} />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Role Switcher - ONLY render if there are roles to switch to (i.e. is Admin) */}
+          {availableRoles.length > 0 && (
+            <div className="relative" ref={roleRef}>
+              <button 
+                onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
+              >
+                {user.role} View <ChevronDown size={12} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {roleMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase">Switch Perspective</div>
+                  {availableRoles.map(role => (
+                    <button
+                      key={role}
+                      onClick={() => {
+                        onRoleSwitch(role as UserRole);
+                        setRoleMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${user.role === role ? 'bg-royal-50 text-royal-800 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      {role}
+                      {user.role === role && <UserIcon size={14} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="h-6 w-px bg-gray-200 mx-1"></div>
 

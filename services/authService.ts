@@ -10,7 +10,7 @@ const DB_REQUESTS_KEY = 'bbl_db_requests';
 const SESSION_KEY = 'bbl_session_token';
 
 // DEFAULT ADMIN CREDENTIALS
-// CRITICAL: This specific email is the ROOT SYSTEM ADMIN
+// CRITICAL: This specific email is the ROOT SYSTEM ADMIN and must be protected
 const DEFAULT_ADMIN_EMAIL = 'peadetng@gmail.com';
 const DEFAULT_ADMIN = {
   id: 'usr_main_admin',
@@ -113,6 +113,7 @@ class AuthService {
       if (adminIndex !== -1) {
           // Force update role and essential credentials to ensure admin access
           this.users[adminIndex].role = UserRole.ADMIN;
+          // Keep ID stable, update password if needed
           if (!this.users[adminIndex].passwordHash) this.users[adminIndex].passwordHash = DEFAULT_ADMIN.passwordHash;
       } else {
           // Create if not exists
@@ -235,29 +236,45 @@ class AuthService {
   }
 
   async loginWithSocial(provider: 'google' | 'apple', role?: UserRole): Promise<User> {
-      // (Social login implementation same as before)
       await new Promise(resolve => setTimeout(resolve, 1000));
-      // SIMULATION: If trying to simulate admin login via social (optional logic)
-      const email = provider === 'google' ? 'social.google@example.com' : 'social.apple@example.com';
+      
+      // FIX: FORCE Google Login to point to System Admin for the requested 'peadetng@gmail.com'
+      const email = provider === 'google' ? DEFAULT_ADMIN_EMAIL : 'social.apple@example.com';
+      
       let user = this.users.find(u => u.email === email);
+      
       if(!user) {
-          user = {
-              id: crypto.randomUUID(),
-              name: provider === 'google' ? 'Google User' : 'Apple User',
-              email,
-              role: role || UserRole.STUDENT,
-              authProvider: provider,
-              isVerified: true,
-              lastLogin: new Date().toISOString(),
-              classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
-              organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined
-          };
-          this.users.push(user);
+          if (email === DEFAULT_ADMIN_EMAIL) {
+               // Recover Admin if it was somehow deleted
+               user = { ...DEFAULT_ADMIN };
+               this.users.unshift(user);
+          } else {
+             // Normal user creation (Apple or other)
+              user = {
+                  id: crypto.randomUUID(),
+                  name: provider === 'google' ? 'Google User' : 'Apple User',
+                  email,
+                  role: role || UserRole.STUDENT,
+                  authProvider: provider,
+                  isVerified: true,
+                  lastLogin: new Date().toISOString(),
+                  classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
+                  organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined
+              };
+              this.users.push(user);
+          }
           this.saveUsers();
       } else {
+          // If the user exists (Admin), ENSURE they are an ADMIN
+          if (user.email === DEFAULT_ADMIN_EMAIL && user.role !== UserRole.ADMIN) {
+             console.warn("Restoring System Admin privileges");
+             user.role = UserRole.ADMIN;
+          }
+          
           user.lastLogin = new Date().toISOString();
           this.saveUsers();
       }
+      
       localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, exp: Date.now() + 3600000 }));
       return user;
   }

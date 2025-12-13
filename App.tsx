@@ -92,10 +92,11 @@ const App: React.FC = () => {
     setAuthModalOpen(true);
   };
 
+  // CRITICAL FIX: Preserve originalRole when switching roles
   const handleRoleSwitch = (newRole: UserRole) => {
     if (user) {
-      // If we haven't stored the original role yet, store the current one (which is the true role)
-      // This ensures we can always get back to the true role (e.g. Admin)
+      // If originalRole exists, keep it. If not, the current role IS the original role.
+      // This ensures that if an Admin switches to 'Student', they remember they are an 'Admin'
       const originalRole = user.originalRole || user.role;
       setUser({ ...user, role: newRole, originalRole });
     }
@@ -137,7 +138,7 @@ const App: React.FC = () => {
             />
             <main className={`flex-1 overflow-y-auto p-4 md:p-8 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
               <Dashboard 
-                key={user.role} /* CRITICAL FIX: Force remount when role changes to reset internal dashboard state (e.g. escaping Parent Onboarding) */
+                key={user.role} /* Force remount when role changes to ensure views refresh correctly */
                 user={user} 
                 onChangePasswordClick={openChangePassword}
               />

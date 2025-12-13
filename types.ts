@@ -1,4 +1,5 @@
 
+
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -25,6 +26,7 @@ export interface User {
   mentorId?: string; // For Students
   organizationId?: string; // For Mentors and Students
   linkedStudentId?: string; // For Parents
+  createdBy?: string; // ID of the user who invited/created this user
 }
 
 export interface JoinRequest {
@@ -156,6 +158,7 @@ export interface Invite {
   email: string;
   role: UserRole;
   invitedBy: string;
+  inviterId?: string; // ID of the user who created the invite
   organizationId?: string; // If invited by Org Admin
   createdAt: string;
   expiresAt: string;

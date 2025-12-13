@@ -10,10 +10,11 @@ const DB_REQUESTS_KEY = 'bbl_db_requests';
 const SESSION_KEY = 'bbl_session_token';
 
 // DEFAULT ADMIN CREDENTIALS
+// CRITICAL: This specific email is the ROOT SYSTEM ADMIN
 const DEFAULT_ADMIN_EMAIL = 'peadetng@gmail.com';
 const DEFAULT_ADMIN = {
   id: 'usr_main_admin',
-  name: 'Main Admin',
+  name: 'System Admin',
   email: DEFAULT_ADMIN_EMAIL, 
   passwordHash: 'Peter.Adetunji2023#',
   role: UserRole.ADMIN,
@@ -49,7 +50,8 @@ const DEFAULT_MENTOR = {
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
   classCode: 'DEMO01',
-  organizationId: 'usr_demo_org' // Linked to default Org
+  organizationId: 'usr_demo_org', // Linked to default Org
+  createdBy: 'usr_demo_org' // Created by Org
 };
 
 // DEFAULT STUDENT CREDENTIALS (FOR DEMO)
@@ -64,7 +66,8 @@ const DEFAULT_STUDENT = {
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
   mentorId: 'usr_demo_mentor',
-  organizationId: 'usr_demo_org' // Cascade link
+  organizationId: 'usr_demo_org', // Cascade link
+  createdBy: 'usr_demo_mentor'
 };
 
 // DEFAULT PARENT CREDENTIALS (FOR DEMO)
@@ -106,12 +109,10 @@ class AuthService {
       });
 
       // CRITICAL FIX: ENSURE DEFAULT ADMIN ALWAYS EXISTS AND HAS ADMIN ROLE
-      // This prevents the admin from accidentally locking themselves out or losing permissions in the DB
       const adminIndex = this.users.findIndex(u => u.email === DEFAULT_ADMIN_EMAIL);
       if (adminIndex !== -1) {
-          // Force update role and essential credentials
+          // Force update role and essential credentials to ensure admin access
           this.users[adminIndex].role = UserRole.ADMIN;
-          // Optionally update password if needed, but we keep the ID stable
           if (!this.users[adminIndex].passwordHash) this.users[adminIndex].passwordHash = DEFAULT_ADMIN.passwordHash;
       } else {
           // Create if not exists
@@ -297,7 +298,8 @@ class AuthService {
           authProvider: 'email',
           organizationId: orgAdmin.id,
           classCode: this.generateCode(),
-          lastLogin: undefined
+          lastLogin: undefined,
+          createdBy: orgAdmin.id
       };
       
       this.users.push(newMentor);
@@ -305,44 +307,99 @@ class AuthService {
       this.logAction(orgAdmin, 'CREATE_MENTOR', `Directly created mentor ${email}`);
   }
 
-  async deleteUser(admin: User, targetId: string): Promise<void> {
-      if (admin.role !== UserRole.ORGANIZATION && admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+  async deleteUser(actor: User, targetId: string): Promise<void> {
+      const allowedRoles = [UserRole.ADMIN, UserRole.ORGANIZATION, UserRole.MENTOR];
+      if (!allowedRoles.includes(actor.role)) throw new Error("Unauthorized");
       
       const targetIndex = this.users.findIndex(u => u.id === targetId);
       if (targetIndex === -1) throw new Error("User not found");
       const target = this.users[targetIndex];
 
-      // Org Admin can only delete their own members
-      if (admin.role === UserRole.ORGANIZATION && target.organizationId !== admin.id) {
-          throw new Error("Cannot delete user outside your organization");
+      // CRITICAL SECURITY: NO ONE CAN DELETE THE SYSTEM ADMIN
+      if (target.email === DEFAULT_ADMIN_EMAIL) {
+          throw new Error("Cannot delete System Admin. This account is protected.");
       }
 
-      // Prevent System Admin from being deleted
-      if (target.email === DEFAULT_ADMIN_EMAIL) {
-          throw new Error("Cannot delete System Admin");
+      // Permissions check
+      if (actor.role !== UserRole.ADMIN) {
+          // Cannot delete admins
+          if (target.role === UserRole.ADMIN) {
+             throw new Error("Insufficient permissions to delete Administrator.");
+          }
+          
+          // Strict Ownership Check: Must be creator OR direct hierarchy manager
+          const isCreator = target.createdBy === actor.id;
+          const isOrgManager = (actor.role === UserRole.ORGANIZATION && target.organizationId === actor.id);
+          const isMentorManager = (actor.role === UserRole.MENTOR && target.mentorId === actor.id);
+
+          if (!isCreator && !isOrgManager && !isMentorManager) {
+              throw new Error("You can only delete users you invited or manage.");
+          }
       }
 
       this.users.splice(targetIndex, 1);
       this.saveUsers();
-      this.logAction(admin, 'DELETE_USER', `Deleted user ${target.email}`);
+      this.logAction(actor, 'DELETE_USER', `Deleted user ${target.email} (${target.role})`);
   }
 
   // --- GENERAL MANAGEMENT ---
 
-  async getAllUsers(adminUser: User): Promise<User[]> {
-    if (adminUser.role !== UserRole.ADMIN) throw new Error("Unauthorized");
-    return this.users;
+  async getAllUsers(actor: User): Promise<User[]> {
+    // ADMIN: See all
+    if (actor.role === UserRole.ADMIN) {
+        return this.users;
+    }
+
+    // ORGANIZATION: See members of org OR users created by them
+    if (actor.role === UserRole.ORGANIZATION) {
+        return this.users.filter(u => 
+            u.organizationId === actor.id || 
+            u.createdBy === actor.id
+        );
+    }
+
+    // MENTOR: See students in class OR users created by them
+    if (actor.role === UserRole.MENTOR) {
+        return this.users.filter(u => 
+            u.mentorId === actor.id || 
+            u.createdBy === actor.id
+        );
+    }
+
+    // OTHERS: None
+    throw new Error("Unauthorized");
   }
   
-  async getLogs(adminUser: User): Promise<AuditLog[]> { return this.logs; } // Simple permission for demo
+  async getLogs(adminUser: User): Promise<AuditLog[]> { return this.logs; }
 
-  async updateUserRole(admin: User, targetId: string, role: UserRole): Promise<void> {
-      if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
+  async updateUserRole(actor: User, targetId: string, role: UserRole): Promise<void> {
+      const allowedRoles = [UserRole.ADMIN, UserRole.ORGANIZATION, UserRole.MENTOR];
+      if (!allowedRoles.includes(actor.role)) throw new Error("Unauthorized");
+
       const u = this.users.find(u => u.id === targetId);
       if(u) {
-          // Prevent System Admin demotion
-          if (u.email === DEFAULT_ADMIN_EMAIL && role !== UserRole.ADMIN) {
+          // CRITICAL SECURITY: Cannot change System Admin's role
+          if (u.email === DEFAULT_ADMIN_EMAIL) {
              throw new Error("Cannot change role of System Admin");
+          }
+          
+          // ADMIN: Full access (except System Admin check above)
+          if (actor.role === UserRole.ADMIN) {
+             // Continue
+          } else {
+             // NON-ADMIN: Ownership check
+             const isCreator = u.createdBy === actor.id;
+             const isOrgManager = (actor.role === UserRole.ORGANIZATION && u.organizationId === actor.id);
+             const isMentorManager = (actor.role === UserRole.MENTOR && u.mentorId === actor.id);
+
+             if (!isCreator && !isOrgManager && !isMentorManager) {
+                 throw new Error("You can only change roles for users you invited or manage.");
+             }
+             
+             // Prevent non-admin from creating/modifying Admins
+             if (role === UserRole.ADMIN || u.role === UserRole.ADMIN) {
+                 throw new Error("Insufficient permissions to assign or modify Admin role.");
+             }
           }
 
           u.role = role;
@@ -363,7 +420,9 @@ class AuthService {
   // --- INVITES ---
   
   async createInvite(actor: User, email: string, role: UserRole): Promise<string> {
-      if (actor.role !== UserRole.ADMIN && actor.role !== UserRole.ORGANIZATION) throw new Error("Unauthorized");
+      // Allow Admin, Org, and Mentor to create invites
+      const allowedRoles = [UserRole.ADMIN, UserRole.ORGANIZATION, UserRole.MENTOR];
+      if (!allowedRoles.includes(actor.role)) throw new Error("Unauthorized");
       
       const token = crypto.randomUUID();
       const invite: Invite = {
@@ -372,6 +431,7 @@ class AuthService {
           email,
           role,
           invitedBy: actor.name,
+          inviterId: actor.id, // Track ownership
           organizationId: actor.role === UserRole.ORGANIZATION ? actor.id : undefined,
           createdAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 72*3600000).toISOString(),
@@ -380,6 +440,37 @@ class AuthService {
       this.invites.push(invite);
       this.saveInvites();
       return token;
+  }
+
+  async getInvites(actor: User): Promise<Invite[]> {
+      const allowedRoles = [UserRole.ADMIN, UserRole.ORGANIZATION, UserRole.MENTOR];
+      if (!allowedRoles.includes(actor.role)) throw new Error("Unauthorized");
+      
+      // Admin sees all pending
+      if (actor.role === UserRole.ADMIN) {
+           return this.invites.filter(i => i.status === 'pending');
+      }
+      
+      // Org/Mentor sees only their own invites
+      return this.invites.filter(i => i.status === 'pending' && i.inviterId === actor.id);
+  }
+
+  async deleteInvite(actor: User, inviteId: string): Promise<void> {
+      const allowedRoles = [UserRole.ADMIN, UserRole.ORGANIZATION, UserRole.MENTOR];
+      if (!allowedRoles.includes(actor.role)) throw new Error("Unauthorized");
+
+      const idx = this.invites.findIndex(i => i.id === inviteId);
+      if (idx === -1) throw new Error("Invite not found");
+      const invite = this.invites[idx];
+      
+      if (actor.role !== UserRole.ADMIN) {
+          if (invite.inviterId !== actor.id) {
+              throw new Error("You can only revoke invites you created.");
+          }
+      }
+
+      this.invites.splice(idx, 1);
+      this.saveInvites();
   }
   
   async validateInvite(token: string) { return this.invites.find(i => i.token === token && i.status === 'pending'); }
@@ -398,7 +489,8 @@ class AuthService {
           authProvider: 'email',
           organizationId: inv.organizationId, // Link if Org Invite
           classCode: inv.role === UserRole.MENTOR ? this.generateCode() : undefined,
-          lastLogin: new Date().toISOString()
+          lastLogin: new Date().toISOString(),
+          createdBy: inv.inviterId // Link to inviter
       };
       this.users.push(user);
       inv.status = 'accepted';

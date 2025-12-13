@@ -12,7 +12,7 @@ import LessonUpload from './LessonUpload';
 import StudentPanel from './StudentPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
-  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star
+  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -171,7 +171,7 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
 );
 
 // VIEW STATE ENUM to prevent hook errors
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons';
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users';
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) => {
   // 1. ALL STATE HOOKS
@@ -186,8 +186,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   // Admin View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
   
-  // Mentor View State
-  const [mentorActiveTab, setMentorActiveTab] = useState<'lessons' | 'upload' | 'requests'>('lessons');
+  // Mentor View State (Updated to include users and invites)
+  const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests'>('lessons');
 
   // Student View State
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
@@ -254,6 +254,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
         if (isAdminView) setAdminActiveTab('lessons');
         if (isMentorView) setMentorActiveTab('lessons');
     }
+  };
+
+  const handleManageUsers = () => {
+      if (isOrgView) {
+          setCurrentView('manage-users');
+      }
+      // For Mentor, tabs are already on dashboard, just switch focus
+      if (isMentorView) {
+          setMentorActiveTab('users');
+      }
   };
 
   // 4. RENDER Logic based on currentView
@@ -341,6 +351,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
               </button>
            )}
 
+           {/* MANAGE USERS BUTTON (For Org Only - Mentors have panel inline) */}
+           {isOrgView && (
+              <button 
+                onClick={handleManageUsers}
+                className={`flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-users' ? 'ring-2 ring-emerald-400' : ''}`}
+              >
+                 <UserPlus size={18} /> 
+                 <span>MANAGE USERS</span>
+              </button>
+           )}
+
            {/* MANAGE LESSONS BUTTON (For Admin, Mentor, Org) */}
            {(isAdminView || isMentorView || isOrgView) && (
               <button 
@@ -411,6 +432,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                  <StatCard type="ring" title="Completion Rate" value="85%" subtitle="Assignments" icon={CheckCircle} color="green" progress={85} />
                  <StatCard title="My Students" value="24" subtitle="Active Learners" icon={Users} color="indigo" />
                </div>
+               {/* Mentor uses AdminPanel for management */}
                <AdminPanel 
                  currentUser={user} 
                  activeTab={mentorActiveTab} 
@@ -424,22 +446,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
          </div>
       )}
 
-       {/* ORGANIZATION VIEW - DUAL MODE (Panel or Lessons) */}
+       {/* ORGANIZATION VIEW - TRI-MODE (Panel, Lessons, Users) */}
        {isOrgView && (
           <div className="grid grid-cols-1 gap-8">
              {currentView === 'manage-lessons' ? (
-                // Re-use AdminPanel for lesson management
+                // Lesson Management
                 <AdminPanel 
                     currentUser={user} 
                     activeTab='lessons'
                     onTabChange={(tab) => {
-                        // If they click something else, handle it or force 'lessons'
                         if (tab !== 'lessons' && tab !== 'upload') {
-                            setCurrentView('dashboard'); // Return to Org Panel
+                            setCurrentView('dashboard');
                         }
                     }}
                 />
+             ) : currentView === 'manage-users' ? (
+                // User Management (Unified Panel)
+                <AdminPanel 
+                    currentUser={user} 
+                    activeTab='users'
+                    onTabChange={(tab) => {
+                         // Allow org to switch between users and invites tabs
+                         if (tab !== 'users' && tab !== 'invites') {
+                             setCurrentView('dashboard');
+                         }
+                    }}
+                />
              ) : (
+                // Default Org Panel
                 <OrganizationPanel currentUser={user} />
              )}
           </div>

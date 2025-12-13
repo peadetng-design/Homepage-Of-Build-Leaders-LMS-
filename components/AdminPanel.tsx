@@ -6,7 +6,7 @@ import LessonUpload from './LessonUpload';
 import { 
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
-  BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX
+  BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX, Trash2
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -32,18 +32,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
   // Invite Form State
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.ADMIN);
+  const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.STUDENT);
   const [generatedLink, setGeneratedLink] = useState('');
 
   // Determine Permissions
   const isAdmin = currentUser.role === UserRole.ADMIN;
   const isMentor = currentUser.role === UserRole.MENTOR;
   const isOrg = currentUser.role === UserRole.ORGANIZATION;
+  
+  // Broader Permission for User Management (Requests per prompt)
+  const canManageUsers = isAdmin || isOrg || isMentor;
 
   useEffect(() => {
     fetchData();
@@ -52,9 +56,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      if (activeTab === 'users' && isAdmin) {
+      if (activeTab === 'users' && canManageUsers) {
         const data = await authService.getAllUsers(currentUser);
         setUsers(data);
+      } else if (activeTab === 'invites' && canManageUsers) {
+        const invites = await authService.getInvites(currentUser);
+        setPendingInvites(invites);
       } else if (activeTab === 'logs' && isAdmin) {
         const data = await authService.getLogs(currentUser);
         setLogs(data);
@@ -82,6 +89,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
     }
   };
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+    try {
+      await authService.deleteUser(currentUser, userId);
+      setNotification({ msg: 'User deleted successfully', type: 'success' });
+      fetchData();
+    } catch (err: any) {
+      setNotification({ msg: err.message, type: 'error' });
+    }
+  };
+
   const handleCreateInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -89,10 +107,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       const link = `${window.location.origin}?invite=${token}`;
       setGeneratedLink(link);
       setNotification({ msg: 'Invite created! Share the link below.', type: 'success' });
-      console.log(`[SIMULATION] Email sent to ${inviteEmail} with link: ${link}`);
+      fetchData(); // Refresh list
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
     }
+  };
+
+  const handleDeleteInvite = async (inviteId: string) => {
+      if (!window.confirm("Revoke this invite? The link will no longer work.")) return;
+      try {
+          await authService.deleteInvite(currentUser, inviteId);
+          setNotification({ msg: 'Invite revoked successfully', type: 'success' });
+          fetchData();
+      } catch (err: any) {
+          setNotification({ msg: err.message, type: 'error' });
+      }
   };
 
   const handleRequestResponse = async (reqId: string, status: 'accepted' | 'rejected') => {
@@ -117,10 +146,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
              <Shield className={isMentor ? "text-blue-400" : "text-gold-500"} /> 
-             {isOrg ? "Organization Lessons" : isMentor ? "Mentor Content Manager" : "Admin Console"}
+             {isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Admin Console"}
            </h2>
            <p className="text-royal-200 text-sm mt-1">
-             {isOrg ? "Manage the curriculum for your organization." : isMentor ? "Manage Lessons & Team Resources" : "Security, User Management & System Logs"}
+             {isOrg ? "Manage your organization's users and content." : isMentor ? "Manage your students, lessons and invites." : "Security, User Management & System Logs"}
            </p>
            {isMentor && currentUser.classCode && (
                <div className="mt-2 inline-flex items-center gap-2 bg-white/10 px-3 py-1 rounded-lg border border-white/20">
@@ -130,7 +159,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            )}
         </div>
         <div className="flex flex-wrap gap-2">
-           {isAdmin && (
+           {canManageUsers && (
              <>
                 <button 
                   onClick={() => setActiveTab('users')}
@@ -182,8 +211,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       {/* Content */}
       <div className="p-6">
         
-        {/* USERS TAB (Admin Only) */}
-        {activeTab === 'users' && isAdmin && (
+        {/* USERS TAB (Admin, Org, Mentor) */}
+        {activeTab === 'users' && canManageUsers && (
           <div className="space-y-4">
             <div className="flex justify-between items-center mb-4">
               <div className="relative">
@@ -205,10 +234,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                     <th className="p-4">Role</th>
                     <th className="p-4">Last Login</th>
                     <th className="p-4">Status</th>
+                    <th className="p-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {users.map(user => (
+                  {users.map(user => {
+                    const isProtected = user.email === 'peadetng@gmail.com';
+                    const isSelf = user.id === currentUser.id;
+                    const canEdit = !isProtected && !isSelf;
+                    
+                    return (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
@@ -216,7 +251,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             {user.name.charAt(0)}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900">{user.name}</div>
+                            <div className="font-bold text-gray-900">{user.name} {isProtected && <span className="text-xs text-gold-600 bg-gold-50 px-1 rounded border border-gold-200">Root</span>}</div>
                             <div className="text-xs text-gray-500">{user.email}</div>
                           </div>
                         </div>
@@ -225,7 +260,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                         <select 
                           value={user.role}
                           onChange={(e) => handleRoleChange(user.id, e.target.value as UserRole)}
-                          className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg p-2 focus:ring-royal-500 focus:border-royal-500"
+                          disabled={!canEdit} // Cannot change root admin role or self
+                          className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg p-2 focus:ring-royal-500 focus:border-royal-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {Object.values(UserRole).filter(r => r !== 'GUEST').map(role => (
                             <option key={role} value={role}>{role}</option>
@@ -240,85 +276,144 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           Active
                         </span>
                       </td>
+                      <td className="p-4 text-right">
+                         {canEdit && (
+                            <button 
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded hover:bg-red-50"
+                              title="Delete User"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                         )}
+                      </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
-        {/* INVITES TAB (Admin Only) */}
-        {activeTab === 'invites' && isAdmin && (
-          <div className="max-w-2xl mx-auto space-y-8">
-             <div className="bg-royal-50 p-6 rounded-xl border border-royal-100">
-                <h3 className="text-lg font-bold text-royal-900 mb-4 flex items-center gap-2">
-                  <UserPlus size={20} /> Invite New User
-                </h3>
-                <form onSubmit={handleCreateInvite} className="space-y-4">
-                   <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Email Address</label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-3 text-gray-400" size={16} />
-                          <input 
-                            type="email" 
-                            required
-                            value={inviteEmail}
-                            onChange={e => setInviteEmail(e.target.value)}
-                            className="w-full pl-9 p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none"
-                            placeholder="colleague@example.com"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Assign Role</label>
-                        <select 
-                          value={inviteRole}
-                          onChange={e => setInviteRole(e.target.value as UserRole)}
-                          className="w-full p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none bg-white"
-                        >
-                          <option value={UserRole.ADMIN}>Admin</option>
-                          <option value={UserRole.MENTOR}>Mentor</option>
-                          <option value={UserRole.STUDENT}>Student</option>
-                          <option value={UserRole.PARENT}>Parent</option>
-                        </select>
+        {/* INVITES TAB (Admin, Org, Mentor) */}
+        {activeTab === 'invites' && canManageUsers && (
+          <div className="space-y-8">
+             {/* 1. Create Invite Form */}
+             <div className="max-w-2xl mx-auto">
+                 <div className="bg-royal-50 p-6 rounded-xl border border-royal-100">
+                    <h3 className="text-lg font-bold text-royal-900 mb-4 flex items-center gap-2">
+                      <UserPlus size={20} /> Invite New User
+                    </h3>
+                    <form onSubmit={handleCreateInvite} className="space-y-4">
+                       <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Email Address</label>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-3 text-gray-400" size={16} />
+                              <input 
+                                type="email" 
+                                required
+                                value={inviteEmail}
+                                onChange={e => setInviteEmail(e.target.value)}
+                                className="w-full pl-9 p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none"
+                                placeholder="colleague@example.com"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Assign Role</label>
+                            <select 
+                              value={inviteRole}
+                              onChange={e => setInviteRole(e.target.value as UserRole)}
+                              className="w-full p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none bg-white"
+                            >
+                              <option value={UserRole.STUDENT}>Student</option>
+                              <option value={UserRole.MENTOR}>Mentor</option>
+                              <option value={UserRole.PARENT}>Parent</option>
+                              <option value={UserRole.ORGANIZATION}>Organization</option>
+                              {isAdmin && <option value={UserRole.ADMIN}>Admin</option>}
+                            </select>
+                          </div>
+                       </div>
+                       <button type="submit" className="w-full bg-royal-600 text-white font-bold py-3 rounded-lg hover:bg-royal-700 transition-colors shadow-md">
+                         Generate Invite Link
+                       </button>
+                    </form>
+                 </div>
+
+                 {generatedLink && (
+                   <div className="bg-green-50 p-6 rounded-xl border border-green-200 animate-in fade-in slide-in-from-top-4 mt-4">
+                      <div className="flex items-start gap-4">
+                         <div className="bg-green-100 p-2 rounded-full text-green-600">
+                           <Link size={24} />
+                         </div>
+                         <div className="flex-1">
+                            <h4 className="font-bold text-green-800 mb-2">Invite Link Generated</h4>
+                            <p className="text-sm text-green-700 mb-3">
+                              Send this link to the user. It will expire in 72 hours.
+                            </p>
+                            <div className="flex items-center gap-2">
+                               <input 
+                                 readOnly 
+                                 value={generatedLink} 
+                                 className="flex-1 bg-white border border-green-200 text-sm p-2 rounded text-gray-600"
+                               />
+                               <button 
+                                 onClick={copyToClipboard}
+                                 className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
+                               >
+                                 <Copy size={18} />
+                               </button>
+                            </div>
+                         </div>
                       </div>
                    </div>
-                   <button type="submit" className="w-full bg-royal-600 text-white font-bold py-3 rounded-lg hover:bg-royal-700 transition-colors shadow-md">
-                     Generate Invite Link
-                   </button>
-                </form>
+                 )}
              </div>
 
-             {generatedLink && (
-               <div className="bg-green-50 p-6 rounded-xl border border-green-200 animate-in fade-in slide-in-from-top-4">
-                  <div className="flex items-start gap-4">
-                     <div className="bg-green-100 p-2 rounded-full text-green-600">
-                       <Link size={24} />
-                     </div>
-                     <div className="flex-1">
-                        <h4 className="font-bold text-green-800 mb-2">Invite Link Generated</h4>
-                        <p className="text-sm text-green-700 mb-3">
-                          Send this link to the user. It will expire in 72 hours.
-                        </p>
-                        <div className="flex items-center gap-2">
-                           <input 
-                             readOnly 
-                             value={generatedLink} 
-                             className="flex-1 bg-white border border-green-200 text-sm p-2 rounded text-gray-600"
-                           />
-                           <button 
-                             onClick={copyToClipboard}
-                             className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
-                           >
-                             <Copy size={18} />
-                           </button>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-             )}
+             {/* 2. Pending Invites List */}
+             <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
+                   <span>Pending Invites</span>
+                   <button onClick={fetchData} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><RefreshCw size={18} /></button>
+                </h3>
+                
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                   <table className="w-full text-left">
+                      <thead className="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
+                         <tr>
+                            <th className="p-4">Email</th>
+                            <th className="p-4">Role</th>
+                            <th className="p-4">Invited By</th>
+                            <th className="p-4">Date</th>
+                            <th className="p-4 text-right">Action</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                         {pendingInvites.map(invite => (
+                            <tr key={invite.id} className="hover:bg-gray-50">
+                               <td className="p-4 font-bold text-gray-800">{invite.email}</td>
+                               <td className="p-4"><span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">{invite.role}</span></td>
+                               <td className="p-4 text-sm text-gray-500">{invite.invitedBy}</td>
+                               <td className="p-4 text-sm text-gray-500">{new Date(invite.createdAt).toLocaleDateString()}</td>
+                               <td className="p-4 text-right">
+                                  <button 
+                                    onClick={() => handleDeleteInvite(invite.id)}
+                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Revoke Invite"
+                                  >
+                                     <Trash2 size={18} />
+                                  </button>
+                               </td>
+                            </tr>
+                         ))}
+                         {pendingInvites.length === 0 && (
+                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">No pending invites found.</td></tr>
+                         )}
+                      </tbody>
+                   </table>
+                </div>
+             </div>
           </div>
         )}
 

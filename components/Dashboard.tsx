@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { UserRole, User, Lesson } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
@@ -191,6 +192,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   // Student View State
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
+
+  // Org View State (Unified for both Manage Users and Manage Lessons)
+  const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
   
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
 
@@ -247,6 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   const handleManageLessons = () => {
     if (isOrgView) {
+        setOrgSubTab('lessons'); // Reset to default sub-tab
         setCurrentView('manage-lessons');
     } else {
         // For Admin/Mentor, ensure they are on the dashboard view but switch the tab
@@ -258,6 +263,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   const handleManageUsers = () => {
       if (isOrgView) {
+          setOrgSubTab('users'); // Reset to default sub-tab
           setCurrentView('manage-users');
       }
       // For Mentor, tabs are already on dashboard, just switch focus
@@ -301,6 +307,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                 setCurrentView('dashboard');
                 // Auto switch to manage view to see the new lesson
                 if (isOrgView) {
+                    setOrgSubTab('lessons');
                     setCurrentView('manage-lessons'); // Org logic
                 } else if (isAdminView) {
                     setAdminActiveTab('lessons');
@@ -453,9 +460,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                 // Lesson Management
                 <AdminPanel 
                     currentUser={user} 
-                    activeTab='lessons'
+                    activeTab={orgSubTab}
                     onTabChange={(tab) => {
-                        if (tab !== 'lessons' && tab !== 'upload') {
+                        if (tab === 'lessons' || tab === 'upload') {
+                            setOrgSubTab(tab);
+                        } else {
                             setCurrentView('dashboard');
                         }
                     }}
@@ -464,10 +473,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
                 // User Management (Unified Panel)
                 <AdminPanel 
                     currentUser={user} 
-                    activeTab='users'
+                    activeTab={orgSubTab}
                     onTabChange={(tab) => {
                          // Allow org to switch between users and invites tabs
-                         if (tab !== 'users' && tab !== 'invites') {
+                         if (tab === 'users' || tab === 'invites') {
+                             setOrgSubTab(tab);
+                         } else {
                              setCurrentView('dashboard');
                          }
                     }}

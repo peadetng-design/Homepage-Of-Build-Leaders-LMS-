@@ -147,6 +147,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
 
   // 2. EFFECTS
   useEffect(() => {
+    // If we are NOT in parent view anymore but still stuck on onboarding, reset
+    if (!isParentView && currentView === 'parent-onboarding') {
+      setCurrentView('dashboard');
+      return; 
+    }
+
     // Check parent onboarding
     if (isParentView && !user.linkedStudentId) {
        setCurrentView('parent-onboarding');
@@ -163,7 +169,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       }
     };
     fetchContent();
-  }, [isParentView, user.linkedStudentId]);
+  }, [isParentView, user.linkedStudentId, user.role, currentView]);
 
   // 3. HANDLERS
   const handleQuizAnswer = (option: string) => {

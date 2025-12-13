@@ -13,6 +13,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  originalRole?: UserRole; // Tracks the true role when using "View As"
   avatarUrl?: string;
   passwordHash?: string; 
   isVerified?: boolean;

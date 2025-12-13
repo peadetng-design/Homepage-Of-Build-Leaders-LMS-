@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Bell, Menu, Plus, X } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bell, Menu, Plus, X, ChevronDown, User as UserIcon } from 'lucide-react';
 import { UserRole, User } from '../types';
 
 interface HeaderProps {
@@ -11,6 +11,21 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRoleSwitch }) => {
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false); // State for role dropdown
+  const roleRef = useRef<HTMLDivElement>(null);
+
+  // Close role menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (roleRef.current && !roleRef.current.contains(event.target as Node)) {
+        setRoleMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -19,6 +34,26 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
       setGuestMenuOpen(false);
     }
   };
+
+  // Roles Logic: Filter based on current permissions or original permissions
+  const getAvailableRoles = () => {
+     if (!user) return [];
+     const allRoles = Object.values(UserRole).filter(r => r !== UserRole.GUEST);
+     
+     // Check if user is EFFECTIVELY an admin (either currently, or originally before switching)
+     // Use originalRole if available to persist admin privileges during "View As"
+     const isEffectiveAdmin = user.role === UserRole.ADMIN || user.originalRole === UserRole.ADMIN;
+
+     // REQUIREMENT: REMOVE "ADMIN" FROM THE DROPDOWN OPTIONS OF mentor, student, parent and organization
+     // ONLY THE SYSTEM ADMIN SHOULD HAVE IT.
+     if (isEffectiveAdmin) {
+        return allRoles;
+     } else {
+        return allRoles.filter(r => r !== UserRole.ADMIN);
+     }
+  };
+
+  const availableRoles = getAvailableRoles();
 
   return (
     <header className="fixed top-0 left-0 w-full h-16 bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100 z-50 px-4 flex items-center justify-between transition-all">
@@ -36,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
             <path d="M12 11 L20 7 L28 11" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             <path d="M12 15 L20 11 L28 15" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             
-            {/* Minimalist Human Frame (The Leader) - Adjusted position */}
+            {/* Minimalist Human Frame (The Leader) */}
             <circle cx="20" cy="21" r="3.5" stroke="white" strokeWidth="3" />
             <path d="M10 35C10 30 15 27 20 27C25 27 30 30 30 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
             <defs>
@@ -55,28 +90,39 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
       {user ? (
         <div className="flex items-center gap-2 md:gap-4">
           {/* Create Group Action */}
-          <button className="hidden md:flex items-center gap-2 bg-royal-600 hover:bg-royal-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-sm">
+          <button className="hidden md:flex items-center gap-2 bg-royal-500 hover:bg-royal-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-sm">
             <Plus size={16} />
             <span>Create Group</span>
           </button>
 
-          {/* Role Switcher */}
-          <div className="relative group">
-            <button className="px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-700 bg-royal-50 border border-royal-200 rounded-full uppercase hover:bg-royal-100 transition-colors">
-              {user.role} View
+          {/* Role Switcher - Functional Click Dropdown */}
+          <div className="relative" ref={roleRef}>
+            <button 
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
+            >
+              {user.role} View <ChevronDown size={12} />
             </button>
-            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right">
-              <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase">Switch Perspective</div>
-              {Object.values(UserRole).filter(r => r !== UserRole.GUEST).map(role => (
-                <button
-                  key={role}
-                  onClick={() => onRoleSwitch(role)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm ${user.role === role ? 'bg-royal-50 text-royal-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
+            
+            {/* Dropdown Menu */}
+            {roleMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase">Switch Perspective</div>
+                {availableRoles.map(role => (
+                  <button
+                    key={role}
+                    onClick={() => {
+                      onRoleSwitch(role);
+                      setRoleMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${user.role === role ? 'bg-royal-50 text-royal-800 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {role}
+                    {user.role === role && <UserIcon size={14} />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="h-6 w-px bg-gray-200 mx-1"></div>
@@ -105,9 +151,9 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
 
            {/* Desktop Nav */}
            <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-              <button onClick={() => scrollToSection('about')} className="hover:text-royal-600 transition-colors">About Us</button>
-              <button onClick={() => scrollToSection('resources')} className="hover:text-royal-600 transition-colors">Resources</button>
-              <button onClick={() => scrollToSection('news')} className="hover:text-royal-600 transition-colors">News</button>
+              <button onClick={() => scrollToSection('about')} className="hover:text-royal-500 transition-colors">About Us</button>
+              <button onClick={() => scrollToSection('resources')} className="hover:text-royal-500 transition-colors">Resources</button>
+              <button onClick={() => scrollToSection('news')} className="hover:text-royal-500 transition-colors">News</button>
            </div>
         </div>
       )}

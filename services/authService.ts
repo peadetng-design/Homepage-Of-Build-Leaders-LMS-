@@ -10,10 +10,11 @@ const DB_REQUESTS_KEY = 'bbl_db_requests';
 const SESSION_KEY = 'bbl_session_token';
 
 // DEFAULT ADMIN CREDENTIALS
+const DEFAULT_ADMIN_EMAIL = 'peadetng@gmail.com';
 const DEFAULT_ADMIN = {
   id: 'usr_main_admin',
   name: 'Main Admin',
-  email: 'peadetng@gmail.com',
+  email: DEFAULT_ADMIN_EMAIL, 
   passwordHash: 'Peter.Adetunji2023#',
   role: UserRole.ADMIN,
   isVerified: true,
@@ -97,12 +98,26 @@ class AuthService {
       this.users = JSON.parse(storedUsers);
       
       // Seed Defaults if missing (Ensure Org is added if old DB exists)
-      const defaults = [DEFAULT_ADMIN, DEFAULT_ORG, DEFAULT_MENTOR, DEFAULT_STUDENT, DEFAULT_PARENT];
+      const defaults = [DEFAULT_ORG, DEFAULT_MENTOR, DEFAULT_STUDENT, DEFAULT_PARENT];
       defaults.forEach(def => {
           if (!this.users.find(u => u.email === def.email)) {
               this.users.push(def);
           }
       });
+
+      // CRITICAL FIX: ENSURE DEFAULT ADMIN ALWAYS EXISTS AND HAS ADMIN ROLE
+      // This prevents the admin from accidentally locking themselves out or losing permissions in the DB
+      const adminIndex = this.users.findIndex(u => u.email === DEFAULT_ADMIN_EMAIL);
+      if (adminIndex !== -1) {
+          // Force update role and essential credentials
+          this.users[adminIndex].role = UserRole.ADMIN;
+          // Optionally update password if needed, but we keep the ID stable
+          if (!this.users[adminIndex].passwordHash) this.users[adminIndex].passwordHash = DEFAULT_ADMIN.passwordHash;
+      } else {
+          // Create if not exists
+          this.users.unshift(DEFAULT_ADMIN);
+      }
+
       this.saveUsers();
     } else {
       this.users = [DEFAULT_ADMIN, DEFAULT_ORG, DEFAULT_MENTOR, DEFAULT_STUDENT, DEFAULT_PARENT];
@@ -221,6 +236,7 @@ class AuthService {
   async loginWithSocial(provider: 'google' | 'apple', role?: UserRole): Promise<User> {
       // (Social login implementation same as before)
       await new Promise(resolve => setTimeout(resolve, 1000));
+      // SIMULATION: If trying to simulate admin login via social (optional logic)
       const email = provider === 'google' ? 'social.google@example.com' : 'social.apple@example.com';
       let user = this.users.find(u => u.email === email);
       if(!user) {
@@ -301,6 +317,11 @@ class AuthService {
           throw new Error("Cannot delete user outside your organization");
       }
 
+      // Prevent System Admin from being deleted
+      if (target.email === DEFAULT_ADMIN_EMAIL) {
+          throw new Error("Cannot delete System Admin");
+      }
+
       this.users.splice(targetIndex, 1);
       this.saveUsers();
       this.logAction(admin, 'DELETE_USER', `Deleted user ${target.email}`);
@@ -319,6 +340,11 @@ class AuthService {
       if (admin.role !== UserRole.ADMIN) throw new Error("Unauthorized");
       const u = this.users.find(u => u.id === targetId);
       if(u) {
+          // Prevent System Admin demotion
+          if (u.email === DEFAULT_ADMIN_EMAIL && role !== UserRole.ADMIN) {
+             throw new Error("Cannot change role of System Admin");
+          }
+
           u.role = role;
           if (role === UserRole.MENTOR && !u.classCode) u.classCode = this.generateCode();
           if (role === UserRole.ORGANIZATION && !u.organizationCode) u.organizationCode = this.generateCode();

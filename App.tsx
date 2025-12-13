@@ -94,7 +94,10 @@ const App: React.FC = () => {
 
   const handleRoleSwitch = (newRole: UserRole) => {
     if (user) {
-      setUser({ ...user, role: newRole });
+      // If we haven't stored the original role yet, store the current one (which is the true role)
+      // This ensures we can always get back to the true role (e.g. Admin)
+      const originalRole = user.originalRole || user.role;
+      setUser({ ...user, role: newRole, originalRole });
     }
   };
 
@@ -134,6 +137,7 @@ const App: React.FC = () => {
             />
             <main className={`flex-1 overflow-y-auto p-4 md:p-8 transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
               <Dashboard 
+                key={user.role} /* CRITICAL FIX: Force remount when role changes to reset internal dashboard state (e.g. escaping Parent Onboarding) */
                 user={user} 
                 onChangePasswordClick={openChangePassword}
               />

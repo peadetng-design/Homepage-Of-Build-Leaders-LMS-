@@ -1,12 +1,16 @@
 
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
+const DB_RESOURCES_KEY = 'bbl_db_resources';
+const DB_NEWS_KEY = 'bbl_db_news';
 
 class LessonService {
   private lessons: Lesson[] = [];
   private attempts: StudentAttempt[] = [];
+  private resources: Resource[] = [];
+  private news: NewsItem[] = [];
 
   constructor() {
     this.init();
@@ -60,24 +64,45 @@ class LessonService {
     if (storedAttempts) {
       this.attempts = JSON.parse(storedAttempts);
     }
+
+    // Init Resources
+    const storedResources = localStorage.getItem(DB_RESOURCES_KEY);
+    if (storedResources) {
+      this.resources = JSON.parse(storedResources);
+    } else {
+      this.resources = [
+        {
+          id: 'res-1', title: '2024 Tournament Rulebook', description: 'Official rules for district and regional quizzing.',
+          fileType: 'pdf', url: '#', uploadedBy: 'System Admin', uploadedAt: new Date().toISOString(), size: '2.4 MB'
+        }
+      ];
+      this.saveResources();
+    }
+
+    // Init News
+    const storedNews = localStorage.getItem(DB_NEWS_KEY);
+    if (storedNews) {
+      this.news = JSON.parse(storedNews);
+    } else {
+      this.news = [
+        {
+          id: 'news-1', title: 'National Finals Registration Open', 
+          content: 'Registration is now open for the 2024 National Finals in St. Louis. Please ensure all teams are registered by May 15th.',
+          date: new Date().toISOString(), category: 'Announcement', author: 'System Admin'
+        }
+      ];
+      this.saveNews();
+    }
   }
 
-  private saveLessons() {
-    localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons));
-  }
+  private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
+  private saveAttempts() { localStorage.setItem(DB_ATTEMPTS_KEY, JSON.stringify(this.attempts)); }
+  private saveResources() { localStorage.setItem(DB_RESOURCES_KEY, JSON.stringify(this.resources)); }
+  private saveNews() { localStorage.setItem(DB_NEWS_KEY, JSON.stringify(this.news)); }
 
-  private saveAttempts() {
-    localStorage.setItem(DB_ATTEMPTS_KEY, JSON.stringify(this.attempts));
-  }
-
-  async getLessons(): Promise<Lesson[]> {
-    return this.lessons;
-  }
-
-  async getLessonById(id: string): Promise<Lesson | undefined> {
-    return this.lessons.find(l => l.id === id);
-  }
-
+  async getLessons(): Promise<Lesson[]> { return this.lessons; }
+  async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
+  
   async publishLesson(lesson: Lesson): Promise<void> {
     const index = this.lessons.findIndex(l => l.id === lesson.id);
     if (index >= 0) {
@@ -88,11 +113,22 @@ class LessonService {
     this.saveLessons();
   }
 
+  // --- RESOURCES & NEWS ---
+  async getResources(): Promise<Resource[]> { return this.resources; }
+  async addResource(resource: Resource): Promise<void> {
+    this.resources.unshift(resource);
+    this.saveResources();
+  }
+
+  async getNews(): Promise<NewsItem[]> { return this.news; }
+  async addNews(news: NewsItem): Promise<void> {
+    this.news.unshift(news);
+    this.saveNews();
+  }
+
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // SIMULATED PARSED DATA based on prompt specification
-    // In a real implementation, this would use a library like SheetJS to parse the actual 3 sheets
+    // SIMULATED PARSED DATA
     const mockDraft: LessonDraft = {
       isValid: true,
       errors: [],
@@ -103,15 +139,11 @@ class LessonService {
         book: "Genesis",
         chapter: 1,
         lesson_type: "Mixed",
-        targetAudience: "All" // Default for imports
+        targetAudience: "All"
       },
       leadershipNote: {
         title: "The Leadership Mindset in Creation",
-        body: `<h3>1. Order from Chaos</h3>
-        <p>In the beginning, the earth was formless and empty. Darkness was over the surface of the deep. This state of chaos is where leadership begins. A leader does not fear chaos but sees it as an opportunity to establish order.</p>
-        <p>God did not create everything at once. He used a sequential, logical process: Light first, then structure (sky/water), then land, then life. This teaches us the importance of <strong>strategic sequencing</strong> in leadership.</p>
-        <h3>2. Delegation of Authority</h3>
-        <p>Upon creating humanity, God immediately delegated authority: "Rule over the fish in the sea and the birds in the sky." Leadership is not about hoarding power but empowering others to steward resources effectively.</p>`
+        body: `<h3>1. Order from Chaos</h3><p>In the beginning...</p>`
       },
       bibleQuizzes: [
         {
@@ -119,46 +151,20 @@ class LessonService {
           bible_reference: "Genesis 1:1",
           question_text: "According to Genesis 1:1, what did God create in the beginning?",
           options: [
-            { key: "A", text: "Heaven and Earth", is_correct: true, explanation: "Correct — the verse states “God created the heaven and the earth.”" },
-            { key: "B", text: "Light", is_correct: false, explanation: "Light was created later in verse 3." },
-            { key: "C", text: "Plants", is_correct: false, explanation: "Plants were created later in the chapter." },
-            { key: "D", text: "Animals", is_correct: false, explanation: "Animals were created later in the chapter." }
-          ]
-        },
-        {
-          question_id: "GEN1-Q2",
-          bible_reference: "Genesis 1:3",
-          question_text: "What was the first thing God spoke into existence?",
-          options: [
-            { key: "A", text: "Man", is_correct: false, explanation: "Man was created on the 6th day." },
-            { key: "B", text: "Light", is_correct: true, explanation: "Correct - God said 'Let there be light'." },
-            { key: "C", text: "The Sun", is_correct: false, explanation: "The sun was created on the 4th day." },
-            { key: "D", text: "Water", is_correct: false, explanation: "Water was already present." }
+            { key: "A", text: "Heaven and Earth", is_correct: true, explanation: "Correct." },
+            { key: "B", text: "Light", is_correct: false, explanation: "Incorrect." },
+            { key: "C", text: "Plants", is_correct: false, explanation: "Incorrect." },
+            { key: "D", text: "Animals", is_correct: false, explanation: "Incorrect." }
           ]
         }
       ],
-      noteQuizzes: [
-        {
-          question_id: "NOTE-Q1",
-          source_note_title: "The Leadership Mindset in Creation",
-          question_text: "What leadership quality is demonstrated by God’s orderly creation process?",
-          options: [
-            { key: "A", text: "Strategic planning", is_correct: true, explanation: "Correct — the note emphasizes God’s deliberate sequencing." },
-            { key: "B", text: "Impulsiveness", is_correct: false, explanation: "Not supported by the note." },
-            { key: "C", text: "Indecision", is_correct: false, explanation: "Contrary to the note." },
-            { key: "D", text: "Fearfulness", is_correct: false, explanation: "Not mentioned in the note." }
-          ]
-        }
-      ]
+      noteQuizzes: []
     };
-
     return mockDraft;
   }
 
   convertDraftToLesson(draft: LessonDraft, author: User): Lesson {
     const sections: LessonSection[] = [];
-
-    // 1. Leadership Note
     if (draft.leadershipNote && draft.leadershipNote.body) {
       sections.push({
         id: crypto.randomUUID(),
@@ -168,8 +174,6 @@ class LessonService {
         sequence: 1
       });
     }
-
-    // 2. Bible Quizzes
     if (draft.bibleQuizzes && draft.bibleQuizzes.length > 0) {
       sections.push({
         id: crypto.randomUUID(),
@@ -180,29 +184,6 @@ class LessonService {
           id: crypto.randomUUID(),
           type: 'Bible Quiz',
           reference: q.bible_reference,
-          text: q.question_text,
-          sequence: idx,
-          options: q.options.map((o: any) => ({
-            id: crypto.randomUUID(),
-            label: o.key,
-            text: o.text,
-            isCorrect: o.is_correct,
-            explanation: o.explanation
-          }))
-        }))
-      });
-    }
-
-    // 3. Note Quizzes
-    if (draft.noteQuizzes && draft.noteQuizzes.length > 0) {
-      sections.push({
-        id: crypto.randomUUID(),
-        type: 'quiz_group',
-        title: "Leadership Application",
-        sequence: 3,
-        quizzes: draft.noteQuizzes.map((q, idx) => ({
-          id: crypto.randomUUID(),
-          type: 'Note Quiz',
           text: q.question_text,
           sequence: idx,
           options: q.options.map((o: any) => ({
@@ -231,7 +212,6 @@ class LessonService {
       views: 0,
       sections: sections
     };
-
     return lesson;
   }
 
@@ -246,7 +226,6 @@ class LessonService {
       score: isCorrect ? 10 : 0,
       attempted_at: new Date().toISOString()
     };
-    
     this.attempts.push(attempt);
     this.saveAttempts();
   }
@@ -255,7 +234,6 @@ class LessonService {
     return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId);
   }
 
-  // Check if a user has attempted ANY quiz in a specific lesson
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
       return userAttempts.length > 0;

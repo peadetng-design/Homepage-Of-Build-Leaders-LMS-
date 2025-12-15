@@ -3,7 +3,7 @@ import React from 'react';
 import {
   Home, Book, Users, Award, MessageCircle, Settings,
   LogOut, Shield, Heart, ChevronLeft, ChevronRight,
-  Library, Building2, UserPlus
+  Library, Building2, UserPlus, Newspaper
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
   const commonItems = [
     { label: 'Home', icon: Home, path: 'home' },
     { label: 'Resources', icon: Library, path: 'resources' },
-    { label: 'Community', icon: MessageCircle, path: 'community', badge: 3 },
+    { label: 'News', icon: Newspaper, path: 'news' },
   ];
 
   // Specific items per role
@@ -29,10 +29,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
     [UserRole.STUDENT]: [
       { label: 'My Lessons', icon: Book, path: 'lessons' },
       { label: 'Progress', icon: Award, path: 'progress' },
+      { label: 'Community', icon: MessageCircle, path: 'community' },
     ],
     [UserRole.MENTOR]: [
       { label: 'My Group', icon: Users, path: 'group' },
       { label: 'Assignments', icon: Book, path: 'assignments' },
+      { label: 'Community', icon: MessageCircle, path: 'community' },
     ],
     [UserRole.ADMIN]: [
       { label: 'Admin Panel', icon: Shield, path: 'admin' },

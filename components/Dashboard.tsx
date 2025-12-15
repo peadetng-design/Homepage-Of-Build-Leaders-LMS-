@@ -11,7 +11,9 @@ import ExportModal from './ExportModal';
 import LessonBrowser from './LessonBrowser';
 import LessonUpload from './LessonUpload';
 import StudentPanel from './StudentPanel';
-import Tooltip from './Tooltip'; // Import Tooltip
+import Tooltip from './Tooltip'; 
+import ResourceView from './ResourceView';
+import NewsView from './NewsView';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus
@@ -20,6 +22,7 @@ import {
 interface DashboardProps {
   user: User;
   onChangePasswordClick?: () => void;
+  initialView?: DashboardView; // Added prop
 }
 
 // Color mapping
@@ -177,11 +180,14 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
 );
 
 // VIEW STATE ENUM to prevent hook errors
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users';
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news';
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, initialView }) => {
   // 1. ALL STATE HOOKS
-  const [currentView, setCurrentView] = useState<DashboardView>('dashboard');
+  // Use initialView if provided and valid, otherwise dashboard
+  const [currentView, setCurrentView] = useState<DashboardView>(
+      (initialView === 'resources' || initialView === 'news') ? initialView : 'dashboard'
+  );
   
   const [dailyVerse, setDailyVerse] = useState<{ verse: string; reference: string; reflection: string } | null>(null);
   const [loadingVerse, setLoadingVerse] = useState(true);
@@ -192,13 +198,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   // Admin View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
   
-  // Mentor View State (Updated to include users and invites)
+  // Mentor View State
   const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests'>('lessons');
 
   // Student View State
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
 
-  // Org View State (Unified for both Manage Users and Manage Lessons)
+  // Org View State
   const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
   
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
@@ -234,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
       }
     };
     fetchContent();
-  }, [isParentView, user.linkedStudentId, user.role, currentView]);
+  }, [isParentView, user.linkedStudentId, user.role]); // Removed currentView dependency to avoid loops if needed, though safe here
 
   // 3. HANDLERS
   const handleQuizAnswer = (option: string) => {
@@ -278,6 +284,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
   };
 
   // 4. RENDER Logic based on currentView
+  
+  if (currentView === 'resources') return <div className="p-4 md:p-8 animate-in fade-in duration-300"><ResourceView /></div>;
+  if (currentView === 'news') return <div className="p-4 md:p-8 animate-in fade-in duration-300"><NewsView /></div>;
 
   if (currentView === 'lesson-view' && activeLesson) {
     return (
@@ -354,13 +363,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            
            {/* UPLOAD LESSONS BUTTON (For Admin, Mentor, Parent, Org) - NOT Student */}
            {!isStudentView && (
-              <Tooltip content="Upload Excel files or use the Manual Builder to create new study materials.">
+              <Tooltip content={isAdminView ? "Upload Lessons, Resources, or News." : "Upload Excel files or use the Manual Builder."}>
                 <button 
                   onClick={() => setCurrentView('upload')}
                   className="flex items-center gap-2 px-5 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
                 >
                   <Upload size={18} /> 
-                  <span>UPLOAD LESSONS</span>
+                  <span>{isAdminView ? 'UPLOAD CONTENT' : 'UPLOAD LESSONS'}</span>
                 </button>
               </Tooltip>
            )}

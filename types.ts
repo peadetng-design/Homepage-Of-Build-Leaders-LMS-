@@ -116,6 +116,27 @@ export interface LessonDraft {
   errors: string[];
 }
 
+// --- NEW CONTENT TYPES ---
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  fileType: 'pdf' | 'doc' | 'image' | 'other';
+  url: string; // In a real app this is a URL, here we might use a blob or mock
+  uploadedBy: string;
+  uploadedAt: string;
+  size: string;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  category: 'Announcement' | 'Event' | 'Update';
+  author: string;
+}
+
 // --- END LMS DATA MODEL ---
 
 export interface AuthState {

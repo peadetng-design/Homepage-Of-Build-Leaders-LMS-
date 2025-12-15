@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -175,28 +176,28 @@ const QuizCard: React.FC<{
              const isCorrect = option.isCorrect;
              
              // Base Button Classes
-             let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all relative flex flex-col ";
-             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-colors ";
+             let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ease-in-out relative flex flex-col ";
+             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-colors duration-300 ";
              
              if (!isAnswered) {
-                // PRE-ATTEMPT: No Clues
+                // PRE-ATTEMPT: No Clues, clean state
                 btnClass += "border-gray-100 hover:border-royal-500 hover:bg-royal-50 cursor-pointer";
                 circleClass += "border-gray-300 text-gray-500";
              } else {
-                // POST-ATTEMPT: Reveal Logic
-                // 1. Correct Answer (Selected or Not) -> GREEN
+                // POST-ATTEMPT: Reveal Logic with specific colors
+                // 1. Correct Answer (Green #2ecc71)
                 if (isCorrect) {
-                   btnClass += "bg-green-50 text-green-900 border-[#2ecc71]"; 
+                   btnClass += "bg-[#2ecc71]/10 border-[#2ecc71]"; 
                    circleClass += "bg-[#2ecc71] border-[#2ecc71] text-white";
                 } 
-                // 2. Selected Wrong Answer -> RED
+                // 2. Wrong Answer Selected (Red #e74c3c)
                 else if (isSelected && !isCorrect) {
-                   btnClass += "bg-red-50 text-red-900 border-[#e74c3c]"; 
+                   btnClass += "bg-[#e74c3c]/10 border-[#e74c3c]"; 
                    circleClass += "bg-[#e74c3c] border-[#e74c3c] text-white";
                 } 
-                // 3. Unselected Wrong Answer -> Faded
+                // 3. Unselected Wrong Answer (Fade out)
                 else {
-                   btnClass += "border-gray-100 opacity-60"; 
+                   btnClass += "border-gray-100 opacity-50 bg-gray-50"; 
                    circleClass += "border-gray-200 text-gray-400";
                 }
              }
@@ -207,40 +208,40 @@ const QuizCard: React.FC<{
                    disabled={isAnswered}
                    onClick={() => onSelect(option)}
                    className={btnClass}
-                   // Ensure specific border colors using inline styles to override Tailwind conflicts if any
-                   style={isAnswered ? { 
-                     borderColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined) 
-                   } : {}}
                  >
                    <div className="flex items-center justify-between w-full">
                      <div className="flex items-center gap-3">
                        {/* Option Label Circle */}
-                       <span 
-                         className={circleClass}
-                         style={isAnswered ? { 
-                            backgroundColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined),
-                            borderColor: isCorrect ? '#2ecc71' : (isSelected && !isCorrect ? '#e74c3c' : undefined)
-                         } : {}}
-                       >
+                       <span className={circleClass}>
                           {option.label}
                        </span>
-                       <span className="font-medium text-lg">{option.text}</span>
+                       <span className={`font-medium text-lg ${isAnswered && isCorrect ? 'text-[#2ecc71] font-bold' : isAnswered && isSelected ? 'text-[#e74c3c]' : 'text-gray-800'}`}>
+                          {option.text}
+                       </span>
                      </div>
                      
                      {/* Result Icons */}
-                     {isAnswered && isCorrect && <CheckCircle size={24} color="#2ecc71" />}
-                     {isAnswered && isSelected && !isCorrect && <X size={24} color="#e74c3c" />}
+                     {isAnswered && isCorrect && (
+                        <div className="animate-in zoom-in spin-in-90 duration-300">
+                           <CheckCircle size={24} color="#2ecc71" fill="white" />
+                        </div>
+                     )}
+                     {isAnswered && isSelected && !isCorrect && (
+                        <div className="animate-in zoom-in duration-300">
+                           <X size={24} color="#e74c3c" />
+                        </div>
+                     )}
                    </div>
 
-                   {/* REVEAL EXPLANATION: Shown for ALL options once answered */}
-                   {isAnswered && (
-                     <div className="mt-3 pt-3 border-t border-black/10 w-full animate-in fade-in slide-in-from-top-1">
+                   {/* REVEAL EXPLANATION: Smooth Slide Down */}
+                   <div 
+                      className={`overflow-hidden transition-all duration-500 ease-out ${isAnswered ? 'max-h-96 opacity-100 mt-3 pt-3 border-t border-black/5' : 'max-h-0 opacity-0 border-none'}`}
+                   >
                         <div 
-                          className={`text-sm ${isCorrect ? 'text-green-800' : 'text-gray-600'}`}
-                          dangerouslySetInnerHTML={{ __html: `<strong>Explanation:</strong> ${option.explanation}` }} 
+                          className={`text-sm ${isCorrect ? 'text-[#27ae60]' : 'text-gray-600'}`}
+                          dangerouslySetInnerHTML={{ __html: `<strong>Explanation:</strong> ${option.explanation || 'No explanation provided.'}` }} 
                         />
-                     </div>
-                   )}
+                   </div>
                  </button>
                </div>
              );

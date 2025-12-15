@@ -107,11 +107,23 @@ export interface StudentAttempt {
   attempted_at: string;
 }
 
+// Updated structure to match Excel Import requirements
 export interface LessonDraft {
-  metadata: Partial<Lesson>;
-  bibleQuizzes: any[]; // Raw import data
+  metadata: {
+    id?: string;
+    title: string;
+    description: string;
+    book: string;
+    chapter: number;
+    lesson_type: LessonType;
+    targetAudience: TargetAudience;
+  };
+  leadershipNote: { 
+    title: string; 
+    body: string; 
+  };
+  bibleQuizzes: any[]; // Raw import data matching internal QuizQuestion structure but flexible
   noteQuizzes: any[];  // Raw import data
-  leadershipNote: { title: string; body: string };
   isValid: boolean;
   errors: string[];
 }

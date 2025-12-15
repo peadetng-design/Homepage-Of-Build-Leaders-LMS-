@@ -7,7 +7,8 @@ import LessonUpload from './LessonUpload';
 import { 
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
-  BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX, Trash2
+  BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX, Trash2,
+  Download, Filter, Calendar
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -41,6 +42,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.STUDENT);
   const [generatedLink, setGeneratedLink] = useState('');
+
+  // Logs Filter State
+  const [logSearch, setLogSearch] = useState('');
+  const [logSeverity, setLogSeverity] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
+  const [logStartDate, setLogStartDate] = useState('');
+  const [logEndDate, setLogEndDate] = useState('');
 
   // Determine Permissions
   const isAdmin = currentUser.role === UserRole.ADMIN;
@@ -138,6 +145,63 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedLink);
     setNotification({ msg: 'Link copied to clipboard', type: 'success' });
+  };
+
+  // --- LOG FILTERING & EXPORT ---
+  const getFilteredLogs = () => {
+    return logs.filter(log => {
+        const matchesSearch = 
+            log.actorName.toLowerCase().includes(logSearch.toLowerCase()) || 
+            log.action.toLowerCase().includes(logSearch.toLowerCase()) ||
+            log.details.toLowerCase().includes(logSearch.toLowerCase());
+        
+        const matchesSeverity = logSeverity === 'all' || log.severity === logSeverity;
+
+        let matchesDate = true;
+        if (logStartDate) {
+            matchesDate = matchesDate && new Date(log.timestamp) >= new Date(logStartDate);
+        }
+        if (logEndDate) {
+            const end = new Date(logEndDate);
+            end.setHours(23, 59, 59, 999);
+            matchesDate = matchesDate && new Date(log.timestamp) <= end;
+        }
+
+        return matchesSearch && matchesSeverity && matchesDate;
+    });
+  };
+
+  const handleExportCSV = () => {
+    const data = getFilteredLogs();
+    if (data.length === 0) {
+        setNotification({ msg: "No logs to export", type: 'error' });
+        return;
+    }
+    
+    const headers = ['Timestamp', 'Severity', 'Action', 'Actor Name', 'Actor ID', 'Details'];
+    const csvRows = [headers.join(',')];
+    
+    for (const row of data) {
+        const cleanDetails = row.details.replace(/"/g, '""').replace(/\n/g, ' '); 
+        const values = [
+            `"${new Date(row.timestamp).toLocaleString()}"`,
+            row.severity,
+            `"${row.action}"`,
+            `"${row.actorName}"`,
+            row.actorId,
+            `"${cleanDetails}"`
+        ];
+        csvRows.push(values.join(','));
+    }
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-logs-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    setNotification({ msg: "Export started", type: 'success' });
   };
 
   return (
@@ -420,26 +484,92 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
         {/* LOGS TAB (Admin Only) */}
         {activeTab === 'logs' && isAdmin && (
-           <div className="space-y-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-gray-700">System Audit Trail</h3>
-                <span className="text-xs text-gray-500">Last 50 events</span>
+           <div className="space-y-6">
+              
+              {/* Filter Bar */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex flex-wrap gap-4 items-end">
+                  <div className="flex-1 min-w-[200px]">
+                      <label className="block text-xs font-bold text-gray-500 mb-1">Search</label>
+                      <div className="relative">
+                          <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                          <input 
+                              type="text" 
+                              placeholder="Action, User, or Details..." 
+                              value={logSearch}
+                              onChange={(e) => setLogSearch(e.target.value)}
+                              className="w-full pl-9 p-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-royal-500 outline-none"
+                          />
+                      </div>
+                  </div>
+                  <div className="w-[150px]">
+                       <label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><Filter size={12}/> Severity</label>
+                       <select 
+                           value={logSeverity} 
+                           onChange={(e) => setLogSeverity(e.target.value as any)}
+                           className="w-full p-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-royal-500 outline-none bg-white"
+                       >
+                           <option value="all">All Levels</option>
+                           <option value="info">Info</option>
+                           <option value="warning">Warning</option>
+                           <option value="critical">Critical</option>
+                       </select>
+                  </div>
+                  <div className="w-[140px]">
+                      <label className="block text-xs font-bold text-gray-500 mb-1 flex items-center gap-1"><Calendar size={12}/> Start Date</label>
+                      <input 
+                          type="date" 
+                          value={logStartDate}
+                          onChange={(e) => setLogStartDate(e.target.value)}
+                          className="w-full p-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-royal-500 outline-none"
+                      />
+                  </div>
+                  <div className="w-[140px]">
+                      <label className="block text-xs font-bold text-gray-500 mb-1">End Date</label>
+                      <input 
+                          type="date" 
+                          value={logEndDate}
+                          onChange={(e) => setLogEndDate(e.target.value)}
+                          className="w-full p-2 rounded-lg border border-gray-300 text-sm focus:ring-2 focus:ring-royal-500 outline-none"
+                      />
+                  </div>
               </div>
-              <div className="border rounded-xl overflow-hidden">
-                {logs.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">No logs recorded yet.</div>
+
+              {/* Header & Export */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                   <h3 className="font-bold text-gray-700">System Audit Trail</h3>
+                   <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{getFilteredLogs().length} Events</span>
+                </div>
+                <button 
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-50 text-sm transition-colors"
+                >
+                    <Download size={16} /> Export CSV
+                </button>
+              </div>
+              
+              {/* Logs List */}
+              <div className="border rounded-xl overflow-hidden shadow-sm">
+                {getFilteredLogs().length === 0 ? (
+                  <div className="p-12 text-center text-gray-400 bg-gray-50">
+                      <div className="mb-2"><Search size={32} className="mx-auto opacity-30"/></div>
+                      No logs found matching your filters.
+                  </div>
                 ) : (
-                  <div className="max-h-[500px] overflow-y-auto">
-                    {logs.map(log => (
-                      <div key={log.id} className="p-4 border-b border-gray-100 hover:bg-gray-50 flex items-start gap-4 text-sm">
-                         <div className={`mt-1 w-2 h-2 rounded-full ${log.severity === 'critical' ? 'bg-red-500' : log.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-400'}`}></div>
-                         <div className="flex-1">
-                            <div className="flex justify-between">
-                               <span className="font-bold text-gray-900">{log.action}</span>
-                               <span className="text-gray-400 text-xs">{new Date(log.timestamp).toLocaleString()}</span>
+                  <div className="max-h-[600px] overflow-y-auto custom-scrollbar bg-white">
+                    {getFilteredLogs().map(log => (
+                      <div key={log.id} className="p-4 border-b border-gray-100 hover:bg-gray-50 flex items-start gap-4 text-sm transition-colors group">
+                         <div className={`mt-1.5 w-2.5 h-2.5 rounded-full flex-shrink-0 ${log.severity === 'critical' ? 'bg-red-500 shadow-sm shadow-red-200' : log.severity === 'warning' ? 'bg-amber-500 shadow-sm shadow-amber-200' : 'bg-blue-400'}`}></div>
+                         <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start mb-1">
+                               <span className="font-bold text-gray-900 group-hover:text-royal-800 transition-colors">{log.action}</span>
+                               <span className="text-gray-400 text-xs font-mono">{new Date(log.timestamp).toLocaleString()}</span>
                             </div>
-                            <p className="text-gray-600 mt-1">{log.details}</p>
-                            <p className="text-gray-400 text-xs mt-1">Actor: {log.actorName} (ID: ...{log.actorId.slice(-4)})</p>
+                            <p className="text-gray-600 mb-1 break-words">{log.details}</p>
+                            <div className="flex items-center gap-2 text-xs text-gray-400">
+                                <span className="bg-gray-100 px-1.5 py-0.5 rounded flex items-center gap-1"><Users size={10}/> {log.actorName}</span>
+                                <span className="font-mono opacity-50 text-[10px]">ID: {log.actorId.slice(0,8)}...</span>
+                            </div>
                          </div>
                       </div>
                     ))}

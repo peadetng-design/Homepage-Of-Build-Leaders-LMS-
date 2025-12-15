@@ -147,6 +147,10 @@ const QuizCard: React.FC<{
   onSelect: (opt: QuizOption) => void 
 }> = ({ quiz, index, selectedOptionId, onSelect }) => {
   const isAnswered = !!selectedOptionId;
+  
+  // Determine if the user got this specific question right
+  const userSelectedOption = quiz.options.find(o => o.id === selectedOptionId);
+  const isUserCorrect = userSelectedOption?.isCorrect || false;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md">
@@ -157,7 +161,7 @@ const QuizCard: React.FC<{
            </span>
            <div className="flex-1 w-full min-w-0">
               
-              {/* REQUIREMENT 1 & 2: Reference box appearing BEFORE and ON TOP of question, Enlarged capacity */}
+              {/* REQUIREMENT: Reference box appearing BEFORE and ON TOP of question */}
               {quiz.reference && (
                 <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed max-h-[400px] overflow-y-auto whitespace-pre-wrap shadow-inner w-full">
                    <span className="text-xs font-bold text-gray-400 uppercase block mb-2 tracking-wider">Reference / Context</span>
@@ -186,21 +190,37 @@ const QuizCard: React.FC<{
                 textClass += "text-gray-800";
              } else {
                 // Post-Answer State
-                if (isCorrect) {
-                   // Correct Answer (Green #2ecc71)
-                   containerClass += "bg-green-50 border-green-500";
-                   circleClass += "bg-green-500 border-green-500 text-white";
-                   textClass += "text-green-900 font-bold";
-                } else if (isSelected && !isCorrect) {
-                   // REQUIREMENT 3: Incorrect Selected -> RED Box and VISIBLE Text
-                   containerClass += "bg-red-50 border-red-500"; // Red background
-                   circleClass += "bg-red-500 border-red-500 text-white"; // Red circle
-                   textClass += "text-red-900 font-bold"; // Dark Red text for visibility
+                if (isUserCorrect) {
+                    // SCENARIO B: User Chose RIGHT
+                    if (isCorrect) {
+                        // User's correct selection -> Green
+                        containerClass += "bg-green-50 border-green-500";
+                        circleClass += "bg-green-500 border-green-500 text-white";
+                        textClass += "text-green-900 font-bold";
+                    } else {
+                        // Incorrect options -> Red & Bold
+                        containerClass += "bg-red-50 border-red-200 opacity-90";
+                        circleClass += "border-red-300 text-red-600 font-bold bg-white";
+                        textClass += "text-red-800 font-bold";
+                    }
                 } else {
-                   // Incorrect Not Selected (Muted but visible)
-                   containerClass += "border-gray-100 opacity-60";
-                   circleClass += "border-gray-200 text-gray-400";
-                   textClass += "text-gray-500";
+                    // SCENARIO A: User Chose WRONG
+                    if (isCorrect) {
+                        // The actual correct answer -> Green
+                        containerClass += "bg-green-50 border-green-500";
+                        circleClass += "bg-green-500 border-green-500 text-white";
+                        textClass += "text-green-900 font-bold";
+                    } else if (isSelected) {
+                        // User's wrong selection -> Red
+                        containerClass += "bg-red-50 border-red-500"; 
+                        circleClass += "bg-red-500 border-red-500 text-white"; 
+                        textClass += "text-red-900 font-bold";
+                    } else {
+                        // Other wrong answers -> Orange & Bold
+                        containerClass += "bg-orange-50 border-orange-300 opacity-90";
+                        circleClass += "border-orange-400 text-orange-600 font-bold bg-white";
+                        textClass += "text-orange-800 font-bold";
+                    }
                 }
              }
 

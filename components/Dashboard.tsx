@@ -11,6 +11,7 @@ import ExportModal from './ExportModal';
 import LessonBrowser from './LessonBrowser';
 import LessonUpload from './LessonUpload';
 import StudentPanel from './StudentPanel';
+import Tooltip from './Tooltip'; // Import Tooltip
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus
@@ -78,33 +79,37 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, type = 'card', pr
 
   if (type === 'ring') {
     return (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center gap-6">
-        <CircularProgress percentage={progress || 0} color={color} size={70} icon={Icon} />
-        <div>
-           <h3 className="text-gray-500 font-medium text-xs uppercase tracking-wider mb-1">{title}</h3>
-           <div className="text-2xl font-bold text-gray-900">{value}</div>
-           <div className={`text-xs font-bold mt-1 ${colors.text}`}>{subtitle}</div>
+      <Tooltip content={`View detailed analytics for ${title}`}>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow flex items-center gap-6 cursor-default">
+          <CircularProgress percentage={progress || 0} color={color} size={70} icon={Icon} />
+          <div>
+            <h3 className="text-gray-500 font-medium text-xs uppercase tracking-wider mb-1">{title}</h3>
+            <div className="text-2xl font-bold text-gray-900">{value}</div>
+            <div className={`text-xs font-bold mt-1 ${colors.text}`}>{subtitle}</div>
+          </div>
         </div>
-      </div>
+      </Tooltip>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group">
-      <div className={`absolute top-0 right-0 w-24 h-24 ${colors.light} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
-      <div className="relative z-10">
-        <div className={`w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center mb-4`}>
-          <Icon size={24} />
-        </div>
-        <h3 className="text-gray-500 font-medium text-sm mb-1">{title}</h3>
-        <div className="flex items-end gap-2">
-           <span className="text-3xl font-bold text-gray-900">{value}</span>
-           <span className="text-xs text-green-500 font-medium mb-1.5 flex items-center">
-             <TrendingUp size={12} className="mr-0.5" /> {subtitle}
-           </span>
+    <Tooltip content={`Overview statistic for ${title}`}>
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative overflow-hidden group cursor-default">
+        <div className={`absolute top-0 right-0 w-24 h-24 ${colors.light} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
+        <div className="relative z-10">
+          <div className={`w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center mb-4`}>
+            <Icon size={24} />
+          </div>
+          <h3 className="text-gray-500 font-medium text-sm mb-1">{title}</h3>
+          <div className="flex items-end gap-2">
+            <span className="text-3xl font-bold text-gray-900">{value}</span>
+            <span className="text-xs text-green-500 font-medium mb-1.5 flex items-center">
+              <TrendingUp size={12} className="mr-0.5" /> {subtitle}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+    </Tooltip>
   );
 };
 
@@ -349,59 +354,71 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick }) =>
            
            {/* UPLOAD LESSONS BUTTON (For Admin, Mentor, Parent, Org) - NOT Student */}
            {!isStudentView && (
-              <button 
-                onClick={() => setCurrentView('upload')}
-                className="flex items-center gap-2 px-5 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
-              >
-                 <Upload size={18} /> 
-                 <span>UPLOAD LESSONS</span>
-              </button>
+              <Tooltip content="Upload Excel files or use the Manual Builder to create new study materials.">
+                <button 
+                  onClick={() => setCurrentView('upload')}
+                  className="flex items-center gap-2 px-5 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
+                >
+                  <Upload size={18} /> 
+                  <span>UPLOAD LESSONS</span>
+                </button>
+              </Tooltip>
            )}
 
            {/* MANAGE USERS BUTTON (For Org Only - Mentors have panel inline) */}
            {isOrgView && (
-              <button 
-                onClick={handleManageUsers}
-                className={`flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-users' ? 'ring-2 ring-emerald-400' : ''}`}
-              >
-                 <UserPlus size={18} /> 
-                 <span>MANAGE USERS</span>
-              </button>
+              <Tooltip content="Manage student enrollment, invite new mentors, and view organization roster." className="text-gold-400">
+                <button 
+                  onClick={handleManageUsers}
+                  className={`flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-users' ? 'ring-2 ring-emerald-400' : ''}`}
+                >
+                  <UserPlus size={18} /> 
+                  <span>MANAGE USERS</span>
+                </button>
+              </Tooltip>
            )}
 
            {/* MANAGE LESSONS BUTTON (For Admin, Mentor, Org) */}
            {(isAdminView || isMentorView || isOrgView) && (
-              <button 
-                onClick={handleManageLessons}
-                className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' ? 'ring-2 ring-indigo-400' : ''}`}
-              >
-                 <Edit3 size={18} /> 
-                 <span>MANAGE LESSONS</span>
-              </button>
+              <Tooltip content="Edit, delete, or organize existing lessons in your library.">
+                <button 
+                  onClick={handleManageLessons}
+                  className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' ? 'ring-2 ring-indigo-400' : ''}`}
+                >
+                  <Edit3 size={18} /> 
+                  <span>MANAGE LESSONS</span>
+                </button>
+              </Tooltip>
            )}
 
            {/* TAKE LESSONS BUTTON (For Everyone - Admin, Mentor, Student, Org, Parent) */}
-           <button 
-                onClick={() => setCurrentView('lesson-browser')}
-                className="flex items-center gap-2 px-5 py-3 bg-royal-500 text-white rounded-xl font-bold hover:bg-royal-800 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
-           >
-                <Play size={18} fill="currentColor" /> 
-                <span>TAKE LESSONS</span>
-           </button>
+           <Tooltip content="Browse the full lesson library and start interactive study sessions.">
+             <button 
+                  onClick={() => setCurrentView('lesson-browser')}
+                  className="flex items-center gap-2 px-5 py-3 bg-royal-500 text-white rounded-xl font-bold hover:bg-royal-800 shadow-lg shadow-royal-500/30 transition-all transform hover:-translate-y-0.5"
+             >
+                  <Play size={18} fill="currentColor" /> 
+                  <span>TAKE LESSONS</span>
+             </button>
+           </Tooltip>
            
            {/* PRINT / EXPORT BUTTON (For All) */}
-           <button 
-             onClick={() => setShowExportModal(true)}
-             className="flex items-center gap-2 px-5 py-3 bg-gold-500 text-white rounded-xl font-bold hover:bg-gold-600 shadow-lg shadow-gold-500/30 transition-all transform hover:-translate-y-0.5"
-           >
-              <Printer size={18} /> 
-              <span>PRINT / EXPORT</span>
-           </button>
+           <Tooltip content="Download performance reports and unattempted lessons as PDF or Text files.">
+             <button 
+               onClick={() => setShowExportModal(true)}
+               className="flex items-center gap-2 px-5 py-3 bg-gold-500 text-white rounded-xl font-bold hover:bg-gold-600 shadow-lg shadow-gold-500/30 transition-all transform hover:-translate-y-0.5"
+             >
+                <Printer size={18} /> 
+                <span>PRINT / EXPORT</span>
+             </button>
+           </Tooltip>
 
            {onChangePasswordClick && (
-             <button onClick={onChangePasswordClick} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors">
-               <Lock size={20} />
-             </button>
+             <Tooltip content="Update your account security settings.">
+               <button onClick={onChangePasswordClick} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors">
+                 <Lock size={20} />
+               </button>
+             </Tooltip>
            )}
         </div>
       </div>

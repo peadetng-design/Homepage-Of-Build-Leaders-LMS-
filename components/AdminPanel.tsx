@@ -4,6 +4,7 @@ import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types'
 import { authService } from '../services/authService';
 import { lessonService } from '../services/lessonService';
 import LessonUpload from './LessonUpload';
+import Tooltip from './Tooltip'; // Import Tooltip
 import { 
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
@@ -210,7 +211,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[600px]">
       {/* Header */}
-      <div className="bg-royal-900 p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-royal-900 px-8 pt-16 pb-10 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
              <Shield className={isMentor ? "text-blue-400" : "text-gold-500"} /> 
@@ -229,41 +230,51 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         <div className="flex flex-wrap gap-2">
            {canManageUsers && (
              <>
-                <button 
-                  onClick={() => setActiveTab('users')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-                >
-                  Manage Users
-                </button>
-                <button 
-                  onClick={() => setActiveTab('invites')}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'invites' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-                >
-                  Invites
-                </button>
+                <Tooltip content="View and manage all registered user accounts." className="text-gold-400">
+                  <button 
+                    onClick={() => setActiveTab('users')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'users' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                  >
+                    Manage Users
+                  </button>
+                </Tooltip>
+                <Tooltip content="Create and manage invitation links for new members." className="text-gold-400">
+                  <button 
+                    onClick={() => setActiveTab('invites')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'invites' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                  >
+                    Invites
+                  </button>
+                </Tooltip>
              </>
            )}
-           <button 
-             onClick={() => setActiveTab('lessons')}
-             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-           >
-             MANAGE LESSONS
-           </button>
-           {isMentor && (
-               <button 
-               onClick={() => setActiveTab('requests')}
-               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+           <Tooltip content="Upload, edit, and organize educational content." className="text-gold-400">
+             <button 
+               onClick={() => setActiveTab('lessons')}
+               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
              >
-               Join Requests
+               MANAGE LESSONS
              </button>
+           </Tooltip>
+           {isMentor && (
+               <Tooltip content="Review pending requests from students to join your group." className="text-gold-400">
+                 <button 
+                  onClick={() => setActiveTab('requests')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                >
+                  Join Requests
+                </button>
+               </Tooltip>
            )}
            {isAdmin && (
-             <button 
-               onClick={() => setActiveTab('logs')}
-               className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
-             >
-               Logs
-             </button>
+             <Tooltip content="View detailed system activity logs for security and auditing." className="text-gold-400">
+               <button 
+                 onClick={() => setActiveTab('logs')}
+                 className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+               >
+                 Logs
+               </button>
+             </Tooltip>
            )}
         </div>
       </div>
@@ -291,7 +302,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                   className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-royal-500"
                 />
               </div>
-              <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+              <Tooltip content="Refresh the user list.">
+                <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+              </Tooltip>
             </div>
             
             <div className="overflow-x-auto">
@@ -346,13 +359,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                       </td>
                       <td className="p-4 text-right">
                          {canEdit && (
-                            <button 
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded hover:bg-red-50"
-                              title="Delete User"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <Tooltip content="Permanently delete this user account.">
+                              <button 
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="text-gray-400 hover:text-red-500 transition-colors p-2 rounded hover:bg-red-50"
+                                title="Delete User"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </Tooltip>
                          )}
                       </td>
                     </tr>
@@ -403,9 +418,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </select>
                           </div>
                        </div>
-                       <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
-                         Generate Invite Link
-                       </button>
+                       <Tooltip content="Create a unique registration link to share with the new user.">
+                         <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
+                           Generate Invite Link
+                         </button>
+                       </Tooltip>
                     </form>
                  </div>
 
@@ -426,12 +443,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                  value={generatedLink} 
                                  className="flex-1 bg-white border border-green-200 text-sm p-2 rounded text-gray-600"
                                />
-                               <button 
-                                 onClick={copyToClipboard}
-                                 className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
-                               >
-                                 <Copy size={18} />
-                               </button>
+                               <Tooltip content="Copy link to clipboard.">
+                                 <button 
+                                  onClick={copyToClipboard}
+                                  className="bg-green-600 text-white p-2 rounded hover:bg-green-700 transition-colors"
+                                 >
+                                   <Copy size={18} />
+                                 </button>
+                               </Tooltip>
                             </div>
                          </div>
                       </div>
@@ -443,7 +462,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
              <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center justify-between">
                    <span>Pending Invites</span>
-                   <button onClick={fetchData} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><RefreshCw size={18} /></button>
+                   <Tooltip content="Refresh the invites list.">
+                     <button onClick={fetchData} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><RefreshCw size={18} /></button>
+                   </Tooltip>
                 </h3>
                 
                 <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -465,13 +486,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                <td className="p-4 text-sm text-gray-500">{invite.invitedBy}</td>
                                <td className="p-4 text-sm text-gray-500">{new Date(invite.createdAt).toLocaleDateString()}</td>
                                <td className="p-4 text-right">
-                                  <button 
-                                    onClick={() => handleDeleteInvite(invite.id)}
-                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                    title="Revoke Invite"
-                                  >
-                                     <Trash2 size={18} />
-                                  </button>
+                                  <Tooltip content="Cancel this invitation. The link will become invalid.">
+                                    <button 
+                                      onClick={() => handleDeleteInvite(invite.id)}
+                                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                      title="Revoke Invite"
+                                    >
+                                       <Trash2 size={18} />
+                                    </button>
+                                  </Tooltip>
                                </td>
                             </tr>
                          ))}
@@ -543,12 +566,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                    <h3 className="font-bold text-gray-700">System Audit Trail</h3>
                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded-full">{getFilteredLogs().length} Events</span>
                 </div>
-                <button 
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-50 text-sm transition-colors"
-                >
-                    <Download size={16} /> Export CSV
-                </button>
+                <Tooltip content="Download the current log view as a CSV file.">
+                  <button 
+                      onClick={handleExportCSV}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 text-gray-600 font-bold rounded-lg hover:bg-gray-50 text-sm transition-colors"
+                  >
+                      <Download size={16} /> Export CSV
+                  </button>
+                </Tooltip>
               </div>
               
               {/* Logs List */}
@@ -604,18 +629,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                     </div>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button 
-                                      onClick={() => handleRequestResponse(req.id, 'accepted')}
-                                      className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-bold text-sm"
-                                    >
-                                        <UserCheck size={16} /> Accept
-                                    </button>
-                                    <button 
-                                      onClick={() => handleRequestResponse(req.id, 'rejected')}
-                                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-bold text-sm"
-                                    >
-                                        <UserX size={16} /> Reject
-                                    </button>
+                                    <Tooltip content="Approve this student to join your class.">
+                                      <button 
+                                        onClick={() => handleRequestResponse(req.id, 'accepted')}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 font-bold text-sm"
+                                      >
+                                          <UserCheck size={16} /> Accept
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content="Deny this request.">
+                                      <button 
+                                        onClick={() => handleRequestResponse(req.id, 'rejected')}
+                                        className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 font-bold text-sm"
+                                      >
+                                          <UserX size={16} /> Reject
+                                      </button>
+                                    </Tooltip>
                                 </div>
                             </div>
                         ))}
@@ -655,10 +684,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                   />
                 </div>
                 <div className="flex gap-2">
-                   <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm">
-                      <Plus size={16} /> Add New
-                   </button>
-                   <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+                   <Tooltip content="Create a new lesson from scratch or upload a file.">
+                     <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm">
+                        <Plus size={16} /> Add New
+                     </button>
+                   </Tooltip>
+                   <Tooltip content="Refresh the lessons list.">
+                     <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+                   </Tooltip>
                 </div>
               </div>
 
@@ -703,28 +736,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                    <div className="flex items-center justify-end gap-2">
                                       {/* Mentor "Pick" Action */}
                                       {isMentor && (
-                                         <button 
-                                            onClick={() => setNotification({msg: "Lesson added to your curated list!", type: 'success'})}
-                                            title="Add to My List"
-                                            className="p-2 text-gold-500 hover:bg-gold-50 rounded"
-                                          >
-                                            <ListPlus size={16} />
-                                          </button>
+                                         <Tooltip content="Add this lesson to your students' curriculum.">
+                                            <button 
+                                              onClick={() => setNotification({msg: "Lesson added to your curated list!", type: 'success'})}
+                                              title="Add to My List"
+                                              className="p-2 text-gold-500 hover:bg-gold-50 rounded"
+                                            >
+                                              <ListPlus size={16} />
+                                            </button>
+                                          </Tooltip>
                                       )}
 
                                       {/* Edit Action (Conditional) */}
                                       {canEdit ? (
-                                        <button 
-                                          onClick={() => {
-                                            setEditingLesson(lesson);
-                                            setActiveTab('upload');
-                                          }}
-                                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
-                                        >
-                                          <Edit2 size={16} />
-                                        </button>
+                                        <Tooltip content="Edit this lesson's content and settings.">
+                                          <button 
+                                            onClick={() => {
+                                              setEditingLesson(lesson);
+                                              setActiveTab('upload');
+                                            }}
+                                            className="p-2 text-blue-500 hover:bg-blue-50 rounded"
+                                          >
+                                            <Edit2 size={16} />
+                                          </button>
+                                        </Tooltip>
                                       ) : (
-                                        <button className="p-2 text-gray-300 cursor-not-allowed" title="Read Only"><Edit2 size={16} /></button>
+                                        <Tooltip content="You cannot edit lessons created by others.">
+                                          <button className="p-2 text-gray-300 cursor-not-allowed" title="Read Only"><Edit2 size={16} /></button>
+                                        </Tooltip>
                                       )}
                                    </div>
                                 </td>

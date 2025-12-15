@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Menu, Plus, X, ChevronDown, User as UserIcon } from 'lucide-react';
 import { UserRole, User } from '../types';
@@ -7,9 +8,10 @@ interface HeaderProps {
   toggleSidebar: () => void;
   sidebarOpen: boolean;
   onRoleSwitch: (role: UserRole) => void;
+  onCreateGroup?: () => void; // New prop
 }
 
-const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRoleSwitch }) => {
+const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRoleSwitch, onCreateGroup }) => {
   const [guestMenuOpen, setGuestMenuOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false); // State for role dropdown
   const roleRef = useRef<HTMLDivElement>(null);
@@ -39,17 +41,20 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
   const getAvailableRoles = () => {
      if (!user) return [];
      
-     // CRITICAL: Only allow "View As" logic if user is effectively an Admin.
-     // If user is Mentor/Student/etc by default, they do not see this menu.
-     // If user is Admin (even if viewing as Student), they SEE this menu and can switch back to ADMIN.
-     const isEffectiveAdmin = user.role === UserRole.ADMIN || user.originalRole === UserRole.ADMIN;
+     // 1. Admin "View As" Logic (Superuser)
+     const isEffectiveAdmin = user.role === UserRole.ADMIN || user.originalRole === UserRole.ADMIN || (user.allowedRoles && user.allowedRoles.includes(UserRole.ADMIN));
 
      if (isEffectiveAdmin) {
         // Return ALL roles including ADMIN so they can switch back
         return Object.values(UserRole).filter(r => r !== UserRole.GUEST);
      } 
      
-     // Hide for everyone else
+     // 2. Multi-Role User Logic (e.g. Student who created a Group)
+     // If the user has explicitly defined allowed roles > 1, show them
+     if (user.allowedRoles && user.allowedRoles.length > 1) {
+         return user.allowedRoles;
+     }
+
      return [];
   };
 
@@ -89,13 +94,16 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
 
       {user ? (
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Create Group Action */}
-          <button className="hidden md:flex items-center gap-2 bg-royal-500 hover:bg-royal-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-sm">
+          {/* Create Group Action - ACTIVATED */}
+          <button 
+            onClick={onCreateGroup}
+            className="hidden md:flex items-center gap-2 bg-royal-500 hover:bg-royal-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-sm"
+          >
             <Plus size={16} />
             <span>Create Group</span>
           </button>
 
-          {/* Role Switcher - ONLY render if there are roles to switch to (i.e. is Admin) */}
+          {/* Role Switcher - Render if available roles exist */}
           {availableRoles.length > 0 && (
             <div className="relative" ref={roleRef}>
               <button 

@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -15,6 +14,7 @@ export interface User {
   email: string;
   role: UserRole;
   originalRole?: UserRole; // Tracks the true role when using "View As"
+  allowedRoles?: UserRole[]; // List of roles the user is authorized to switch between
   avatarUrl?: string;
   passwordHash?: string; 
   isVerified?: boolean;
@@ -22,6 +22,7 @@ export interface User {
   lastLogin?: string;
   authProvider?: 'email' | 'google' | 'apple';
   classCode?: string; // For Mentors
+  groupName?: string; // Name of the group created by the mentor
   organizationCode?: string; // For Organizations
   mentorId?: string; // For Students
   organizationId?: string; // For Mentors and Students

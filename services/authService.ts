@@ -21,7 +21,8 @@ const DEFAULT_ADMIN = {
   isVerified: true,
   avatarUrl: '',
   lastLogin: new Date().toISOString(),
-  authProvider: 'email' as const
+  authProvider: 'email' as const,
+  allowedRoles: [UserRole.ADMIN]
 };
 
 // DEFAULT ORG ADMIN (FOR DEMO)
@@ -35,7 +36,8 @@ const DEFAULT_ORG = {
   avatarUrl: '',
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
-  organizationCode: 'ORG777'
+  organizationCode: 'ORG777',
+  allowedRoles: [UserRole.ORGANIZATION]
 };
 
 // DEFAULT MENTOR CREDENTIALS (FOR DEMO)
@@ -51,7 +53,8 @@ const DEFAULT_MENTOR = {
   authProvider: 'email' as const,
   classCode: 'DEMO01',
   organizationId: 'usr_demo_org', // Linked to default Org
-  createdBy: 'usr_demo_org' // Created by Org
+  createdBy: 'usr_demo_org', // Created by Org
+  allowedRoles: [UserRole.MENTOR]
 };
 
 // DEFAULT STUDENT CREDENTIALS (FOR DEMO)
@@ -67,7 +70,8 @@ const DEFAULT_STUDENT = {
   authProvider: 'email' as const,
   mentorId: 'usr_demo_mentor',
   organizationId: 'usr_demo_org', // Cascade link
-  createdBy: 'usr_demo_mentor'
+  createdBy: 'usr_demo_mentor',
+  allowedRoles: [UserRole.STUDENT]
 };
 
 // DEFAULT PARENT CREDENTIALS (FOR DEMO)
@@ -81,7 +85,8 @@ const DEFAULT_PARENT = {
   avatarUrl: '',
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
-  linkedStudentId: 'usr_demo_student'
+  linkedStudentId: 'usr_demo_student',
+  allowedRoles: [UserRole.PARENT]
 };
 
 class AuthService {
@@ -100,7 +105,22 @@ class AuthService {
     if (storedUsers) {
       this.users = JSON.parse(storedUsers);
       
-      // Seed Defaults if missing (Ensure Org is added if old DB exists)
+      // MIGRATION: Ensure allowedRoles exists for all existing users
+      let usersUpdated = false;
+      this.users.forEach(u => {
+          if (!u.allowedRoles) {
+              u.allowedRoles = [u.role];
+              usersUpdated = true;
+          }
+          // Fix: Ensure Root Admin has allowedRoles
+          if (u.email === DEFAULT_ADMIN_EMAIL && !u.allowedRoles.includes(UserRole.ADMIN)) {
+              u.allowedRoles.push(UserRole.ADMIN);
+              usersUpdated = true;
+          }
+      });
+      if (usersUpdated) this.saveUsers();
+
+      // Seed Defaults if missing
       const defaults = [DEFAULT_ORG, DEFAULT_MENTOR, DEFAULT_STUDENT, DEFAULT_PARENT];
       defaults.forEach(def => {
           if (!this.users.find(u => u.email === def.email)) {
@@ -113,6 +133,9 @@ class AuthService {
       if (adminIndex !== -1) {
           // Force update role and essential credentials to ensure admin access
           this.users[adminIndex].role = UserRole.ADMIN;
+          if (!this.users[adminIndex].allowedRoles?.includes(UserRole.ADMIN)) {
+             this.users[adminIndex].allowedRoles = [UserRole.ADMIN];
+          }
           // Keep ID stable, update password if needed
           if (!this.users[adminIndex].passwordHash) this.users[adminIndex].passwordHash = DEFAULT_ADMIN.passwordHash;
       } else {
@@ -199,7 +222,8 @@ class AuthService {
         // Generate codes based on role
         classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
         organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
-        organizationId: organizationId
+        organizationId: organizationId,
+        allowedRoles: [role] // Initialize with requested role
     };
 
     this.users.push(newUser);
@@ -229,6 +253,9 @@ class AuthService {
     if (!user.isVerified) throw new Error("Verify email first.");
 
     user.lastLogin = new Date().toISOString();
+    // Ensure allowedRoles is set (for migration robustness)
+    if (!user.allowedRoles) user.allowedRoles = [user.role];
+    
     this.saveUsers();
     this.logAction(user, 'LOGIN', `User logged in`);
     localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, exp: Date.now() + 3600000 }));
@@ -259,7 +286,8 @@ class AuthService {
                   isVerified: true,
                   lastLogin: new Date().toISOString(),
                   classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
-                  organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined
+                  organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
+                  allowedRoles: [role || UserRole.STUDENT]
               };
               this.users.push(user);
           }
@@ -269,6 +297,9 @@ class AuthService {
           if (user.email === DEFAULT_ADMIN_EMAIL && user.role !== UserRole.ADMIN) {
              console.warn("Restoring System Admin privileges");
              user.role = UserRole.ADMIN;
+             if (!user.allowedRoles?.includes(UserRole.ADMIN)) {
+                 user.allowedRoles = [...(user.allowedRoles || []), UserRole.ADMIN];
+             }
           }
           
           user.lastLogin = new Date().toISOString();
@@ -316,7 +347,8 @@ class AuthService {
           organizationId: orgAdmin.id,
           classCode: this.generateCode(),
           lastLogin: undefined,
-          createdBy: orgAdmin.id
+          createdBy: orgAdmin.id,
+          allowedRoles: [UserRole.MENTOR]
       };
       
       this.users.push(newMentor);
@@ -420,6 +452,10 @@ class AuthService {
           }
 
           u.role = role;
+          // When admin manually changes role, reset allowedRoles to match new role to avoid confusion, 
+          // unless logic suggests otherwise. For simplicity, we reset here for manual admin actions.
+          u.allowedRoles = [role]; 
+          
           if (role === UserRole.MENTOR && !u.classCode) u.classCode = this.generateCode();
           if (role === UserRole.ORGANIZATION && !u.organizationCode) u.organizationCode = this.generateCode();
           this.saveUsers();
@@ -507,7 +543,8 @@ class AuthService {
           organizationId: inv.organizationId, // Link if Org Invite
           classCode: inv.role === UserRole.MENTOR ? this.generateCode() : undefined,
           lastLogin: new Date().toISOString(),
-          createdBy: inv.inviterId // Link to inviter
+          createdBy: inv.inviterId, // Link to inviter
+          allowedRoles: [inv.role]
       };
       this.users.push(user);
       inv.status = 'accepted';
@@ -562,6 +599,43 @@ class AuthService {
       if (!student) throw new Error("Student not found");
       const p = this.users.find(u => u.id === parent.id);
       if(p) { p.linkedStudentId = student.id; this.saveUsers(); }
+  }
+
+  // --- GROUP CREATION ---
+
+  async createGroup(user: User, groupName: string): Promise<User> {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const targetUser = this.users.find(u => u.id === user.id);
+    if (!targetUser) throw new Error("User not found");
+
+    // Initialize allowedRoles if missing (backward compatibility)
+    if (!targetUser.allowedRoles) {
+        targetUser.allowedRoles = [targetUser.role];
+    }
+
+    // Add Mentor role if not present, ensuring we keep the original role
+    if (!targetUser.allowedRoles.includes(UserRole.MENTOR)) {
+        targetUser.allowedRoles.push(UserRole.MENTOR);
+    }
+
+    // Upgrade Logic: Set active role to MENTOR
+    if (targetUser.role !== UserRole.MENTOR) {
+        targetUser.role = UserRole.MENTOR;
+    }
+
+    // Ensure Class Code
+    if (!targetUser.classCode) {
+      targetUser.classCode = this.generateCode();
+    }
+    
+    // Set Group Name
+    targetUser.groupName = groupName;
+
+    this.saveUsers();
+    this.logAction(targetUser, 'CREATE_GROUP', `User created group: ${groupName}`);
+
+    return targetUser;
   }
 
   // --- LESSONS ---

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import Hero from './components/Hero';
 import AuthModal from './components/AuthModal';
+import CreateGroupModal from './components/CreateGroupModal';
 import Dashboard from './components/Dashboard';
 import { User, UserRole } from './types';
 import { authService } from './services/authService';
@@ -12,6 +14,7 @@ const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePath, setActivePath] = useState('home');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'register' | 'forgot-password' | 'change-password' | 'accept-invite'>('register');
   const [inviteToken, setInviteToken] = useState<string | undefined>(undefined);
   const [verificationNotification, setVerificationNotification] = useState<string | null>(null);
@@ -123,6 +126,7 @@ const App: React.FC = () => {
         toggleSidebar={toggleSidebar} 
         sidebarOpen={sidebarOpen}
         onRoleSwitch={handleRoleSwitch}
+        onCreateGroup={() => setCreateGroupModalOpen(true)}
       />
 
       <div className="pt-16"> 
@@ -158,6 +162,18 @@ const App: React.FC = () => {
         inviteToken={inviteToken}
         currentUser={user}
       />
+
+      {user && (
+        <CreateGroupModal 
+          isOpen={createGroupModalOpen}
+          onClose={() => setCreateGroupModalOpen(false)}
+          currentUser={user}
+          onGroupCreated={(updatedUser) => {
+             setUser(updatedUser);
+             // Optional: Show success notification handled within modal or via a toast here
+          }}
+        />
+      )}
     </div>
   );
 };

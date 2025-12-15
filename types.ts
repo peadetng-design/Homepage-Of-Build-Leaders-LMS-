@@ -28,6 +28,7 @@ export interface User {
   organizationId?: string; // For Mentors and Students
   linkedStudentId?: string; // For Parents
   createdBy?: string; // ID of the user who invited/created this user
+  curatedLessonIds?: string[]; // IDs of lessons selected for their group
 }
 
 export interface JoinRequest {

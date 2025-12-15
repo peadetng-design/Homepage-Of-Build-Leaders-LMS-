@@ -9,17 +9,17 @@ import {
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
   BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX, Trash2,
-  Download, Filter, Calendar
+  Download, Filter, Calendar, List
 } from 'lucide-react';
 
 interface AdminPanelProps {
   currentUser: User;
-  activeTab?: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests';
-  onTabChange?: (tab: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests') => void;
+  activeTab?: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated';
+  onTabChange?: (tab: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated') => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange }) => {
-  const [internalActiveTab, setInternalActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
+  const [internalActiveTab, setInternalActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   
   // Use prop if provided, otherwise internal state
   const activeTab = propActiveTab || internalActiveTab;
@@ -34,6 +34,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [curatedLessons, setCuratedLessons] = useState<Lesson[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,6 +81,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       } else if (activeTab === 'lessons') {
         const data = await lessonService.getLessons(); 
         setLessons(data);
+      } else if (activeTab === 'curated' && (isMentor || isOrg)) {
+        // Fetch only lessons in the user's curated list
+        const ids = currentUser.curatedLessonIds || [];
+        const data = await lessonService.getLessonsByIds(ids);
+        setCuratedLessons(data);
       } else if (activeTab === 'requests' && isMentor) {
         const data = await authService.getJoinRequests(currentUser);
         setRequests(data);
@@ -141,6 +147,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           await authService.respondToRequest(reqId, status, currentUser);
           setNotification({ msg: `Request ${status}`, type: 'success' });
           fetchData(); 
+      } catch (err: any) {
+          setNotification({ msg: err.message, type: 'error' });
+      }
+  };
+
+  const toggleCurated = async (lessonId: string) => {
+      try {
+          const added = await authService.toggleCuratedLesson(currentUser, lessonId);
+          setNotification({ 
+              msg: added ? "Lesson added to your curated list!" : "Lesson removed from your curated list.", 
+              type: 'success' 
+          });
+          // Refresh curated list if in that view
+          if (activeTab === 'curated') fetchData();
       } catch (err: any) {
           setNotification({ msg: err.message, type: 'error' });
       }
@@ -256,6 +276,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                MANAGE LESSONS
              </button>
            </Tooltip>
+           {(isMentor || isOrg) && (
+               <Tooltip content="Manage the list of lessons your group sees." className="text-gold-400">
+                 <button 
+                  onClick={() => setActiveTab('curated')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'curated' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}
+                >
+                  Curated List
+                </button>
+               </Tooltip>
+           )}
            {isMentor && (
                <Tooltip content="Review pending requests from students to join your group." className="text-gold-400">
                  <button 
@@ -671,6 +701,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            />
         )}
 
+        {/* CURATED LIST TAB (Mentor or Org) */}
+        {activeTab === 'curated' && (isMentor || isOrg) && (
+            <div className="space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                       <ListPlus size={20} className="text-purple-500" /> 
+                       Your Curated Lesson List
+                    </h3>
+                    <Tooltip content="Refresh your curated list.">
+                       <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
+                    </Tooltip>
+                </div>
+                
+                {curatedLessons.length === 0 ? (
+                    <div className="p-12 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                        <div className="mb-4 inline-flex p-4 bg-white rounded-full shadow-sm"><ListPlus size={32} className="text-purple-300"/></div>
+                        <h4 className="font-bold text-gray-700 text-lg mb-1">Your list is empty.</h4>
+                        <p className="text-gray-500 text-sm">Go to the "Manage Lessons" tab and click the <ListPlus size={14} className="inline"/> icon to add lessons for your group.</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {curatedLessons.map(lesson => (
+                            <div key={lesson.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between group hover:border-purple-200 transition-colors">
+                                <div>
+                                    <h4 className="font-bold text-gray-900">{lesson.title}</h4>
+                                    <p className="text-xs text-gray-500">{lesson.category} • {lesson.author}</p>
+                                </div>
+                                <Tooltip content="Remove from curated list.">
+                                    <button 
+                                      onClick={() => toggleCurated(lesson.id)}
+                                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </Tooltip>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        )}
+
         {/* LESSONS LIST TAB (Admin or Mentor) */}
         {activeTab === 'lessons' && (
            <div className="space-y-4">
@@ -714,6 +786,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                            // Logic: Mentor can only edit their own. Everyone sees everything.
                            // Admin can edit all. Org can edit their own.
                            const canEdit = isAdmin || (lesson.author === currentUser.name);
+                           const isCurated = currentUser.curatedLessonIds?.includes(lesson.id);
                            
                            return (
                              <tr key={lesson.id} className="hover:bg-gray-50 transition-colors">
@@ -734,15 +807,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                 </td>
                                 <td className="p-4 text-right">
                                    <div className="flex items-center justify-end gap-2">
-                                      {/* Mentor "Pick" Action */}
-                                      {isMentor && (
-                                         <Tooltip content="Add this lesson to your students' curriculum.">
+                                      {/* Mentor/Org "Pick" Action */}
+                                      {(isMentor || isOrg) && (
+                                         <Tooltip content={isCurated ? "Remove from your curated list." : "Add to your curated list for students."}>
                                             <button 
-                                              onClick={() => setNotification({msg: "Lesson added to your curated list!", type: 'success'})}
-                                              title="Add to My List"
-                                              className="p-2 text-gold-500 hover:bg-gold-50 rounded"
+                                              onClick={() => toggleCurated(lesson.id)}
+                                              className={`p-2 rounded transition-colors ${isCurated ? 'bg-purple-100 text-purple-700' : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'}`}
                                             >
-                                              <ListPlus size={16} />
+                                              {isCurated ? <Check size={16} /> : <ListPlus size={16} />}
                                             </button>
                                           </Tooltip>
                                       )}

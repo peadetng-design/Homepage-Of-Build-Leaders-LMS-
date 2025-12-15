@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
+import { lessonService } from '../services/lessonService';
 import Tooltip from './Tooltip'; // Import Tooltip
-import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users, Play, Clock } from 'lucide-react';
+import { Search, UserPlus, BookOpen, Check, X, Shield, ListPlus, Eye, Users, Play, Clock, Star } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
@@ -35,6 +36,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   const [classCode, setClassCode] = useState('');
   const [mentors, setMentors] = useState<User[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [curatedLessons, setCuratedLessons] = useState<Lesson[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
 
@@ -49,8 +51,16 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
         const data = await authService.getAllMentors();
         setMentors(data);
       } else if (activeTab === 'lessons') {
-        const data = await authService.getLessons();
-        setLessons(data);
+        // Fetch all lessons
+        const allData = await authService.getLessons();
+        setLessons(allData);
+
+        // Fetch curated lessons specifically for this student
+        const curatedIds = await authService.getCuratedLessonIdsForStudent(currentUser);
+        if (curatedIds.length > 0) {
+            const curatedData = await lessonService.getLessonsByIds(curatedIds);
+            setCuratedLessons(curatedData);
+        }
       }
     } catch (error) {
        console.error(error);
@@ -171,58 +181,92 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
 
          {/* LESSONS LIST TAB */}
          {activeTab === 'lessons' && (
-            <div className="space-y-6">
-               <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-gray-800 text-xl">My Assignments</h3>
-                  <div className="text-sm text-gray-500 font-medium">
-                     <span className="text-royal-600 font-bold">{lessons.length}</span> Lessons Available
-                  </div>
-               </div>
+            <div className="space-y-8">
+               
+               {/* 1. Curated Lessons Section (If linked to Mentor/Org) */}
+               {curatedLessons.length > 0 && (
+                   <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 rounded-2xl p-6 relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none"><Star size={120} /></div>
+                       <div className="relative z-10">
+                           <h3 className="font-bold text-purple-900 text-xl flex items-center gap-2 mb-4">
+                               <Star className="text-gold-500 fill-current" /> Assigned by Your Group
+                           </h3>
+                           <div className="grid gap-3">
+                               {curatedLessons.map(lesson => (
+                                   <div key={lesson.id} className="bg-white p-4 rounded-xl border border-purple-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all">
+                                       <div>
+                                           <h4 className="font-bold text-gray-900">{lesson.title}</h4>
+                                           <div className="flex gap-2 mt-1">
+                                               <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold">Assigned</span>
+                                               <span className="text-xs text-gray-500 flex items-center gap-1"><Clock size={10} /> 15m</span>
+                                           </div>
+                                       </div>
+                                       <button 
+                                            onClick={() => onTakeLesson && onTakeLesson(lesson.id)}
+                                            className="px-4 py-2 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition-colors text-sm shadow-md"
+                                       >
+                                           Start
+                                       </button>
+                                   </div>
+                               ))}
+                           </div>
+                       </div>
+                   </div>
+               )}
 
-               <div className="space-y-4">
-                  {lessons.length === 0 ? (
-                      <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                         <BookOpen size={48} className="mx-auto mb-3 opacity-20" />
-                         No lessons assigned yet.
+               <div className="space-y-6">
+                   <div className="flex justify-between items-center">
+                      <h3 className="font-bold text-gray-800 text-xl">All Assignments</h3>
+                      <div className="text-sm text-gray-500 font-medium">
+                         <span className="text-royal-600 font-bold">{lessons.length}</span> Lessons Available
                       </div>
-                  ) : (
-                      lessons.map(lesson => (
-                         <div key={lesson.id} className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center gap-6 hover:border-royal-200 transition-colors group">
-                             <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                   <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{lesson.lesson_type}</span>
-                                   <span className="text-xs text-gray-400 flex items-center gap-1"><Clock size={10} /> 10m</span>
-                                </div>
-                                <h4 className="font-bold text-lg text-gray-900 group-hover:text-royal-600 transition-colors">{lesson.title}</h4>
-                                <p className="text-sm text-gray-500 line-clamp-1">{lesson.description}</p>
-                             </div>
-                             
-                             <div className="w-full md:w-32 hidden md:block">
-                                {/* Simulated Progress */}
-                                <ProgressBar progress={Math.random() > 0.5 ? 100 : Math.floor(Math.random() * 80)} label="Progress" />
-                             </div>
+                   </div>
 
-                             <div className="flex gap-2 w-full md:w-auto">
-                                <Tooltip content="Start learning this lesson now.">
-                                  <button 
-                                    onClick={() => onTakeLesson && onTakeLesson(lesson.id)}
-                                    className="flex-1 md:flex-none px-6 py-2 bg-royal-600 text-white font-bold rounded-lg hover:bg-royal-700 shadow-md shadow-royal-600/20 transition-all flex items-center justify-center gap-2"
-                                  >
-                                    <Play size={16} fill="currentColor" /> Start
-                                  </button>
-                                </Tooltip>
-                                <Tooltip content="Add to your personal study list.">
-                                  <button 
-                                    onClick={() => addToMyList(lesson.title)}
-                                    className="px-3 py-2 border border-gray-200 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gold-500 transition-colors"
-                                  >
-                                    <ListPlus size={20} />
-                                  </button>
-                                </Tooltip>
+                   <div className="space-y-4">
+                      {lessons.length === 0 ? (
+                          <div className="text-center py-12 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                             <BookOpen size={48} className="mx-auto mb-3 opacity-20" />
+                             No lessons assigned yet.
+                          </div>
+                      ) : (
+                          lessons.map(lesson => (
+                             <div key={lesson.id} className="bg-white border border-gray-100 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center gap-6 hover:border-royal-200 transition-colors group">
+                                 <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                       <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{lesson.lesson_type}</span>
+                                       <span className="text-xs text-gray-400 flex items-center gap-1"><Clock size={10} /> 10m</span>
+                                    </div>
+                                    <h4 className="font-bold text-lg text-gray-900 group-hover:text-royal-600 transition-colors">{lesson.title}</h4>
+                                    <p className="text-sm text-gray-500 line-clamp-1">{lesson.description}</p>
+                                 </div>
+                                 
+                                 <div className="w-full md:w-32 hidden md:block">
+                                    {/* Simulated Progress */}
+                                    <ProgressBar progress={Math.random() > 0.5 ? 100 : Math.floor(Math.random() * 80)} label="Progress" />
+                                 </div>
+
+                                 <div className="flex gap-2 w-full md:w-auto">
+                                    <Tooltip content="Start learning this lesson now.">
+                                      <button 
+                                        onClick={() => onTakeLesson && onTakeLesson(lesson.id)}
+                                        className="flex-1 md:flex-none px-6 py-2 bg-royal-600 text-white font-bold rounded-lg hover:bg-royal-700 shadow-md shadow-royal-600/20 transition-all flex items-center justify-center gap-2"
+                                      >
+                                        <Play size={16} fill="currentColor" /> Start
+                                      </button>
+                                    </Tooltip>
+                                    <Tooltip content="Add to your personal study list.">
+                                      <button 
+                                        onClick={() => addToMyList(lesson.title)}
+                                        className="px-3 py-2 border border-gray-200 text-gray-400 rounded-lg hover:bg-gray-50 hover:text-gold-500 transition-colors"
+                                      >
+                                        <ListPlus size={20} />
+                                      </button>
+                                    </Tooltip>
+                                 </div>
                              </div>
-                         </div>
-                      ))
-                  )}
+                          ))
+                      )}
+                   </div>
                </div>
             </div>
          )}

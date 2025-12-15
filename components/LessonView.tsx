@@ -25,7 +25,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     let totalCount = 0;
 
     history.forEach(h => {
-      // Prevent overwriting if already exists (though backend should handle unique)
       if (!attemptMap[h.quizId]) {
         attemptMap[h.quizId] = h.selectedOptionId;
         if (h.isCorrect) correctCount++;
@@ -38,20 +37,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   };
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
-    // Canvas-like: No reattempts. If already attempted, do nothing.
     if (attempts[quiz.id]) return;
 
-    // 1. Immediately record selection locally
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
 
-    // 2. Update Score state
     if (option.isCorrect) {
       setScore(prev => ({ ...prev, total: prev.total + 1, correct: prev.correct + 1 }));
     } else {
       setScore(prev => ({ ...prev, total: prev.total + 1 }));
     }
 
-    // 3. Persist to Backend
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, option.isCorrect);
   };
 
@@ -175,30 +170,33 @@ const QuizCard: React.FC<{
              const isSelected = selectedOptionId === option.id;
              const isCorrect = option.isCorrect;
              
-             // Base Button Classes
-             let btnClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ease-in-out relative flex flex-col ";
-             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-colors duration-300 ";
-             
+             // Dynamic Class Calculation
+             let containerClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-300 ease-in-out relative overflow-hidden ";
+             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-colors duration-300 flex-shrink-0 ";
+             let textClass = "font-medium text-lg transition-colors duration-300 ";
+
              if (!isAnswered) {
-                // PRE-ATTEMPT: No Clues, clean state
-                btnClass += "border-gray-100 hover:border-royal-500 hover:bg-royal-50 cursor-pointer";
+                // Pre-Answer State
+                containerClass += "border-gray-100 hover:border-royal-500 hover:bg-royal-50 cursor-pointer";
                 circleClass += "border-gray-300 text-gray-500";
+                textClass += "text-gray-800";
              } else {
-                // POST-ATTEMPT: Reveal Logic with specific colors
-                // 1. Correct Answer (Green #2ecc71)
+                // Post-Answer State
                 if (isCorrect) {
-                   btnClass += "bg-[#2ecc71]/10 border-[#2ecc71]"; 
+                   // Correct Answer (Green #2ecc71)
+                   containerClass += "bg-[#2ecc71]/10 border-[#2ecc71]";
                    circleClass += "bg-[#2ecc71] border-[#2ecc71] text-white";
-                } 
-                // 2. Wrong Answer Selected (Red #e74c3c)
-                else if (isSelected && !isCorrect) {
-                   btnClass += "bg-[#e74c3c]/10 border-[#e74c3c]"; 
+                   textClass += "text-[#27ae60] font-bold";
+                } else if (isSelected && !isCorrect) {
+                   // Incorrect Selected (Red #e74c3c)
+                   containerClass += "bg-[#e74c3c]/10 border-[#e74c3c]";
                    circleClass += "bg-[#e74c3c] border-[#e74c3c] text-white";
-                } 
-                // 3. Unselected Wrong Answer (Fade out)
-                else {
-                   btnClass += "border-gray-100 opacity-50 bg-gray-50"; 
-                   circleClass += "border-gray-200 text-gray-400";
+                   textClass += "text-[#c0392b] font-bold";
+                } else {
+                   // Incorrect Not Selected (Muted)
+                   containerClass += "border-gray-100 opacity-50 grayscale";
+                   circleClass += "border-gray-200 text-gray-300";
+                   textClass += "text-gray-400";
                 }
              }
 
@@ -207,35 +205,32 @@ const QuizCard: React.FC<{
                  <button
                    disabled={isAnswered}
                    onClick={() => onSelect(option)}
-                   className={btnClass}
+                   className={containerClass}
                  >
                    <div className="flex items-center justify-between w-full">
                      <div className="flex items-center gap-3">
-                       {/* Option Label Circle */}
-                       <span className={circleClass}>
-                          {option.label}
-                       </span>
-                       <span className={`font-medium text-lg ${isAnswered && isCorrect ? 'text-[#2ecc71] font-bold' : isAnswered && isSelected ? 'text-[#e74c3c]' : 'text-gray-800'}`}>
-                          {option.text}
-                       </span>
+                       <span className={circleClass}>{option.label}</span>
+                       <span className={textClass}>{option.text}</span>
                      </div>
                      
-                     {/* Result Icons */}
-                     {isAnswered && isCorrect && (
-                        <div className="animate-in zoom-in spin-in-90 duration-300">
-                           <CheckCircle size={24} color="#2ecc71" fill="white" />
-                        </div>
-                     )}
-                     {isAnswered && isSelected && !isCorrect && (
-                        <div className="animate-in zoom-in duration-300">
-                           <X size={24} color="#e74c3c" />
-                        </div>
-                     )}
+                     {/* Feedback Icons */}
+                     <div className="flex-shrink-0">
+                        {isAnswered && isCorrect && (
+                            <div className="animate-in zoom-in spin-in-90 duration-300">
+                                <CheckCircle size={24} color="#2ecc71" fill="white" />
+                            </div>
+                        )}
+                        {isAnswered && isSelected && !isCorrect && (
+                            <div className="animate-in zoom-in duration-300">
+                                <X size={24} color="#e74c3c" strokeWidth={3} />
+                            </div>
+                        )}
+                     </div>
                    </div>
 
-                   {/* REVEAL EXPLANATION: Smooth Slide Down */}
+                   {/* Smooth Reveal Explanation */}
                    <div 
-                      className={`overflow-hidden transition-all duration-500 ease-out ${isAnswered ? 'max-h-96 opacity-100 mt-3 pt-3 border-t border-black/5' : 'max-h-0 opacity-0 border-none'}`}
+                      className={`transform transition-all duration-500 ease-out origin-top ${isAnswered ? 'scale-y-100 opacity-100 max-h-48 mt-3 pt-3 border-t border-black/5' : 'scale-y-0 opacity-0 max-h-0 overflow-hidden'}`}
                    >
                         <div 
                           className={`text-sm ${isCorrect ? 'text-[#27ae60]' : 'text-gray-600'}`}

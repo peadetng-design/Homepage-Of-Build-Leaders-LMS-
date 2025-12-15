@@ -16,7 +16,7 @@ import ResourceView from './ResourceView';
 import NewsView from './NewsView';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
-  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus
+  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -196,16 +196,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
   const [showExportModal, setShowExportModal] = useState(false);
   
   // Admin View State
-  const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
+  const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   
   // Mentor View State
-  const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests'>('lessons');
+  const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests' | 'curated'>('lessons');
 
   // Student View State
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
 
   // Org View State
-  const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests'>('users');
+  const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
 
@@ -269,6 +269,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
         setCurrentView('dashboard');
         if (isAdminView) setAdminActiveTab('lessons');
         if (isMentorView) setMentorActiveTab('lessons');
+    }
+  };
+
+  const handleViewCuratedLessons = () => {
+    if (isOrgView) {
+        setOrgSubTab('curated'); 
+        setCurrentView('manage-lessons');
+    } else {
+        setCurrentView('dashboard');
+        if (isMentorView) setMentorActiveTab('curated');
     }
   };
 
@@ -392,10 +402,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
               <Tooltip content="Edit, delete, or organize existing lessons in your library.">
                 <button 
                   onClick={handleManageLessons}
-                  className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' ? 'ring-2 ring-indigo-400' : ''}`}
+                  className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' && (isOrgView ? orgSubTab === 'lessons' : true) ? 'ring-2 ring-indigo-400' : ''}`}
                 >
                   <Edit3 size={18} /> 
                   <span>MANAGE LESSONS</span>
+                </button>
+              </Tooltip>
+           )}
+
+           {/* VIEW CURATED LESSONS BUTTON (For Mentor, Org) */}
+           {(isMentorView || isOrgView) && (
+              <Tooltip content="Manage the specific list of lessons visible to your group.">
+                <button 
+                  onClick={handleViewCuratedLessons}
+                  className={`flex items-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-600/20 transition-all transform hover:-translate-y-0.5 ${((isMentorView && mentorActiveTab === 'curated') || (isOrgView && orgSubTab === 'curated')) ? 'ring-2 ring-purple-400' : ''}`}
+                >
+                  <List size={18} /> 
+                  <span>VIEW CURATED LESSONS</span>
                 </button>
               </Tooltip>
            )}
@@ -488,7 +511,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
                     currentUser={user} 
                     activeTab={orgSubTab}
                     onTabChange={(tab) => {
-                        if (tab === 'lessons' || tab === 'upload') {
+                        if (tab === 'lessons' || tab === 'upload' || tab === 'curated') {
                             setOrgSubTab(tab);
                         } else {
                             setCurrentView('dashboard');

@@ -102,6 +102,7 @@ class LessonService {
 
   async getLessons(): Promise<Lesson[]> { return this.lessons; }
   async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
+  async getLessonsByIds(ids: string[]): Promise<Lesson[]> { return this.lessons.filter(l => ids.includes(l.id)); }
   
   async publishLesson(lesson: Lesson): Promise<void> {
     const index = this.lessons.findIndex(l => l.id === lesson.id);

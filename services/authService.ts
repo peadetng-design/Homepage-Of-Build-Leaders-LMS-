@@ -22,7 +22,8 @@ const DEFAULT_ADMIN = {
   avatarUrl: '',
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
-  allowedRoles: [UserRole.ADMIN]
+  allowedRoles: [UserRole.ADMIN],
+  curatedLessonIds: []
 };
 
 // DEFAULT ORG ADMIN (FOR DEMO)
@@ -37,7 +38,8 @@ const DEFAULT_ORG = {
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
   organizationCode: 'ORG777',
-  allowedRoles: [UserRole.ORGANIZATION]
+  allowedRoles: [UserRole.ORGANIZATION],
+  curatedLessonIds: []
 };
 
 // DEFAULT MENTOR CREDENTIALS (FOR DEMO)
@@ -54,7 +56,8 @@ const DEFAULT_MENTOR = {
   classCode: 'DEMO01',
   organizationId: 'usr_demo_org', // Linked to default Org
   createdBy: 'usr_demo_org', // Created by Org
-  allowedRoles: [UserRole.MENTOR]
+  allowedRoles: [UserRole.MENTOR],
+  curatedLessonIds: ['demo-lesson-1']
 };
 
 // DEFAULT STUDENT CREDENTIALS (FOR DEMO)
@@ -71,7 +74,8 @@ const DEFAULT_STUDENT = {
   mentorId: 'usr_demo_mentor',
   organizationId: 'usr_demo_org', // Cascade link
   createdBy: 'usr_demo_mentor',
-  allowedRoles: [UserRole.STUDENT]
+  allowedRoles: [UserRole.STUDENT],
+  curatedLessonIds: []
 };
 
 // DEFAULT PARENT CREDENTIALS (FOR DEMO)
@@ -86,7 +90,8 @@ const DEFAULT_PARENT = {
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
   linkedStudentId: 'usr_demo_student',
-  allowedRoles: [UserRole.PARENT]
+  allowedRoles: [UserRole.PARENT],
+  curatedLessonIds: []
 };
 
 class AuthService {
@@ -105,11 +110,15 @@ class AuthService {
     if (storedUsers) {
       this.users = JSON.parse(storedUsers);
       
-      // MIGRATION: Ensure allowedRoles exists for all existing users
+      // MIGRATION: Ensure allowedRoles and curatedLessonIds exist for all existing users
       let usersUpdated = false;
       this.users.forEach(u => {
           if (!u.allowedRoles) {
               u.allowedRoles = [u.role];
+              usersUpdated = true;
+          }
+          if (!u.curatedLessonIds) {
+              u.curatedLessonIds = [];
               usersUpdated = true;
           }
           // Fix: Ensure Root Admin has allowedRoles
@@ -223,7 +232,8 @@ class AuthService {
         classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
         organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
         organizationId: organizationId,
-        allowedRoles: [role] // Initialize with requested role
+        allowedRoles: [role], // Initialize with requested role
+        curatedLessonIds: []
     };
 
     this.users.push(newUser);
@@ -255,6 +265,7 @@ class AuthService {
     user.lastLogin = new Date().toISOString();
     // Ensure allowedRoles is set (for migration robustness)
     if (!user.allowedRoles) user.allowedRoles = [user.role];
+    if (!user.curatedLessonIds) user.curatedLessonIds = [];
     
     this.saveUsers();
     this.logAction(user, 'LOGIN', `User logged in`);
@@ -287,7 +298,8 @@ class AuthService {
                   lastLogin: new Date().toISOString(),
                   classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
                   organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
-                  allowedRoles: [role || UserRole.STUDENT]
+                  allowedRoles: [role || UserRole.STUDENT],
+                  curatedLessonIds: []
               };
               this.users.push(user);
           }
@@ -322,6 +334,47 @@ class AuthService {
     } catch { return null; }
   }
 
+  // --- CURATED LESSONS ---
+
+  async toggleCuratedLesson(actor: User, lessonId: string): Promise<boolean> {
+      const user = this.users.find(u => u.id === actor.id);
+      if (!user) throw new Error("User not found");
+      
+      if (!user.curatedLessonIds) user.curatedLessonIds = [];
+      
+      let added = false;
+      if (user.curatedLessonIds.includes(lessonId)) {
+          user.curatedLessonIds = user.curatedLessonIds.filter(id => id !== lessonId);
+      } else {
+          user.curatedLessonIds.push(lessonId);
+          added = true;
+      }
+      this.saveUsers();
+      return added;
+  }
+
+  async getCuratedLessonIdsForStudent(student: User): Promise<string[]> {
+      const ids: Set<string> = new Set();
+      
+      // 1. Get Mentor's curated list
+      if (student.mentorId) {
+          const mentor = this.users.find(u => u.id === student.mentorId);
+          if (mentor && mentor.curatedLessonIds) {
+              mentor.curatedLessonIds.forEach(id => ids.add(id));
+          }
+      }
+
+      // 2. Get Organization's curated list
+      if (student.organizationId) {
+          const org = this.users.find(u => u.id === student.organizationId);
+          if (org && org.curatedLessonIds) {
+              org.curatedLessonIds.forEach(id => ids.add(id));
+          }
+      }
+
+      return Array.from(ids);
+  }
+
   // --- ORGANIZATION MANAGEMENT ---
 
   // Get all members of an organization (Mentors and Students)
@@ -348,7 +401,8 @@ class AuthService {
           classCode: this.generateCode(),
           lastLogin: undefined,
           createdBy: orgAdmin.id,
-          allowedRoles: [UserRole.MENTOR]
+          allowedRoles: [UserRole.MENTOR],
+          curatedLessonIds: []
       };
       
       this.users.push(newMentor);
@@ -544,7 +598,8 @@ class AuthService {
           classCode: inv.role === UserRole.MENTOR ? this.generateCode() : undefined,
           lastLogin: new Date().toISOString(),
           createdBy: inv.inviterId, // Link to inviter
-          allowedRoles: [inv.role]
+          allowedRoles: [inv.role],
+          curatedLessonIds: []
       };
       this.users.push(user);
       inv.status = 'accepted';

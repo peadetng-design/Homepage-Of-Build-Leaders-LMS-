@@ -37,6 +37,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+  
+  // State for Editing
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
   // Invite Form State
   const [inviteEmail, setInviteEmail] = useState('');
@@ -372,7 +375,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                     <form onSubmit={handleCreateInvite} className="space-y-4">
                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Email Address</label>
+                            <label className="block text-xs font-bold text-indigo-600 uppercase mb-1">Email Address</label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-3 text-gray-400" size={16} />
                               <input 
@@ -380,17 +383,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                 required
                                 value={inviteEmail}
                                 onChange={e => setInviteEmail(e.target.value)}
-                                className="w-full pl-9 p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none"
+                                className="w-full pl-9 p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                                 placeholder="colleague@example.com"
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-royal-600 uppercase mb-1">Assign Role</label>
+                            <label className="block text-xs font-bold text-indigo-600 uppercase mb-1">Assign Role</label>
                             <select 
                               value={inviteRole}
                               onChange={e => setInviteRole(e.target.value as UserRole)}
-                              className="w-full p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-royal-500 outline-none bg-white"
+                              className="w-full p-2.5 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                             >
                               <option value={UserRole.STUDENT}>Student</option>
                               <option value={UserRole.MENTOR}>Mentor</option>
@@ -400,7 +403,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </select>
                           </div>
                        </div>
-                       <button type="submit" className="w-full bg-royal-800 text-white font-bold py-3 rounded-lg hover:bg-royal-700 transition-colors shadow-md">
+                       <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
                          Generate Invite Link
                        </button>
                     </form>
@@ -625,11 +628,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         {activeTab === 'upload' && (
            <LessonUpload 
              currentUser={currentUser}
+             initialData={editingLesson || undefined}
              onSuccess={() => {
-                setNotification({ msg: "Lesson published successfully!", type: 'success' });
+                setNotification({ msg: editingLesson ? "Lesson updated successfully!" : "Lesson published successfully!", type: 'success' });
+                setEditingLesson(null);
+                setActiveTab('lessons');
+                fetchData();
+             }}
+             onCancel={() => {
+                setEditingLesson(null);
                 setActiveTab('lessons');
              }}
-             onCancel={() => setActiveTab('lessons')}
            />
         )}
 
@@ -646,7 +655,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                   />
                 </div>
                 <div className="flex gap-2">
-                   <button onClick={() => setActiveTab('upload')} className="flex items-center gap-2 px-4 py-2 bg-royal-600 text-white rounded-lg font-bold hover:bg-royal-700 transition-colors text-sm">
+                   <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-colors text-sm">
                       <Plus size={16} /> Add New
                    </button>
                    <button onClick={fetchData} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full"><RefreshCw size={20} /></button>
@@ -705,7 +714,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
                                       {/* Edit Action (Conditional) */}
                                       {canEdit ? (
-                                        <button className="p-2 text-blue-500 hover:bg-blue-50 rounded"><Edit2 size={16} /></button>
+                                        <button 
+                                          onClick={() => {
+                                            setEditingLesson(lesson);
+                                            setActiveTab('upload');
+                                          }}
+                                          className="p-2 text-blue-500 hover:bg-blue-50 rounded"
+                                        >
+                                          <Edit2 size={16} />
+                                        </button>
                                       ) : (
                                         <button className="p-2 text-gray-300 cursor-not-allowed" title="Read Only"><Edit2 size={16} /></button>
                                       )}

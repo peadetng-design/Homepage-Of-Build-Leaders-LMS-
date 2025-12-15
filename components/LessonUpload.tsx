@@ -1,17 +1,19 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, FileText, Check, AlertTriangle, X, Loader2, Save, Plus, Trash2, Users } from 'lucide-react';
+import { Upload, FileText, Check, AlertTriangle, X, Loader2, Save, Plus, Trash2, Users, Edit3 } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
   onSuccess: () => void;
   onCancel: () => void;
+  initialData?: Lesson; // Added to support editing
 }
 
-const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onCancel }) => {
-  const [mode, setMode] = useState<'manual' | 'bulk'>('bulk');
+const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onCancel, initialData }) => {
+  // Initialize in manual mode if we are editing (initialData exists), otherwise default to bulk
+  const [mode, setMode] = useState<'manual' | 'bulk'>(initialData ? 'manual' : 'bulk');
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
@@ -21,7 +23,12 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [bulkTargetAudience, setBulkTargetAudience] = useState<TargetAudience>('All');
 
   // --- MANUAL BUILDER STATE ---
-  const [manualLesson, setManualLesson] = useState<Partial<Lesson>>({
+  // Initialize with initialData if provided
+  const [manualLesson, setManualLesson] = useState<Partial<Lesson>>(initialData ? {
+    ...initialData,
+    // Deep copy not strictly required as we replace objects on update, but good practice if needed. 
+    // For now, spreading initialData is sufficient as we replace sections array on update.
+  } : {
     title: '',
     description: '',
     lesson_type: 'Mixed',
@@ -168,18 +175,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (!manualLesson.title) throw new Error("Title is required");
       // Validate structure
       const finalLesson: Lesson = {
-        id: crypto.randomUUID(),
+        id: initialData?.id || crypto.randomUUID(), // Use existing ID if editing, otherwise new
         title: manualLesson.title,
         description: manualLesson.description || '',
         lesson_type: manualLesson.lesson_type || 'Mixed',
         targetAudience: manualLesson.targetAudience || 'All',
         book: manualLesson.book,
         chapter: manualLesson.chapter,
-        author: currentUser.name,
-        created_at: new Date().toISOString(),
+        author: initialData?.author || currentUser.name, // Keep original author if editing
+        created_at: initialData?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         status: 'published',
-        views: 0,
+        views: initialData?.views || 0,
         sections: manualLesson.sections || []
       };
       await lessonService.publishLesson(finalLesson);
@@ -208,20 +215,26 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        {/* Header */}
        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
-             <div className="bg-royal-800 text-white p-2 rounded-lg"><Upload size={20} /></div>
-             <h2 className="font-bold text-gray-800 text-lg">Upload Lesson</h2>
+             <div className="bg-indigo-600 text-white p-2 rounded-lg">
+                {initialData ? <Edit3 size={20} /> : <Upload size={20} />}
+             </div>
+             <h2 className="font-bold text-gray-800 text-lg">
+                {initialData ? 'Edit Lesson' : 'Upload Lesson'}
+             </h2>
           </div>
           
           <div className="flex bg-gray-200 rounded-lg p-1">
              <button 
                onClick={() => { setMode('bulk'); setDraft(null); }}
-               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
+               // Disable bulk import switch if editing an existing lesson to prevent confusion
+               disabled={!!initialData}
+               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'} ${initialData ? 'opacity-50 cursor-not-allowed' : ''}`}
              >
                Excel Import
              </button>
              <button 
                onClick={() => { setMode('manual'); setDraft(null); }}
-               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
+               className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
              >
                Manual Builder
              </button>
@@ -416,18 +429,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                 {/* BULK IMPORT AUDIENCE SELECTOR - PROMINENT */}
                 <div className="bg-royal-50 p-6 rounded-xl border border-royal-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                      <div className="flex items-center gap-3">
-                         <div className="p-2 bg-white rounded-lg text-royal-600 shadow-sm"><Users size={24}/></div>
+                         <div className="p-2 bg-white rounded-lg text-indigo-600 shadow-sm"><Users size={24}/></div>
                          <div>
-                             <h3 className="font-bold text-royal-900">Import Configuration</h3>
-                             <p className="text-xs text-royal-600">This audience setting will apply to all lessons in the file.</p>
+                             <h3 className="font-bold text-gray-900">Import Configuration</h3>
+                             <p className="text-xs text-gray-600">This audience setting will apply to all lessons in the file.</p>
                          </div>
                      </div>
                      <div className="w-full md:w-auto min-w-[300px]">
-                        <label className="block text-xs font-bold text-royal-600 mb-1 uppercase tracking-wider">Select User Type (Audience)</label>
+                        <label className="block text-xs font-bold text-indigo-600 mb-1 uppercase tracking-wider">Select User Type (Audience)</label>
                         <select 
                            value={bulkTargetAudience}
                            onChange={(e) => setBulkTargetAudience(e.target.value as TargetAudience)}
-                           className="w-full p-3 rounded-lg border-2 border-royal-200 text-sm font-bold focus:ring-2 focus:ring-royal-500 outline-none bg-white shadow-sm"
+                           className="w-full p-3 rounded-lg border-2 border-indigo-200 text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm"
                         >
                            {renderAudienceOptions()}
                         </select>
@@ -462,14 +475,14 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                 {file && !draft && (
                    <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
                       <div className="flex items-center gap-4 mb-4">
-                         <FileText className="text-royal-600" size={24} />
+                         <FileText className="text-indigo-600" size={24} />
                          <span className="font-bold text-gray-700">{file.name}</span>
                          <span className="text-xs text-gray-400">({(file.size / 1024).toFixed(1)} KB)</span>
                       </div>
                       <button 
                          onClick={processFile}
                          disabled={isParsing}
-                         className="w-full py-3 bg-royal-800 text-white font-bold rounded-lg shadow-md hover:bg-royal-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                         className="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                          {isParsing && <Loader2 className="animate-spin" size={20} />}
                          {isParsing ? "Analyzing Data Structure..." : "Process & Validate"}
@@ -494,17 +507,17 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div><span className="text-gray-500">Title:</span> <span className="font-bold">{draft.metadata.title}</span></div>
                             <div><span className="text-gray-500">Book/Ch:</span> <span className="font-bold">{draft.metadata.book} {draft.metadata.chapter}</span></div>
-                            <div><span className="text-gray-500">Audience:</span> <span className="font-bold text-royal-800">{bulkTargetAudience}</span></div>
+                            <div><span className="text-gray-500">Audience:</span> <span className="font-bold text-indigo-800">{bulkTargetAudience}</span></div>
                          </div>
                          
                          {/* Counts */}
                          <div className="flex gap-4 border-t border-gray-200 pt-4">
                             <div className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-center">
-                               <span className="block text-lg font-bold text-royal-800">{draft.bibleQuizzes.length}</span>
+                               <span className="block text-lg font-bold text-gray-800">{draft.bibleQuizzes.length}</span>
                                <span className="text-xs text-gray-500">Bible Quizzes</span>
                             </div>
                             <div className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-center">
-                               <span className="block text-lg font-bold text-royal-800">{draft.noteQuizzes.length}</span>
+                               <span className="block text-lg font-bold text-gray-800">{draft.noteQuizzes.length}</span>
                                <span className="text-xs text-gray-500">Note Quizzes</span>
                             </div>
                          </div>
@@ -520,8 +533,8 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           <button onClick={onCancel} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
           
           {mode === 'manual' ? (
-             <button onClick={saveManualLesson} className="px-8 py-2 bg-royal-800 text-white font-bold rounded-lg hover:bg-royal-700 shadow-md flex items-center gap-2">
-                <Save size={18} /> Save & Publish
+             <button onClick={saveManualLesson} className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md flex items-center gap-2">
+                <Save size={18} /> {initialData ? 'Update Lesson' : 'Save & Publish'}
              </button>
           ) : (
              <button 

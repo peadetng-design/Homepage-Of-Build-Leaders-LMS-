@@ -151,21 +151,25 @@ const QuizCard: React.FC<{
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden transition-all hover:shadow-md">
       <div className="p-6">
-        <div className="flex gap-4 mb-4">
+        <div className="flex gap-4 mb-4 items-start">
            <span className="flex-shrink-0 w-8 h-8 rounded-full bg-royal-50 text-royal-800 font-bold flex items-center justify-center text-sm">
              Q{index}
            </span>
-           <div className="flex-1">
-              <h3 className="font-bold text-lg text-gray-900 mb-1">{quiz.text}</h3>
+           <div className="flex-1 w-full min-w-0">
+              
+              {/* REQUIREMENT 1 & 2: Reference box appearing BEFORE and ON TOP of question, Enlarged capacity */}
               {quiz.reference && (
-                <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-500 text-xs font-semibold rounded uppercase tracking-wide">
-                   Ref: {quiz.reference}
-                </span>
+                <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed max-h-[400px] overflow-y-auto whitespace-pre-wrap shadow-inner w-full">
+                   <span className="text-xs font-bold text-gray-400 uppercase block mb-2 tracking-wider">Reference / Context</span>
+                   {quiz.reference}
+                </div>
               )}
+
+              <h3 className="font-bold text-xl text-gray-900 mb-2 leading-snug">{quiz.text}</h3>
            </div>
         </div>
 
-        <div className="space-y-3 pl-12">
+        <div className="space-y-3 pl-0 md:pl-12">
            {quiz.options.map((option) => {
              const isSelected = selectedOptionId === option.id;
              const isCorrect = option.isCorrect;
@@ -184,19 +188,19 @@ const QuizCard: React.FC<{
                 // Post-Answer State
                 if (isCorrect) {
                    // Correct Answer (Green #2ecc71)
-                   containerClass += "bg-[#2ecc71]/10 border-[#2ecc71]";
-                   circleClass += "bg-[#2ecc71] border-[#2ecc71] text-white";
-                   textClass += "text-[#27ae60] font-bold";
+                   containerClass += "bg-green-50 border-green-500";
+                   circleClass += "bg-green-500 border-green-500 text-white";
+                   textClass += "text-green-900 font-bold";
                 } else if (isSelected && !isCorrect) {
-                   // Incorrect Selected (Red #e74c3c)
-                   containerClass += "bg-[#e74c3c]/10 border-[#e74c3c]";
-                   circleClass += "bg-[#e74c3c] border-[#e74c3c] text-white";
-                   textClass += "text-[#c0392b] font-bold";
+                   // REQUIREMENT 3: Incorrect Selected -> RED Box and VISIBLE Text
+                   containerClass += "bg-red-50 border-red-500"; // Red background
+                   circleClass += "bg-red-500 border-red-500 text-white"; // Red circle
+                   textClass += "text-red-900 font-bold"; // Dark Red text for visibility
                 } else {
-                   // Incorrect Not Selected (Muted)
-                   containerClass += "border-gray-100 opacity-50 grayscale";
-                   circleClass += "border-gray-200 text-gray-300";
-                   textClass += "text-gray-400";
+                   // Incorrect Not Selected (Muted but visible)
+                   containerClass += "border-gray-100 opacity-60";
+                   circleClass += "border-gray-200 text-gray-400";
+                   textClass += "text-gray-500";
                 }
              }
 
@@ -217,12 +221,12 @@ const QuizCard: React.FC<{
                      <div className="flex-shrink-0">
                         {isAnswered && isCorrect && (
                             <div className="animate-in zoom-in spin-in-90 duration-300">
-                                <CheckCircle size={24} color="#2ecc71" fill="white" />
+                                <CheckCircle size={24} className="text-green-500" fill="white" />
                             </div>
                         )}
                         {isAnswered && isSelected && !isCorrect && (
                             <div className="animate-in zoom-in duration-300">
-                                <X size={24} color="#e74c3c" strokeWidth={3} />
+                                <X size={24} className="text-red-500" strokeWidth={3} />
                             </div>
                         )}
                      </div>
@@ -233,7 +237,7 @@ const QuizCard: React.FC<{
                       className={`transform transition-all duration-500 ease-out origin-top ${isAnswered ? 'scale-y-100 opacity-100 max-h-48 mt-3 pt-3 border-t border-black/5' : 'scale-y-0 opacity-0 max-h-0 overflow-hidden'}`}
                    >
                         <div 
-                          className={`text-sm ${isCorrect ? 'text-[#27ae60]' : 'text-gray-600'}`}
+                          className={`text-sm ${isCorrect ? 'text-green-700' : 'text-gray-600'}`}
                           dangerouslySetInnerHTML={{ __html: `<strong>Explanation:</strong> ${option.explanation || 'No explanation provided.'}` }} 
                         />
                    </div>

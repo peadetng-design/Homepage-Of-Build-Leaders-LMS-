@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
@@ -335,7 +336,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </select>
                           </div>
                        </div>
-                       <button type="submit" className="w-full bg-royal-600 text-white font-bold py-3 rounded-lg hover:bg-royal-700 transition-colors shadow-md">
+                       <button type="submit" className="w-full bg-royal-800 text-white font-bold py-3 rounded-lg hover:bg-royal-700 transition-colors shadow-md">
                          Generate Invite Link
                        </button>
                     </form>

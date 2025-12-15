@@ -208,7 +208,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        {/* Header */}
        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
-             <div className="bg-royal-600 text-white p-2 rounded-lg"><Upload size={20} /></div>
+             <div className="bg-royal-800 text-white p-2 rounded-lg"><Upload size={20} /></div>
              <h2 className="font-bold text-gray-800 text-lg">Upload Lesson</h2>
           </div>
           
@@ -469,7 +469,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <button 
                          onClick={processFile}
                          disabled={isParsing}
-                         className="w-full py-3 bg-royal-600 text-white font-bold rounded-lg shadow-md hover:bg-royal-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                         className="w-full py-3 bg-royal-800 text-white font-bold rounded-lg shadow-md hover:bg-royal-700 disabled:opacity-50 flex items-center justify-center gap-2"
                       >
                          {isParsing && <Loader2 className="animate-spin" size={20} />}
                          {isParsing ? "Analyzing Data Structure..." : "Process & Validate"}
@@ -494,17 +494,17 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <div className="grid grid-cols-2 gap-4 text-sm">
                             <div><span className="text-gray-500">Title:</span> <span className="font-bold">{draft.metadata.title}</span></div>
                             <div><span className="text-gray-500">Book/Ch:</span> <span className="font-bold">{draft.metadata.book} {draft.metadata.chapter}</span></div>
-                            <div><span className="text-gray-500">Audience:</span> <span className="font-bold text-royal-600">{bulkTargetAudience}</span></div>
+                            <div><span className="text-gray-500">Audience:</span> <span className="font-bold text-royal-800">{bulkTargetAudience}</span></div>
                          </div>
                          
                          {/* Counts */}
                          <div className="flex gap-4 border-t border-gray-200 pt-4">
                             <div className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-center">
-                               <span className="block text-lg font-bold text-royal-600">{draft.bibleQuizzes.length}</span>
+                               <span className="block text-lg font-bold text-royal-800">{draft.bibleQuizzes.length}</span>
                                <span className="text-xs text-gray-500">Bible Quizzes</span>
                             </div>
                             <div className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-center">
-                               <span className="block text-lg font-bold text-royal-600">{draft.noteQuizzes.length}</span>
+                               <span className="block text-lg font-bold text-royal-800">{draft.noteQuizzes.length}</span>
                                <span className="text-xs text-gray-500">Note Quizzes</span>
                             </div>
                          </div>
@@ -520,7 +520,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           <button onClick={onCancel} className="px-6 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancel</button>
           
           {mode === 'manual' ? (
-             <button onClick={saveManualLesson} className="px-8 py-2 bg-royal-600 text-white font-bold rounded-lg hover:bg-royal-700 shadow-md flex items-center gap-2">
+             <button onClick={saveManualLesson} className="px-8 py-2 bg-royal-800 text-white font-bold rounded-lg hover:bg-royal-700 shadow-md flex items-center gap-2">
                 <Save size={18} /> Save & Publish
              </button>
           ) : (

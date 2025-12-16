@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User } from '../types';
+import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, Target, History } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, Target, History, BadgeCheck, Loader2 } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -14,6 +14,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const [attempts, setAttempts] = useState<Record<string, string>>({}); // quizId -> selectedOptionId
   const [attemptHistory, setAttemptHistory] = useState<StudentAttempt[]>([]);
   const [score, setScore] = useState({ total: 0, correct: 0 });
+  const [completedModule, setCompletedModule] = useState<Module | null>(null);
+  const [isIssuingCert, setIsIssuingCert] = useState(false);
+  const [certIssued, setCertIssued] = useState(false);
   
   // Timer State
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -50,15 +53,38 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     };
   }, [lesson.id]); // Run once on mount (and ID change)
 
-  // FIX: Monitor completion to stop timer
+  // FIX: Monitor completion to stop timer AND CHECK MODULE STATUS
   useEffect(() => {
       if (isCompleted && timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
           // Force save final time
           lessonService.saveQuizTimer(currentUser.id, lesson.id, elapsedTime);
+          
+          // Check for Module Completion
+          checkModuleStatus();
       }
   }, [isCompleted, elapsedTime, currentUser.id, lesson.id]);
+
+  const checkModuleStatus = async () => {
+      const module = await lessonService.checkModuleCompletion(currentUser.id, lesson.id);
+      if (module) {
+          setCompletedModule(module);
+      }
+  };
+
+  const handleClaimCertificate = async () => {
+      if (!completedModule) return;
+      setIsIssuingCert(true);
+      try {
+          await lessonService.issueCertificate(currentUser.id, currentUser.name, completedModule.id);
+          setCertIssued(true);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsIssuingCert(false);
+      }
+  };
 
   const loadData = async () => {
     // Load Timer
@@ -245,17 +271,46 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         ))}
 
         <div className="text-center pt-12 border-t border-gray-100">
-           {questionsAnswered === totalQuestions && totalQuestions > 0 && (
+           {isCompleted && (
                <div className="inline-block p-4 bg-green-50 rounded-full text-green-600 mb-4 animate-bounce shadow-lg shadow-green-100 border border-green-100">
                  <CheckCircle size={48} />
                </div>
            )}
            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-               {questionsAnswered === totalQuestions && totalQuestions > 0 ? "Lesson Completed!" : "Keep Going!"}
+               {isCompleted ? "Lesson Completed!" : "Keep Going!"}
            </h3>
            <p className="text-gray-500 mb-6">
                You have answered {questionsAnswered} of {totalQuestions} questions.
            </p>
+           
+           {completedModule && (
+               <div className="mb-8 p-6 bg-gradient-to-br from-gold-50 to-orange-50 border border-gold-200 rounded-2xl shadow-sm animate-in zoom-in-95 duration-500">
+                   <div className="flex flex-col items-center gap-4">
+                       <BadgeCheck size={48} className="text-gold-600" />
+                       <div>
+                           <h4 className="font-serif font-bold text-xl text-gold-800">Module Completed: {completedModule.title}</h4>
+                           <p className="text-gold-700 text-sm">Congratulations! You have mastered this module.</p>
+                       </div>
+                       
+                       {certIssued ? (
+                           <button className="px-6 py-3 bg-green-600 text-white font-bold rounded-full shadow-lg flex items-center gap-2 cursor-default">
+                               <CheckCircle size={20} /> Certificate Issued!
+                           </button>
+                       ) : (
+                           <button 
+                                onClick={handleClaimCertificate}
+                                disabled={isIssuingCert}
+                                className="px-8 py-3 bg-gradient-to-r from-gold-500 to-orange-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-2"
+                           >
+                               {isIssuingCert ? <Loader2 className="animate-spin" size={20}/> : <Trophy size={20}/>} 
+                               RECEIVE CERTIFICATE
+                           </button>
+                       )}
+                       {certIssued && <p className="text-xs text-gold-600 font-bold">Check your dashboard to view.</p>}
+                   </div>
+               </div>
+           )}
+
            <button onClick={onBack} className="px-8 py-3 bg-gradient-to-r from-royal-800 to-royal-900 text-white font-bold rounded-full shadow-xl shadow-royal-900/30 hover:scale-105 transition-transform border border-royal-700">
              Back to Dashboard
            </button>

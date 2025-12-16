@@ -1,12 +1,16 @@
+
 import React from 'react';
-import { BookOpen, Flame, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe } from 'lucide-react';
+import { BookOpen, Flame, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe, LayoutDashboard } from 'lucide-react';
+import { User } from '../types';
 
 interface HeroProps {
   onRegister: () => void;
   onSignIn: () => void;
+  currentUser?: User | null;
+  onNavigateToDashboard?: () => void;
 }
 
-const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
+const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNavigateToDashboard }) => {
   return (
     <div className="w-full bg-white text-gray-900 overflow-x-hidden">
       
@@ -51,21 +55,35 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-5 justify-center items-center w-full">
-            <button
-              onClick={onRegister}
-              className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden border border-transparent"
-            >
-              <div className="absolute inset-0 bg-white/10 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
-              <span className="relative flex items-center justify-center gap-2">
-                Get Started <ArrowRight size={18} />
-              </span>
-            </button>
-            <button
-              onClick={onSignIn}
-              className="px-8 py-4 bg-royal-500 text-white font-bold rounded-full shadow-lg shadow-royal-500/30 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] hover:bg-royal-600 border border-transparent"
-            >
-              Sign In
-            </button>
+            {currentUser ? (
+               <button
+                  onClick={onNavigateToDashboard}
+                  className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[220px] overflow-hidden border border-transparent"
+               >
+                  <div className="absolute inset-0 bg-white/10 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
+                  <span className="relative flex items-center justify-center gap-2">
+                    <LayoutDashboard size={18} /> Go to Dashboard
+                  </span>
+               </button>
+            ) : (
+               <>
+                <button
+                  onClick={onRegister}
+                  className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden border border-transparent"
+                >
+                  <div className="absolute inset-0 bg-white/10 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
+                  <span className="relative flex items-center justify-center gap-2">
+                    Get Started <ArrowRight size={18} />
+                  </span>
+                </button>
+                <button
+                  onClick={onSignIn}
+                  className="px-8 py-4 bg-royal-50 text-white font-bold rounded-full shadow-lg shadow-royal-500/30 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] hover:bg-royal-600 border border-transparent"
+                >
+                  Sign In
+                </button>
+               </>
+            )}
           </div>
         </div>
       </div>
@@ -107,26 +125,28 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn }) => {
       </div>
 
       {/* 3. CTA STRIP */}
-      <div className="w-full bg-gold-500 py-8 px-6 relative overflow-hidden">
-         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-             <div className="flex items-center gap-4">
-               <div className="p-3 bg-white/20 rounded-full text-white backdrop-blur-sm">
-                 <Sparkles size={28} />
+      {!currentUser && (
+        <div className="w-full bg-gold-500 py-8 px-6 relative overflow-hidden">
+           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+               <div className="flex items-center gap-4">
+                 <div className="p-3 bg-white/20 rounded-full text-white backdrop-blur-sm">
+                   <Sparkles size={28} />
+                 </div>
+                 <div>
+                   <h3 className="text-white font-bold text-xl md:text-2xl leading-none">Start your Leadership Group</h3>
+                   <p className="text-gold-100 text-sm mt-1">Join the movement of discipleship today.</p>
+                 </div>
                </div>
-               <div>
-                 <h3 className="text-white font-bold text-xl md:text-2xl leading-none">Start your Leadership Group</h3>
-                 <p className="text-gold-100 text-sm mt-1">Join the movement of discipleship today.</p>
-               </div>
-             </div>
-             <button 
-               onClick={onRegister}
-               className="px-8 py-3 bg-white text-gold-600 font-bold rounded-full shadow-lg hover:bg-gray-50 transition-colors flex items-center gap-2 transform hover:scale-105"
-             >
-               Register Group Now <ArrowRight size={18} />
-             </button>
-         </div>
-      </div>
+               <button 
+                 onClick={onRegister}
+                 className="px-8 py-3 bg-white text-gold-600 font-bold rounded-full shadow-lg hover:bg-gray-50 transition-colors flex items-center gap-2 transform hover:scale-105"
+               >
+                 Register Group Now <ArrowRight size={18} />
+               </button>
+           </div>
+        </div>
+      )}
 
       {/* 4. CONTENT PANELS (About, Resources, News) */}
       <div className="w-full bg-gray-50 py-24">

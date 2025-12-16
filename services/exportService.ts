@@ -1,5 +1,5 @@
 
-import { User, UserRole, Lesson } from '../types';
+import { User, UserRole, Lesson, Certificate } from '../types';
 import { lessonService } from './lessonService';
 import { authService } from './authService';
 
@@ -59,7 +59,7 @@ export class ExportService {
 
     if (unattemptedLessons.length === 0) {
        return { 
-           text: "No unattempted lessons found.", 
+           text: "No unattempted lessons found.\n", 
            html: "<p>No unattempted lessons found.</p>" 
        };
     }
@@ -118,6 +118,44 @@ export class ExportService {
     return { text: textOut, html: htmlOut };
   }
 
+  // Get Certificates Report
+  async getCertificatesContent(user: User): Promise<{ text: string, html: string }> {
+      const certs = await lessonService.getUserCertificates(user.id);
+      
+      if (certs.length === 0) {
+          return {
+              text: "No certificates earned yet.\n",
+              html: "<p>No certificates earned yet.</p>"
+          };
+      }
+
+      let textOut = `EARNED CERTIFICATES REPORT\n`;
+      textOut += `Total Earned: ${certs.length}\n`;
+      textOut += `--------------------------------------------------\n\n`;
+
+      let htmlOut = `<div class="certs-container">`;
+      htmlOut += `<h2>Earned Certificates (${certs.length})</h2>`;
+      htmlOut += `<table style="width:100%; border-collapse:collapse; margin-top:10px;">`;
+      htmlOut += `<tr style="background:#f3f4f6; text-align:left;"><th style="padding:8px;">Module</th><th style="padding:8px;">Date Issued</th><th style="padding:8px;">Certificate ID</th></tr>`;
+
+      for (const cert of certs) {
+          const dateStr = new Date(cert.issueDate).toLocaleDateString();
+          textOut += `MODULE: ${cert.moduleTitle}\n`;
+          textOut += `Issued: ${dateStr}\n`;
+          textOut += `ID: ${cert.uniqueCode}\n`;
+          textOut += `Issuer: ${cert.issuerName}\n\n`;
+
+          htmlOut += `<tr>`;
+          htmlOut += `<td style="padding:8px; border-bottom:1px solid #e5e7eb;"><strong>${cert.moduleTitle}</strong></td>`;
+          htmlOut += `<td style="padding:8px; border-bottom:1px solid #e5e7eb;">${dateStr}</td>`;
+          htmlOut += `<td style="padding:8px; border-bottom:1px solid #e5e7eb; font-family:monospace;">${cert.uniqueCode}</td>`;
+          htmlOut += `</tr>`;
+      }
+
+      htmlOut += `</table></div>`;
+      return { text: textOut, html: htmlOut };
+  }
+
   // Trigger Download
   downloadTxt(filename: string, content: string) {
     const element = document.createElement("a");
@@ -141,7 +179,8 @@ export class ExportService {
           <style>
             body { font-family: 'Helvetica', sans-serif; padding: 40px; color: #333; }
             h1 { color: #1e1b4b; border-bottom: 2px solid #f59e0b; padding-bottom: 10px; }
-            h2 { color: #3730a3; margin-top: 30px; }
+            h2 { color: #3730a3; margin-top: 30px; page-break-before: always; }
+            h2:first-of-type { page-break-before: auto; }
             h3 { color: #1f2937; margin-top: 20px; }
             .meta { color: #6b7280; font-size: 0.9em; margin-bottom: 15px; }
             .section-note { background: #f9fafb; padding: 15px; border-left: 4px solid #3b82f6; margin-bottom: 20px; }

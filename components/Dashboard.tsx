@@ -14,7 +14,9 @@ import StudentPanel from './StudentPanel';
 import Tooltip from './Tooltip'; 
 import ResourceView from './ResourceView';
 import NewsView from './NewsView';
-import PerformanceReport from './PerformanceReport'; // Import PerformanceReport
+import PerformanceReport from './PerformanceReport';
+import ChatPanel from './ChatPanel';
+import CertificatesPanel from './CertificatesPanel'; // Added Import
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3
@@ -23,7 +25,7 @@ import {
 interface DashboardProps {
   user: User;
   onChangePasswordClick?: () => void;
-  initialView?: DashboardView; // Added prop
+  initialView?: DashboardView;
 }
 
 // Color mapping
@@ -180,14 +182,13 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
   </div>
 );
 
-// VIEW STATE ENUM to prevent hook errors
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news' | 'performance-report';
+// VIEW STATE ENUM
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news' | 'performance-report' | 'chat' | 'certificates';
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, initialView }) => {
   // 1. ALL STATE HOOKS
-  // Use initialView if provided and valid, otherwise dashboard
   const [currentView, setCurrentView] = useState<DashboardView>(
-      (initialView === 'resources' || initialView === 'news') ? initialView : 'dashboard'
+      (initialView === 'resources' || initialView === 'news' || initialView === 'chat' || initialView === 'certificates') ? initialView : 'dashboard'
   );
   
   const [dailyVerse, setDailyVerse] = useState<{ verse: string; reference: string; reflection: string } | null>(null);
@@ -219,14 +220,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
 
   // 2. EFFECTS
   useEffect(() => {
-    // If we are NOT in parent view anymore but still stuck on onboarding, reset
-    if (!isParentView && currentView === 'parent-onboarding') {
-      setCurrentView('dashboard');
-      return; 
-    }
-
     // Check parent onboarding
-    if (isParentView && !user.linkedStudentId) {
+    if (isParentView && !user.linkedStudentId && currentView !== 'parent-onboarding') {
        setCurrentView('parent-onboarding');
     }
 
@@ -241,7 +236,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
       }
     };
     fetchContent();
-  }, [isParentView, user.linkedStudentId, user.role]); // Removed currentView dependency to avoid loops if needed, though safe here
+  }, [isParentView, user.linkedStudentId, user.role]);
 
   // 3. HANDLERS
   const handleQuizAnswer = (option: string) => {
@@ -288,7 +283,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
           setOrgSubTab('users'); // Reset to default sub-tab
           setCurrentView('manage-users');
       }
-      // For Mentor, tabs are already on dashboard, just switch focus
       if (isMentorView) {
           setMentorActiveTab('users');
       }
@@ -296,6 +290,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
 
   // 4. RENDER Logic based on currentView
   
+  if (currentView === 'certificates') {
+      return (
+          <div className="animate-in fade-in duration-300 p-4 md:p-8">
+              <CertificatesPanel currentUser={user} onBack={() => setCurrentView('dashboard')} />
+          </div>
+      );
+  }
+
+  if (currentView === 'chat') {
+      return (
+          <div className="animate-in fade-in duration-300">
+              <ChatPanel currentUser={user} />
+          </div>
+      );
+  }
+
   if (currentView === 'performance-report') {
       return <PerformanceReport currentUser={user} onBack={() => setCurrentView('dashboard')} />;
   }

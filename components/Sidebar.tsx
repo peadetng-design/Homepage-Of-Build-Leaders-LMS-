@@ -3,7 +3,7 @@ import React from 'react';
 import {
   Home, Book, Users, Award, MessageCircle, Settings,
   LogOut, Shield, Heart, ChevronLeft, ChevronRight,
-  Library, Building2, UserPlus, Newspaper
+  Library, Building2, UserPlus, Newspaper, MessageSquare, BadgeCheck, LayoutDashboard
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -19,9 +19,12 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePath, setActivePath, onSignOut }) => {
   // Common items visible to all authenticated users
   const commonItems = [
-    { label: 'Home', icon: Home, path: 'home' },
+    { label: 'Dashboard', icon: LayoutDashboard, path: 'dashboard' }, // New Dashboard Item
+    { label: 'Home', icon: Home, path: 'home' }, // Home now points to Homepage
     { label: 'Resources', icon: Library, path: 'resources' },
     { label: 'News', icon: Newspaper, path: 'news' },
+    { label: 'Chat', icon: MessageSquare, path: 'chat' }, 
+    { label: 'Certificates', icon: BadgeCheck, path: 'certificates' },
   ];
 
   // Specific items per role
@@ -29,12 +32,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
     [UserRole.STUDENT]: [
       { label: 'My Lessons', icon: Book, path: 'lessons' },
       { label: 'Progress', icon: Award, path: 'progress' },
-      { label: 'Community', icon: MessageCircle, path: 'community' },
     ],
     [UserRole.MENTOR]: [
       { label: 'My Group', icon: Users, path: 'group' },
       { label: 'Assignments', icon: Book, path: 'assignments' },
-      { label: 'Community', icon: MessageCircle, path: 'community' },
     ],
     [UserRole.ADMIN]: [
       { label: 'Admin Panel', icon: Shield, path: 'admin' },

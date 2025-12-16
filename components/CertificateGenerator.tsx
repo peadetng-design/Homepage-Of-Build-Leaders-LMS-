@@ -1,0 +1,272 @@
+
+import React, { useRef } from 'react';
+import { Certificate, CertificateDesign } from '../types';
+import { Download, Printer } from 'lucide-react';
+
+interface CertificateGeneratorProps {
+  certificate: Certificate;
+  onClose: () => void;
+  // If provided, we are in preview mode and should render these instead of what's on the certificate object
+  previewDesign?: CertificateDesign; 
+}
+
+const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate, onClose, previewDesign }) => {
+  const certRef = useRef<HTMLDivElement>(null);
+
+  // Merge defaults
+  const design = previewDesign || certificate.design || {
+      templateId: 'classic',
+      primaryColor: '#1e1b4b', // Royal 900
+      secondaryColor: '#d97706', // Gold 600
+      signatureName: 'Director'
+  };
+
+  const title = design.titleOverride || "Certificate";
+  const subTitle = "of Completion";
+  const message = design.messageOverride || "This certifies that";
+  const issuer = certificate.issuerName;
+
+  // --- TEMPLATE RENDERERS ---
+
+  const renderClassic = () => (
+      <div className="w-full h-full p-10 box-border relative bg-white">
+          {/* Classic Border */}
+          <div className="w-full h-full border-[10px] border-double box-border relative p-10 flex flex-col justify-between" style={{ borderColor: design.primaryColor }}>
+              <div className="absolute top-2 left-2 right-2 bottom-2 border-[2px] pointer-events-none" style={{ borderColor: design.secondaryColor }}></div>
+              
+              {/* Header */}
+              <div className="text-center mt-8">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center text-white" style={{ backgroundColor: design.primaryColor }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8.5l2.1 6.6 6.9-2.2-4.1 5.9 1.6 7.2-6.5-3.4-6.5 3.4 1.6-7.2-4.1-5.9 6.9 2.2z"/></svg>
+                  </div>
+                  <h1 className="text-5xl font-serif font-bold uppercase tracking-widest mb-2" style={{ color: design.primaryColor }}>{title}</h1>
+                  <h2 className="text-2xl font-serif tracking-wide uppercase" style={{ color: design.secondaryColor }}>{subTitle}</h2>
+              </div>
+
+              {/* Body */}
+              <div className="text-center space-y-6">
+                  <p className="text-lg text-gray-500 font-serif italic">{message}</p>
+                  <h3 className="text-6xl font-script border-b-2 inline-block px-12 pb-2" style={{ fontFamily: 'Pinyon Script, cursive', color: design.primaryColor, borderColor: '#e5e7eb' }}>
+                      {certificate.userName}
+                  </h3>
+                  <p className="text-lg text-gray-500 font-serif italic">has successfully completed the module</p>
+                  <h4 className="text-3xl font-serif font-bold text-gray-900">{certificate.moduleTitle}</h4>
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-between items-end px-8 mb-8">
+                  <div className="text-center">
+                      <div className="text-lg font-mono text-gray-400 mb-1">{new Date(certificate.issueDate).toLocaleDateString()}</div>
+                      <div className="border-t border-gray-400 w-48 mt-1 pt-1 text-xs uppercase font-bold text-gray-500">Date Issued</div>
+                  </div>
+                  
+                  {/* Seal */}
+                  <div className="relative opacity-90 -mb-4">
+                      <div className="w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-inner" style={{ borderColor: design.secondaryColor, backgroundColor: design.secondaryColor }}>
+                          <div className="text-white text-center text-[10px] font-bold uppercase leading-tight">Official<br/>Seal</div>
+                      </div>
+                  </div>
+
+                  <div className="text-center relative">
+                      {design.signatureUrl ? (
+                          <img src={design.signatureUrl} alt="Sig" className="h-12 object-contain mx-auto mb-1" />
+                      ) : (
+                          <div className="font-script text-3xl mb-1" style={{ fontFamily: 'Pinyon Script, cursive', color: design.primaryColor }}>
+                              {design.signatureName || issuer}
+                          </div>
+                      )}
+                      <div className="border-t border-gray-400 w-48 mt-1 pt-1 text-xs uppercase font-bold text-gray-500">{issuer}</div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  );
+
+  const renderModern = () => (
+      <div className="w-full h-full box-border relative bg-white flex overflow-hidden">
+          {/* Left Color Bar */}
+          <div className="w-1/4 h-full flex flex-col justify-center items-center p-8 text-white relative" style={{ backgroundColor: design.primaryColor }}>
+              <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+              <div className="relative z-10 text-center">
+                  <div className="w-24 h-24 mx-auto mb-6 bg-white rounded-full flex items-center justify-center shadow-lg">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={design.primaryColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8.5l2.1 6.6 6.9-2.2-4.1 5.9 1.6 7.2-6.5-3.4-6.5 3.4 1.6-7.2-4.1-5.9 6.9 2.2z"/></svg>
+                  </div>
+                  <h2 className="text-xl font-bold uppercase tracking-widest opacity-80">Awarded To</h2>
+                  <h1 className="text-3xl font-bold mt-2 leading-tight">{certificate.userName}</h1>
+              </div>
+          </div>
+
+          {/* Right Content */}
+          <div className="flex-1 p-16 flex flex-col justify-between">
+              <div className="text-right">
+                  <h1 className="text-6xl font-bold uppercase tracking-tighter" style={{ color: design.primaryColor }}>{title}</h1>
+                  <p className="text-xl uppercase tracking-widest font-bold mt-2" style={{ color: design.secondaryColor }}>{subTitle}</p>
+              </div>
+
+              <div className="py-12">
+                  <p className="text-2xl text-gray-600 font-light mb-4">{message}</p>
+                  <h3 className="text-4xl font-bold text-gray-900 mb-2">{certificate.moduleTitle}</h3>
+                  <div className="h-2 w-32 rounded-full" style={{ backgroundColor: design.secondaryColor }}></div>
+                  <p className="mt-6 text-gray-500">
+                      ID: <span className="font-mono">{certificate.uniqueCode}</span>
+                  </p>
+              </div>
+
+              <div className="flex justify-between items-end">
+                  <div>
+                      <p className="text-sm font-bold text-gray-400 uppercase mb-1">Date</p>
+                      <p className="text-xl font-bold text-gray-800">{new Date(certificate.issueDate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                      {design.signatureUrl ? (
+                          <img src={design.signatureUrl} alt="Sig" className="h-16 object-contain mb-2 origin-bottom-left" />
+                      ) : (
+                          <div className="font-script text-4xl mb-2" style={{ fontFamily: 'Pinyon Script, cursive', color: design.primaryColor }}>
+                              {design.signatureName || issuer}
+                          </div>
+                      )}
+                      <div className="h-px bg-gray-300 w-64 mb-1"></div>
+                      <p className="text-sm font-bold text-gray-400 uppercase text-right">{issuer}</p>
+                  </div>
+              </div>
+          </div>
+      </div>
+  );
+
+  const renderMinimal = () => (
+      <div className="w-full h-full p-8 box-border bg-gray-50 flex items-center justify-center">
+          <div className="w-full h-full bg-white border border-gray-200 shadow-sm p-16 flex flex-col items-center justify-center text-center relative">
+              {/* Corner Accents */}
+              <div className="absolute top-8 left-8 w-16 h-16 border-t-4 border-l-4" style={{ borderColor: design.primaryColor }}></div>
+              <div className="absolute bottom-8 right-8 w-16 h-16 border-b-4 border-r-4" style={{ borderColor: design.primaryColor }}></div>
+
+              <div className="mb-12">
+                  <h1 className="text-4xl font-light uppercase tracking-[0.2em] text-gray-900 mb-2">{title}</h1>
+                  <div className="w-24 h-1 mx-auto" style={{ backgroundColor: design.secondaryColor }}></div>
+              </div>
+
+              <p className="text-gray-500 text-lg mb-6">{message}</p>
+              
+              <h2 className="text-5xl font-bold text-gray-900 mb-8">{certificate.userName}</h2>
+              
+              <p className="text-gray-500 text-lg mb-2">For the completion of</p>
+              <h3 className="text-2xl font-bold text-gray-800 mb-12">{certificate.moduleTitle}</h3>
+
+              <div className="flex gap-16 w-full max-w-2xl justify-center">
+                  <div className="flex-1 border-t border-gray-300 pt-4">
+                      <p className="font-bold text-gray-900">{new Date(certificate.issueDate).toLocaleDateString()}</p>
+                      <p className="text-xs uppercase text-gray-400 mt-1">Date</p>
+                  </div>
+                  <div className="flex-1 border-t border-gray-300 pt-4">
+                      {design.signatureUrl ? (
+                          <img src={design.signatureUrl} alt="Sig" className="h-10 object-contain mx-auto -mt-10 mb-2" />
+                      ) : (
+                          <p className="font-bold text-gray-900 font-script text-xl -mt-2 mb-2" style={{fontFamily: 'Pinyon Script'}}>
+                              {design.signatureName || issuer}
+                          </p>
+                      )}
+                      <p className="text-xs uppercase text-gray-400 mt-1">Authorized Signature</p>
+                  </div>
+              </div>
+              
+              <div className="absolute bottom-8 left-0 w-full text-center">
+                  <p className="text-[10px] text-gray-300 font-mono tracking-widest">{certificate.uniqueCode}</p>
+              </div>
+          </div>
+      </div>
+  );
+
+  const getTemplate = () => {
+      switch(design.templateId) {
+          case 'modern': return renderModern();
+          case 'minimal': return renderMinimal();
+          case 'classic': 
+          default: return renderClassic();
+      }
+  };
+
+  const handlePrint = () => {
+    const printContent = certRef.current;
+    if (!printContent) return;
+
+    const printWindow = window.open('', '', 'width=1150,height=800');
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Certificate - ${certificate.userName}</title>
+            <style>
+              @page { size: landscape; margin: 0; }
+              body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: #fff; }
+              .certificate-container { width: 1123px; height: 794px; overflow: hidden; }
+              ${styles} 
+            </style>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Pinyon+Script&family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+          </head>
+          <body>
+            <div class="certificate-container">
+              ${printContent.innerHTML}
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      // Wait for fonts and tailwind CDN
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 1000);
+    }
+  };
+
+  const handleDownload = () => {
+      alert("Please select 'Save as PDF' in the print dialog to download.");
+      handlePrint();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full overflow-hidden flex flex-col h-[90vh]">
+        
+        {/* Toolbar */}
+        <div className="bg-royal-900 text-white p-4 flex justify-between items-center shrink-0">
+           <h3 className="font-bold text-lg">
+               {previewDesign ? "Certificate Design Preview" : "Certificate Viewer"}
+           </h3>
+           <div className="flex gap-2">
+              <button onClick={handlePrint} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors">
+                 <Printer size={18} /> Print
+              </button>
+              <button onClick={handleDownload} className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg">
+                 <Download size={18} /> Download
+              </button>
+              <button onClick={onClose} className="px-4 py-2 hover:bg-white/10 rounded-lg text-gray-300">Close</button>
+           </div>
+        </div>
+
+        {/* Certificate Canvas */}
+        <div className="flex-1 bg-gray-200 overflow-auto p-8 flex items-center justify-center">
+           <div 
+             ref={certRef} 
+             className="certificate-wrapper shadow-2xl transform transition-transform origin-center bg-white"
+             // A4 Landscape Dimensions
+             style={{ width: '1123px', height: '794px', minWidth: '1123px', minHeight: '794px' }}
+           >
+              {getTemplate()}
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Global styles for print context
+const styles = `
+  .font-script { font-family: 'Pinyon Script', cursive; }
+  .font-serif { font-family: 'Cinzel', serif; }
+  .font-sans { font-family: 'Inter', sans-serif; }
+`;
+
+export default CertificateGenerator;

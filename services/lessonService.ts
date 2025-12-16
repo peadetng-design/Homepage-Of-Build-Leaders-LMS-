@@ -1,18 +1,22 @@
 
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
 const DB_RESOURCES_KEY = 'bbl_db_resources';
 const DB_NEWS_KEY = 'bbl_db_news';
-const DB_TIMERS_KEY = 'bbl_db_timers'; // New key for timers
+const DB_TIMERS_KEY = 'bbl_db_timers';
+const DB_MODULES_KEY = 'bbl_db_modules';
+const DB_CERTIFICATES_KEY = 'bbl_db_certificates';
 
 class LessonService {
   private lessons: Lesson[] = [];
   private attempts: StudentAttempt[] = [];
   private resources: Resource[] = [];
   private news: NewsItem[] = [];
-  private timers: Record<string, number> = {}; // key: userId_lessonId, value: seconds
+  private timers: Record<string, number> = {}; 
+  private modules: Module[] = [];
+  private certificates: Certificate[] = [];
 
   constructor() {
     this.init();
@@ -67,7 +71,6 @@ class LessonService {
       this.attempts = JSON.parse(storedAttempts);
     }
 
-    // Init Resources
     const storedResources = localStorage.getItem(DB_RESOURCES_KEY);
     if (storedResources) {
       this.resources = JSON.parse(storedResources);
@@ -81,7 +84,6 @@ class LessonService {
       this.saveResources();
     }
 
-    // Init News
     const storedNews = localStorage.getItem(DB_NEWS_KEY);
     if (storedNews) {
       this.news = JSON.parse(storedNews);
@@ -96,10 +98,32 @@ class LessonService {
       this.saveNews();
     }
 
-    // Init Timers
     const storedTimers = localStorage.getItem(DB_TIMERS_KEY);
     if (storedTimers) {
         this.timers = JSON.parse(storedTimers);
+    }
+
+    // Init Modules
+    const storedModules = localStorage.getItem(DB_MODULES_KEY);
+    if (storedModules) {
+        this.modules = JSON.parse(storedModules);
+    } else {
+        // Create a default module containing the demo lesson
+        this.modules = [
+            {
+                id: 'mod-foundations',
+                title: 'Leadership Foundations',
+                description: 'Essential principles for new mentors.',
+                lessonIds: ['demo-lesson-1']
+            }
+        ];
+        this.saveModules();
+    }
+
+    // Init Certificates
+    const storedCerts = localStorage.getItem(DB_CERTIFICATES_KEY);
+    if (storedCerts) {
+        this.certificates = JSON.parse(storedCerts);
     }
   }
 
@@ -108,6 +132,8 @@ class LessonService {
   private saveResources() { localStorage.setItem(DB_RESOURCES_KEY, JSON.stringify(this.resources)); }
   private saveNews() { localStorage.setItem(DB_NEWS_KEY, JSON.stringify(this.news)); }
   private saveTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
+  private saveModules() { localStorage.setItem(DB_MODULES_KEY, JSON.stringify(this.modules)); }
+  private saveCertificates() { localStorage.setItem(DB_CERTIFICATES_KEY, JSON.stringify(this.certificates)); }
 
   async getLessons(): Promise<Lesson[]> { return this.lessons; }
   async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
@@ -121,6 +147,81 @@ class LessonService {
       this.lessons.unshift(lesson);
     }
     this.saveLessons();
+    
+    // Auto-update module if lesson is new/orphaned? 
+    // For simplicity, add any new lesson to "Leadership Foundations" if it's leadership
+    if (lesson.category === 'Leadership' && !this.modules[0].lessonIds.includes(lesson.id)) {
+        this.modules[0].lessonIds.push(lesson.id);
+        this.saveModules();
+    }
+  }
+
+  // --- MODULES & CERTIFICATES ---
+
+  async getModules(): Promise<Module[]> { return this.modules; }
+  
+  async createModule(title: string, description: string, lessonIds: string[]): Promise<void> {
+      const newModule: Module = {
+          id: crypto.randomUUID(),
+          title, description, lessonIds
+      };
+      this.modules.push(newModule);
+      this.saveModules();
+  }
+
+  async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
+      // Find modules containing this lesson
+      const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
+      
+      for (const mod of relevantModules) {
+          // Check if ALL lessons in this module are completed
+          let allComplete = true;
+          for (const lId of mod.lessonIds) {
+              const attempted = await this.hasUserAttemptedLesson(userId, lId);
+              if (!attempted) {
+                  allComplete = false;
+                  break;
+              }
+          }
+          
+          if (allComplete) {
+              return mod;
+          }
+      }
+      return null;
+  }
+
+  async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
+      const mod = this.modules.find(m => m.id === moduleId);
+      if (!mod) throw new Error("Module not found");
+
+      // We allow multiple certificates for the same module if they are re-issued (updated design)
+      // or we can update the existing one. For simplicity in this designer feature, we create new or update based on ID if we had one.
+      // Assuming 'Issue' creates a new record.
+      
+      const cert: Certificate = {
+          id: crypto.randomUUID(),
+          userId,
+          userName,
+          moduleId,
+          moduleTitle: mod.title,
+          issueDate: new Date().toISOString(),
+          issuerName: 'Build Biblical Leaders',
+          uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+          design: design // Save the custom design
+      };
+
+      this.certificates.unshift(cert);
+      this.saveCertificates();
+      return cert;
+  }
+
+  async getUserCertificates(userId: string): Promise<Certificate[]> {
+      return this.certificates.filter(c => c.userId === userId);
+  }
+
+  async getAllCertificates(): Promise<Certificate[]> {
+      return this.certificates;
   }
 
   // --- RESOURCES & NEWS ---
@@ -139,10 +240,6 @@ class LessonService {
   // SIMULATES EXCEL PARSING based on the prompt's template specification
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing delay
-
-    // REAL IMPLEMENTATION WOULD USE 'xlsx' or 'read-excel-file' here to read Sheets 1, 2, 3
-    // Since we are in a web environment without those libs, we return the EXACT structure described in the prompt
-    // as if the file "lesson.xlsx" contained the Genesis 1 example.
 
     const mockDraft: LessonDraft = {
       isValid: true,
@@ -203,7 +300,6 @@ class LessonService {
       ]
     };
 
-    // --- SIMULATED VALIDATION LOGIC ---
     if (!mockDraft.metadata.title) {
         mockDraft.isValid = false;
         mockDraft.errors.push("Missing Lesson Title in Metadata.");
@@ -219,10 +315,6 @@ class LessonService {
         if (!q.options.some((o: any) => o.isCorrect)) {
             mockDraft.isValid = false;
             mockDraft.errors.push(`Question ${q.question_id || idx} has no correct answer marked.`);
-        }
-        if (q.options.some((o: any) => !o.explanation)) {
-             // Non-blocking warning in real app, but strict here per request
-             // mockDraft.errors.push(`Question ${q.question_id} missing explanations.`);
         }
     });
 
@@ -329,8 +421,22 @@ class LessonService {
   }
 
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
+      // Check if user has answered ALL questions in the lesson? 
+      // For simplicity, if they have > 0 attempts, we count it as "started".
+      // But for module completion, we should probably check if they finished.
+      // Let's rely on the `getAttempts` count vs question count logic if needed.
+      // For now, simpler check: do they have at least one attempt?
+      // Real app: verify 100% completion.
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
-      return userAttempts.length > 0;
+      
+      // Strict Mode: Check if all questions are answered
+      const lesson = this.lessons.find(l => l.id === lessonId);
+      if (!lesson) return false;
+      
+      const totalQ = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+      const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
+      
+      return answeredQ >= totalQ && totalQ > 0;
   }
 
   // --- TIMER PERSISTENCE ---

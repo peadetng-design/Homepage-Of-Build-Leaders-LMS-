@@ -1,5 +1,5 @@
 
-import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
+import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, ChatChannel } from '../types';
 
 // STORAGE KEYS
 const DB_USERS_KEY = 'bbl_db_users';
@@ -7,6 +7,7 @@ const DB_LOGS_KEY = 'bbl_db_logs';
 const DB_INVITES_KEY = 'bbl_db_invites';
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_REQUESTS_KEY = 'bbl_db_requests';
+const DB_CHANNELS_KEY = 'bbl_db_channels'; // New Key
 const SESSION_KEY = 'bbl_session_token';
 
 // DEFAULT ADMIN CREDENTIALS
@@ -100,6 +101,7 @@ class AuthService {
   private invites: Invite[] = [];
   private lessons: Lesson[] = [];
   private requests: JoinRequest[] = [];
+  private channels: ChatChannel[] = []; // Chat Channels
 
   constructor() {
     this.init();
@@ -174,6 +176,9 @@ class AuthService {
     
     const storedRequests = localStorage.getItem(DB_REQUESTS_KEY);
     if (storedRequests) this.requests = JSON.parse(storedRequests);
+
+    const storedChannels = localStorage.getItem(DB_CHANNELS_KEY);
+    if (storedChannels) this.channels = JSON.parse(storedChannels);
   }
 
   private saveUsers() { localStorage.setItem(DB_USERS_KEY, JSON.stringify(this.users)); }
@@ -181,6 +186,7 @@ class AuthService {
   private saveInvites() { localStorage.setItem(DB_INVITES_KEY, JSON.stringify(this.invites)); }
   private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
   private saveRequests() { localStorage.setItem(DB_REQUESTS_KEY, JSON.stringify(this.requests)); }
+  private saveChannels() { localStorage.setItem(DB_CHANNELS_KEY, JSON.stringify(this.channels)); }
 
   private logAction(actor: User, action: string, details: string, severity: 'info' | 'warning' | 'critical' = 'info') {
     const log: AuditLog = {
@@ -332,6 +338,69 @@ class AuthService {
       if (Date.now() > session.exp) return null;
       return this.users.find(u => u.id === session.userId) || null;
     } catch { return null; }
+  }
+
+  // --- CHAT CHANNELS ---
+
+  async createChatChannel(creator: User, name: string, description: string, config: Partial<ChatChannel>): Promise<void> {
+      // Validate Permissions
+      if (creator.role === UserRole.STUDENT || creator.role === UserRole.PARENT) {
+          throw new Error("Unauthorized to create group chats");
+      }
+
+      const newChannel: ChatChannel = {
+          id: crypto.randomUUID(),
+          name,
+          description,
+          creatorId: creator.id,
+          scope: creator.role === UserRole.ADMIN ? 'global' : creator.role === UserRole.ORGANIZATION ? 'org' : 'class',
+          orgId: creator.role === UserRole.ORGANIZATION ? creator.id : undefined,
+          mentorId: creator.role === UserRole.MENTOR ? creator.id : undefined,
+          includeRoles: config.includeRoles || [],
+          includeStudentsOfMentors: config.includeStudentsOfMentors || false,
+          createdAt: new Date().toISOString()
+      };
+
+      this.channels.push(newChannel);
+      this.saveChannels();
+      this.logAction(creator, 'CREATE_CHANNEL', `Created channel: ${name}`);
+  }
+
+  async getUserChannels(user: User): Promise<ChatChannel[]> {
+      return this.channels.filter(ch => {
+          // 1. Creator always sees their channels
+          if (ch.creatorId === user.id) return true;
+
+          // 2. Filter by Scope
+          if (ch.scope === 'global') {
+              // Global: Check role match
+              if (ch.includeRoles.includes(user.role)) return true;
+              
+              // If Admin selected "Mentors + Students" (via includeStudentsOfMentors logic)
+              if (ch.includeStudentsOfMentors && user.role === UserRole.STUDENT) {
+                  // Admin "Global" + Students means ALL students in the system
+                  return true;
+              }
+          }
+          
+          if (ch.scope === 'org') {
+              // Must belong to this Org
+              if (user.organizationId !== ch.orgId && user.id !== ch.orgId) return false;
+              
+              if (ch.includeRoles.includes(user.role)) return true;
+              if (ch.includeStudentsOfMentors && user.role === UserRole.STUDENT) return true;
+          }
+
+          if (ch.scope === 'class') {
+              // Must belong to this Mentor
+              if (user.mentorId !== ch.mentorId && user.id !== ch.mentorId) return false;
+              
+              // Class channels usually include students
+              if (user.role === UserRole.STUDENT) return true;
+          }
+
+          return false;
+      });
   }
 
   // --- CURATED LESSONS ---

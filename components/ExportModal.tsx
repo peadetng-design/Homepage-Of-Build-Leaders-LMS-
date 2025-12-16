@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { exportService } from '../services/exportService';
-import { Download, Printer, X, FileText, CheckSquare, Loader2 } from 'lucide-react';
+import { Download, Printer, X, FileText, CheckSquare, Loader2, BadgeCheck } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
@@ -12,7 +12,8 @@ interface ExportModalProps {
 
 const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser }) => {
   const [includeStats, setIncludeStats] = useState(true);
-  const [includeUnattempted, setIncludeUnattempted] = useState(true);
+  const [includeUnattempted, setIncludeUnattempted] = useState(false);
+  const [includeCertificates, setIncludeCertificates] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isOpen) return null;
@@ -30,14 +31,21 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser 
         htmlContent += `<div class='stats-section'><h2>Performance Report</h2><pre style='background:#f4f4f5; padding:15px; border-radius:8px;'>${stats}</pre></div>`;
       }
 
-      // 2. Get Unattempted Lessons
+      // 2. Get Certificates
+      if (includeCertificates) {
+          const data = await exportService.getCertificatesContent(currentUser);
+          textContent += data.text;
+          htmlContent += data.html;
+      }
+
+      // 3. Get Unattempted Lessons
       if (includeUnattempted) {
          const data = await exportService.getUnattemptedContent(currentUser);
          textContent += data.text;
          htmlContent += data.html;
       }
 
-      // 3. Output
+      // 4. Output
       if (format === 'txt') {
          exportService.downloadTxt(`BBL_Report_${currentUser.role}_${Date.now()}.txt`, textContent);
       } else {
@@ -67,7 +75,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser 
 
           <div className="p-6">
              <p className="text-gray-600 mb-6 text-sm">
-               Select the data you wish to export or print. Unattempted lessons will be exported without revealing answers.
+               Select the data you wish to export or print.
              </p>
 
              <div className="space-y-3 mb-8">
@@ -79,6 +87,19 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser 
                    <div>
                       <span className="block font-bold text-gray-800">Performance Scores & Stats</span>
                       <span className="text-xs text-gray-500">Your current dashboard metrics</span>
+                   </div>
+                </label>
+
+                <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${includeCertificates ? 'border-royal-500 bg-royal-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                   <div className={`w-6 h-6 rounded border flex items-center justify-center mr-3 ${includeCertificates ? 'bg-royal-600 border-royal-600 text-white' : 'border-gray-300 bg-white'}`}>
+                      {includeCertificates && <CheckSquare size={16} />}
+                   </div>
+                   <input type="checkbox" className="hidden" checked={includeCertificates} onChange={() => setIncludeCertificates(!includeCertificates)} />
+                   <div>
+                      <span className="flex items-center gap-2 font-bold text-gray-800">
+                          Certificates <BadgeCheck size={14} className="text-gold-500" />
+                      </span>
+                      <span className="text-xs text-gray-500">List of all earned credentials</span>
                    </div>
                 </label>
 
@@ -97,7 +118,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser 
              <div className="grid grid-cols-2 gap-4">
                 <button 
                   onClick={() => handleExport('txt')}
-                  disabled={isProcessing || (!includeStats && !includeUnattempted)}
+                  disabled={isProcessing || (!includeStats && !includeUnattempted && !includeCertificates)}
                   className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 rounded-xl hover:border-royal-600 hover:bg-royal-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
                    {isProcessing ? <Loader2 className="animate-spin mb-2 text-royal-600" /> : <FileText size={32} className="mb-2 text-gray-400 group-hover:text-royal-600" />}
@@ -106,7 +127,7 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, currentUser 
 
                 <button 
                   onClick={() => handleExport('print')}
-                  disabled={isProcessing || (!includeStats && !includeUnattempted)}
+                  disabled={isProcessing || (!includeStats && !includeUnattempted && !includeCertificates)}
                   className="flex flex-col items-center justify-center p-4 border-2 border-gray-200 rounded-xl hover:border-gold-500 hover:bg-gold-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
                    {isProcessing ? <Loader2 className="animate-spin mb-2 text-gold-600" /> : <Printer size={32} className="mb-2 text-gray-400 group-hover:text-gold-600" />}

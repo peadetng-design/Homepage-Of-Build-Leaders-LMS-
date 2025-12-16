@@ -29,6 +29,7 @@ export interface User {
   linkedStudentId?: string; // For Parents
   createdBy?: string; // ID of the user who invited/created this user
   curatedLessonIds?: string[]; // IDs of lessons selected for their group
+  earnedCertificates?: string[]; // IDs of earned certificates
 }
 
 export interface JoinRequest {
@@ -38,6 +39,53 @@ export interface JoinRequest {
   mentorId: string;
   status: 'pending' | 'accepted' | 'rejected';
   timestamp: string;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description?: string;
+  creatorId: string;
+  scope: 'global' | 'org' | 'class'; // global=admin, org=org, class=mentor
+  orgId?: string; // If scope is org
+  mentorId?: string; // If scope is class
+  
+  // Membership Rules
+  includeRoles: UserRole[]; // e.g., [MENTOR, ORGANIZATION]
+  includeStudentsOfMentors?: boolean; // If true, include students of the included mentors
+  
+  createdAt: string;
+}
+
+// --- CERTIFICATE MODEL ---
+export interface Module {
+  id: string;
+  title: string;
+  description: string;
+  lessonIds: string[]; // Lessons required to complete this module
+  badgeUrl?: string;
+}
+
+export interface CertificateDesign {
+  templateId: 'classic' | 'modern' | 'minimal';
+  primaryColor: string;
+  secondaryColor: string;
+  titleOverride?: string; // Allow renaming "Certificate of Completion"
+  messageOverride?: string; // Allow changing "This certifies that..."
+  signatureUrl?: string; // Data URL for image
+  signatureName?: string; // Text based signature
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  userName: string;
+  moduleId: string;
+  moduleTitle: string;
+  issueDate: string;
+  issuerName: string; // e.g., "Build Biblical Leaders" or Org Name
+  uniqueCode: string;
+  design?: CertificateDesign; // New: Stores the look and feel
 }
 
 // --- LMS DATA MODEL ---

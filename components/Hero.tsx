@@ -78,7 +78,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                 </button>
                 <button
                   onClick={onSignIn}
-                  className="px-8 py-4 bg-royal-50 text-white font-bold rounded-full shadow-lg shadow-royal-500/30 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] hover:bg-royal-600 border border-transparent"
+                  className="px-8 py-4 bg-white text-royal-600 font-bold rounded-full shadow-lg shadow-royal-500/10 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] border border-royal-100"
                 >
                   Sign In
                 </button>

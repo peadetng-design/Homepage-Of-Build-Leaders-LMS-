@@ -14,9 +14,10 @@ import StudentPanel from './StudentPanel';
 import Tooltip from './Tooltip'; 
 import ResourceView from './ResourceView';
 import NewsView from './NewsView';
+import PerformanceReport from './PerformanceReport'; // Import PerformanceReport
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
-  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List
+  Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -180,7 +181,7 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
 );
 
 // VIEW STATE ENUM to prevent hook errors
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news';
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news' | 'performance-report';
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, initialView }) => {
   // 1. ALL STATE HOOKS
@@ -295,6 +296,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
 
   // 4. RENDER Logic based on currentView
   
+  if (currentView === 'performance-report') {
+      return <PerformanceReport currentUser={user} onBack={() => setCurrentView('dashboard')} />;
+  }
+
   if (currentView === 'resources') return <div className="p-4 md:p-8 animate-in fade-in duration-300"><ResourceView /></div>;
   if (currentView === 'news') return <div className="p-4 md:p-8 animate-in fade-in duration-300"><NewsView /></div>;
 
@@ -422,6 +427,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onChangePasswordClick, init
                 </button>
               </Tooltip>
            )}
+
+           {/* MY PERFORMANCE SCORES BUTTON (For Everyone) */}
+           <Tooltip content="View detailed reports of all your lesson attempts and scores.">
+             <button 
+                  onClick={() => setCurrentView('performance-report')}
+                  className="flex items-center gap-2 px-5 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-600/20 transition-all transform hover:-translate-y-0.5"
+             >
+                  <BarChart3 size={18} /> 
+                  <span>MY PERFORMANCE SCORES</span>
+             </button>
+           </Tooltip>
 
            {/* TAKE LESSONS BUTTON (For Everyone - Admin, Mentor, Student, Org, Parent) */}
            <Tooltip content="Browse the full lesson library and start interactive study sessions.">

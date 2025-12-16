@@ -5,12 +5,14 @@ const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
 const DB_RESOURCES_KEY = 'bbl_db_resources';
 const DB_NEWS_KEY = 'bbl_db_news';
+const DB_TIMERS_KEY = 'bbl_db_timers'; // New key for timers
 
 class LessonService {
   private lessons: Lesson[] = [];
   private attempts: StudentAttempt[] = [];
   private resources: Resource[] = [];
   private news: NewsItem[] = [];
+  private timers: Record<string, number> = {}; // key: userId_lessonId, value: seconds
 
   constructor() {
     this.init();
@@ -93,12 +95,19 @@ class LessonService {
       ];
       this.saveNews();
     }
+
+    // Init Timers
+    const storedTimers = localStorage.getItem(DB_TIMERS_KEY);
+    if (storedTimers) {
+        this.timers = JSON.parse(storedTimers);
+    }
   }
 
   private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
   private saveAttempts() { localStorage.setItem(DB_ATTEMPTS_KEY, JSON.stringify(this.attempts)); }
   private saveResources() { localStorage.setItem(DB_RESOURCES_KEY, JSON.stringify(this.resources)); }
   private saveNews() { localStorage.setItem(DB_NEWS_KEY, JSON.stringify(this.news)); }
+  private saveTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
 
   async getLessons(): Promise<Lesson[]> { return this.lessons; }
   async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
@@ -322,6 +331,18 @@ class LessonService {
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
       return userAttempts.length > 0;
+  }
+
+  // --- TIMER PERSISTENCE ---
+  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> {
+      const key = `${userId}_${lessonId}`;
+      this.timers[key] = seconds;
+      this.saveTimers();
+  }
+
+  async getQuizTimer(userId: string, lessonId: string): Promise<number> {
+      const key = `${userId}_${lessonId}`;
+      return this.timers[key] || 0;
   }
 }
 

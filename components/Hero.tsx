@@ -26,10 +26,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
             <BookOpen size={140} strokeWidth={1} className="text-royal-200 relative z-10 opacity-60" />
           </div>
 
-          {/* Bottom Right - Star/Sparkle Group (KEPT - Closest to Sign In) */}
-          <div className="absolute bottom-1/3 right-1/4 text-royal-200 animate-bounce duration-[4000ms]">
-            <Sparkles size={32} />
-          </div>
+          {/* Relocated Star - Now between buttons below, removed from here */}
         </div>
 
         {/* Content */}
@@ -54,7 +51,8 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-5 justify-center items-center w-full">
+          {/* Widened gap and relative positioning for star placement */}
+          <div className="flex flex-col sm:flex-row gap-12 sm:gap-16 justify-center items-center w-full relative">
             {currentUser ? (
                <button
                   onClick={onNavigateToDashboard}
@@ -69,16 +67,24 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                <>
                 <button
                   onClick={onRegister}
-                  className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden border border-transparent"
+                  className="group relative px-8 py-4 bg-royal-800 text-white font-bold rounded-full shadow-xl shadow-royal-900/20 transition-all transform hover:-translate-y-1 hover:shadow-2xl min-w-[200px] overflow-hidden border border-transparent z-10"
                 >
                   <div className="absolute inset-0 bg-white/10 group-hover:translate-x-full transition-transform duration-500 ease-out -skew-x-12 -translate-x-full"></div>
                   <span className="relative flex items-center justify-center gap-2">
                     Get Started <ArrowRight size={18} />
                   </span>
                 </button>
+
+                {/* ANIMATED BOUNCING STAR - Relocated to be equidistant between buttons */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0">
+                   <div className="text-gold-400 animate-bounce duration-[2000ms]">
+                      <Sparkles size={28} fill="currentColor" className="opacity-80 drop-shadow-sm" />
+                   </div>
+                </div>
+
                 <button
                   onClick={onSignIn}
-                  className="px-8 py-4 bg-white text-royal-600 font-bold rounded-full shadow-lg shadow-royal-500/10 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] border border-royal-100"
+                  className="px-8 py-4 bg-white text-royal-600 font-bold rounded-full shadow-lg shadow-royal-500/10 hover:shadow-xl transition-all transform hover:-translate-y-1 min-w-[200px] border-2 border-royal-600 z-10"
                 >
                   Sign In
                 </button>

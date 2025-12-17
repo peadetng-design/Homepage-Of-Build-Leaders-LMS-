@@ -189,14 +189,14 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                     <div className="relative bg-white p-10 rounded-[2rem] shadow-xl border border-gray-100">
                        <Globe className="text-royal-50 absolute top-4 right-4" size={180} />
                        <div className="relative z-10">
-                          <h3 className="text-2xl font-bold text-gray-900 mb-6">Why BBL?</h3>
+                          <h3 className="text-2xl font-bold text-gray-900 mb-6">{content.whyBblHeading}</h3>
                           <ul className="space-y-6">
                             {[
-                              "Structured memorization plans",
-                              "Real-time competition & leaderboards",
-                              "Role-based tools for Mentors & Parents",
-                              "District & Regional tournament support"
-                            ].map((item, i) => (
+                              content.whyBblItem1,
+                              content.whyBblItem2,
+                              content.whyBblItem3,
+                              content.whyBblItem4
+                            ].filter(Boolean).map((item, i) => (
                               <li key={i} className="flex items-start gap-4">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold shadow-sm">✓</div>
                                 <span className="text-gray-700 text-lg">{item}</span>
@@ -363,7 +363,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
             </div>
 
             <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-xs font-bold">
-               <p>© {content.footerYear} Build Biblical Leaders. All rights reserved.</p>
+               <p>{content.footerCopyright}</p>
                <div className="flex gap-8">
                   <span className="hover:text-royal-600 cursor-pointer">Privacy Policy</span>
                   <span className="hover:text-royal-600 cursor-pointer">Terms of Service</span>

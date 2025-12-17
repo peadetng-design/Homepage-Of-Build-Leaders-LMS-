@@ -41,7 +41,13 @@ export interface HomepageContent {
   resourcesHeading: string;
   resourcesTitle: string;
   resourcesSubtitle: string;
-  // Feature Cards (Why BBL)
+  // Why BBL Section
+  whyBblHeading: string;
+  whyBblItem1: string;
+  whyBblItem2: string;
+  whyBblItem3: string;
+  whyBblItem4: string;
+  // Feature Cards (Why BBL - Legacy naming but used for the grid)
   feature1Title: string;
   feature1Desc: string;
   feature2Title: string;
@@ -65,6 +71,7 @@ export interface HomepageContent {
   footerPhone: string;
   footerEmail: string;
   footerAddress: string;
+  footerCopyright: string;
 }
 
 export interface JoinRequest {

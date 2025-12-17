@@ -19,7 +19,13 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   resourcesHeading: "Study Materials",
   resourcesTitle: "Equipping the Saints",
   resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
-  // Features (Why BBL)
+  // Why BBL Section
+  whyBblHeading: "Why BBL?",
+  whyBblItem1: "Structured memorization plans",
+  whyBblItem2: "Real-time competition & leaderboards",
+  whyBblItem3: "Role-based tools for Mentors & Parents",
+  whyBblItem4: "District & Regional tournament support",
+  // Feature Cards (Legacy naming)
   feature1Title: "Study Guides",
   feature1Desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.",
   feature2Title: "Flashcards",
@@ -42,7 +48,8 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   footerSocials: "Facebook, Twitter, Instagram",
   footerPhone: "+1 (555) 123-4567",
   footerEmail: "contact@buildbiblicalleaders.com",
-  footerAddress: "123 Faith Lane, Grace City, GC 77777"
+  footerAddress: "123 Faith Lane, Grace City, GC 77777",
+  footerCopyright: "© 2024 Build Biblical Leaders. All rights reserved."
 };
 
 class LessonService {

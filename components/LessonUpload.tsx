@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2 } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -354,6 +354,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div><label className={labelClass}>Body Text</label><textarea className={`${inputClass} h-24`} value={homepageContent.aboutBody} onChange={e => setHomepageContent({...homepageContent, aboutBody: e.target.value})} /></div>
                    </div>
 
+                   {/* WHY BBL (Checklist) */}
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ListChecks size={18} className="text-indigo-500" /> "Why BBL?" Section (Checklist)</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                         <div className="md:col-span-2">
+                            <label className={labelClass}>Section Heading</label>
+                            <input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} />
+                         </div>
+                         <div><label className={labelClass}>Checklist Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div>
+                         <div><label className={labelClass}>Checklist Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div>
+                         <div><label className={labelClass}>Checklist Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div>
+                         <div><label className={labelClass}>Checklist Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div>
+                      </div>
+                   </div>
+
                    {/* RESOURCES SECTION HEADER */}
                    <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                       <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Resources Header</h3>
@@ -362,9 +377,9 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div><label className={labelClass}>Subtitle</label><textarea className={`${inputClass} h-20`} value={homepageContent.resourcesSubtitle} onChange={e => setHomepageContent({...homepageContent, resourcesSubtitle: e.target.value})} /></div>
                    </div>
 
-                   {/* WHY BBL / FEATURES SECTION */}
+                   {/* FEATURE CARDS */}
                    <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><CheckCircle size={16} className="text-indigo-500" /> Feature Cards (Why BBL)</h3>
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><CheckCircle size={16} className="text-indigo-500" /> Grid Feature Cards</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="col-span-2 border-l-4 border-indigo-200 pl-3">
                             <label className={labelClass}>Feature 1 (Title & Description)</label>
@@ -416,6 +431,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <div><label className={labelClass}><Phone size={10} className="inline mr-1"/> Contact Phone</label><input className={inputClass} value={homepageContent.footerPhone} onChange={e => setHomepageContent({...homepageContent, footerPhone: e.target.value})} /></div>
                          <div><label className={labelClass}><Share2 size={10} className="inline mr-1"/> Social Media Handles</label><input className={inputClass} value={homepageContent.footerSocials} onChange={e => setHomepageContent({...homepageContent, footerSocials: e.target.value})} /></div>
                          <div className="lg:col-span-4"><label className={labelClass}><MapPin size={10} className="inline mr-1"/> Physical Address</label><input className={inputClass} value={homepageContent.footerAddress} onChange={e => setHomepageContent({...homepageContent, footerAddress: e.target.value})} /></div>
+                         <div className="lg:col-span-4"><label className={labelClass}><Circle size={10} className="inline mr-1"/> Footer Copyright Text</label><input className={inputClass} value={homepageContent.footerCopyright} onChange={e => setHomepageContent({...homepageContent, footerCopyright: e.target.value})} /></div>
                       </div>
                    </div>
                 </div>

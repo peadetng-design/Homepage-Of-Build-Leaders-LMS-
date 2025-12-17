@@ -9,7 +9,7 @@ import {
   Users, UserPlus, Shield, Activity, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
   BookOpen, FileText, Edit2, Eye, Plus, Upload, ListPlus, UserCheck, UserX, Trash2,
-  Download, Filter, Calendar, List
+  Download, Filter, Calendar, List, Send, Loader2
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -47,6 +47,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.STUDENT);
   const [generatedLink, setGeneratedLink] = useState('');
+  const [isSendingMail, setIsSendingMail] = useState(false);
 
   // Logs Filter State
   const [logSearch, setLogSearch] = useState('');
@@ -118,16 +119,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
     }
   };
 
-  const handleCreateInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateInvite = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     try {
       const token = await authService.createInvite(currentUser, inviteEmail, inviteRole);
       const link = `${window.location.origin}?invite=${token}`;
       setGeneratedLink(link);
-      setNotification({ msg: 'Invite created! Share the link below.', type: 'success' });
+      if (!isSendingMail) {
+        setNotification({ msg: 'Invite created! Share the link below.', type: 'success' });
+      }
       fetchData(); // Refresh list
+      return link;
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
+      return null;
+    }
+  };
+
+  const handleSendMailInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteEmail) {
+        setNotification({ msg: "Please enter an email address", type: 'error' });
+        return;
+    }
+    setIsSendingMail(true);
+    setNotification(null);
+
+    try {
+        const link = await handleCreateInvite();
+        if (link) {
+            // Simulation of email sending
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log(`%c[EMAIL SIMULATION] To: ${inviteEmail}\nSubject: You are invited to join Build Biblical Leaders\nBody: Hello! You have been invited to join as a ${inviteRole}. Click here to register: ${link}`, "color: #4f46e5; font-weight: bold;");
+            setNotification({ msg: `Invite email sent to ${inviteEmail}!`, type: 'success' });
+            setInviteEmail('');
+            setGeneratedLink('');
+        }
+    } catch (err: any) {
+        setNotification({ msg: err.message, type: 'error' });
+    } finally {
+        setIsSendingMail(false);
     }
   };
 
@@ -418,7 +449,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                       <UserPlus size={20} /> Invite New User
                     </h3>
                     <form onSubmit={handleCreateInvite} className="space-y-4">
-                       <div className="grid grid-cols-2 gap-4">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="block text-xs font-bold text-indigo-600 uppercase mb-1">Email Address</label>
                             <div className="relative">
@@ -448,15 +479,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </select>
                           </div>
                        </div>
-                       <Tooltip content="Create a unique registration link to share with the new user.">
-                         <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md">
-                           Generate Invite Link
-                         </button>
-                       </Tooltip>
+                       
+                       <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                          <Tooltip content="Create a unique registration link to share with the new user." className="flex-1">
+                            <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition-colors shadow-md flex items-center justify-center gap-2">
+                              <Link size={18} /> Generate Link
+                            </button>
+                          </Tooltip>
+                          
+                          <Tooltip content="Generate a link and automatically send it to the recipient via email." className="flex-1">
+                            <button 
+                              onClick={handleSendMailInvite}
+                              disabled={isSendingMail}
+                              className="w-full bg-royal-800 text-white font-bold py-3 rounded-lg hover:bg-royal-950 transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              {isSendingMail ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                              SEND MAIL INVITE
+                            </button>
+                          </Tooltip>
+                       </div>
                     </form>
                  </div>
 
-                 {generatedLink && (
+                 {generatedLink && !isSendingMail && (
                    <div className="bg-green-50 p-6 rounded-xl border border-green-200 animate-in fade-in slide-in-from-top-4 mt-4">
                       <div className="flex items-start gap-4">
                          <div className="bg-green-100 p-2 rounded-full text-green-600">

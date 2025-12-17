@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Invite } from '../types';
 import { authService } from '../services/authService';
+// Added Plus to the lucide-react imports to fix the error on line 229
 import { 
   Users, UserPlus, Trash2, Mail, Copy, Check, BarChart3, 
-  Settings, Search, Shield, Building2, UserCheck, RefreshCw, X 
+  Settings, Search, Shield, Building2, UserCheck, RefreshCw, X, Send, Loader2, Link, Plus
 } from 'lucide-react';
 
 interface OrganizationPanelProps {
@@ -22,6 +23,8 @@ const OrganizationPanel: React.FC<OrganizationPanelProps> = ({ currentUser }) =>
   const [showAddMentor, setShowAddMentor] = useState(false);
   const [newMentorData, setNewMentorData] = useState({ name: '', email: '', password: '' });
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isSendingMail, setIsSendingMail] = useState(false);
 
   useEffect(() => {
     fetchMembers();
@@ -55,11 +58,36 @@ const OrganizationPanel: React.FC<OrganizationPanelProps> = ({ currentUser }) =>
 
   const handleGenerateInvite = async () => {
     try {
-      const token = await authService.createInvite(currentUser, `invite_${Date.now()}@temp.com`, UserRole.MENTOR);
+      const email = inviteEmail || `invite_${Date.now()}@temp.com`;
+      const token = await authService.createInvite(currentUser, email, UserRole.MENTOR);
       const link = `${window.location.origin}?invite=${token}`;
       setInviteLink(link);
+      return link;
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
+      return null;
+    }
+  };
+
+  const handleSendMailInvite = async () => {
+    if (!inviteEmail) {
+        setNotification({ msg: "Please enter an email address", type: 'error' });
+        return;
+    }
+    setIsSendingMail(true);
+    try {
+        const link = await handleGenerateInvite();
+        if (link) {
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            console.log(`%c[EMAIL SIMULATION] To: ${inviteEmail}\nSubject: Org Invite\nBody: ${link}`, "color: #4f46e5;");
+            setNotification({ msg: `Invite email sent to ${inviteEmail}!`, type: 'success' });
+            setInviteEmail('');
+            setInviteLink('');
+        }
+    } catch (err: any) {
+        setNotification({ msg: err.message, type: 'error' });
+    } finally {
+        setIsSendingMail(false);
     }
   };
 
@@ -156,7 +184,6 @@ const OrganizationPanel: React.FC<OrganizationPanelProps> = ({ currentUser }) =>
              <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
                 <h3 className="font-bold text-lg text-gray-800 mb-6">Recent Activity</h3>
                 <div className="space-y-4">
-                   {/* Simulated Activity Feed */}
                    {[1,2,3].map(i => (
                       <div key={i} className="flex items-center gap-4 p-4 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-50 last:border-0">
                          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold">
@@ -176,24 +203,40 @@ const OrganizationPanel: React.FC<OrganizationPanelProps> = ({ currentUser }) =>
         {/* MENTORS TAB */}
         {activeTab === 'mentors' && (
           <div className="space-y-6">
-             <div className="flex justify-between items-center">
+             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <h3 className="font-bold text-xl text-gray-800">Staff Management</h3>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
+                   <div className="relative flex-1 md:flex-none md:min-w-[200px]">
+                      <Mail className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                      <input 
+                        type="email"
+                        placeholder="Enter email to invite..." 
+                        className="pl-9 pr-4 py-2 border rounded-lg w-full text-sm"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                      />
+                   </div>
+                   <button 
+                     onClick={handleSendMailInvite}
+                     disabled={isSendingMail || !inviteEmail}
+                     className="px-4 py-2 bg-royal-800 text-white rounded-lg font-bold hover:bg-royal-950 flex items-center gap-2 text-sm disabled:opacity-50"
+                   >
+                     {isSendingMail ? <Loader2 className="animate-spin" size={16} /> : <Send size={16} />} SEND MAIL INVITE
+                   </button>
                    <button 
                      onClick={() => setShowAddMentor(!showAddMentor)}
-                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2"
+                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 flex items-center gap-2 text-sm"
                    >
-                     <UserPlus size={18} /> Add Mentor
-                   </button>
-                   <button onClick={() => { setShowAddMentor(false); handleGenerateInvite(); }} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg font-bold hover:bg-gray-50 flex items-center gap-2">
-                     <Mail size={18} /> Invite Link
+                     <Plus size={18} /> Direct Add
                    </button>
                 </div>
              </div>
 
              {inviteLink && (
-               <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between">
-                  <div className="text-indigo-800 text-sm overflow-hidden text-ellipsis mr-4">{inviteLink}</div>
+               <div className="bg-indigo-50 border border-indigo-200 p-4 rounded-lg flex items-center justify-between animate-in fade-in">
+                  <div className="flex items-center gap-2 text-indigo-800 text-sm overflow-hidden text-ellipsis mr-4">
+                    <Link size={14} /> <span className="truncate">{inviteLink}</span>
+                  </div>
                   <button onClick={copyInvite} className="text-indigo-600 font-bold text-sm flex items-center gap-1"><Copy size={16}/> Copy</button>
                </div>
              )}

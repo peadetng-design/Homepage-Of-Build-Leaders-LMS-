@@ -1,5 +1,5 @@
 
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
@@ -8,6 +8,21 @@ const DB_NEWS_KEY = 'bbl_db_news';
 const DB_TIMERS_KEY = 'bbl_db_timers';
 const DB_MODULES_KEY = 'bbl_db_modules';
 const DB_CERTIFICATES_KEY = 'bbl_db_certificates';
+const DB_HOMEPAGE_KEY = 'bbl_db_homepage';
+
+const DEFAULT_HOMEPAGE: HomepageContent = {
+  heroTagline: "The #1 Bible Quiz Platform",
+  heroTitle: "Build Biblical Leaders",
+  heroSubtitle: "Empowering the next generation through interactive study, community competition, and spiritual growth.",
+  aboutMission: "Our Mission",
+  aboutHeading: "Raising Up the Next Generation",
+  aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God. We believe that hiding God's word in young hearts creates a foundation for lifelong leadership.",
+  resourcesHeading: "Study Materials",
+  resourcesTitle: "Equipping the Saints",
+  resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  newsTagline: "Latest Updates",
+  newsHeading: "News & Announcements"
+};
 
 class LessonService {
   private lessons: Lesson[] = [];
@@ -17,6 +32,7 @@ class LessonService {
   private timers: Record<string, number> = {}; 
   private modules: Module[] = [];
   private certificates: Certificate[] = [];
+  private homepage: HomepageContent = DEFAULT_HOMEPAGE;
 
   constructor() {
     this.init();
@@ -27,7 +43,6 @@ class LessonService {
     if (storedLessons) {
       this.lessons = JSON.parse(storedLessons);
     } else {
-      // Seed with some dummy data if empty
       this.lessons = [
         {
             id: 'demo-lesson-1',
@@ -103,12 +118,10 @@ class LessonService {
         this.timers = JSON.parse(storedTimers);
     }
 
-    // Init Modules
     const storedModules = localStorage.getItem(DB_MODULES_KEY);
     if (storedModules) {
         this.modules = JSON.parse(storedModules);
     } else {
-        // Create a default module containing the demo lesson
         this.modules = [
             {
                 id: 'mod-foundations',
@@ -120,10 +133,14 @@ class LessonService {
         this.saveModules();
     }
 
-    // Init Certificates
     const storedCerts = localStorage.getItem(DB_CERTIFICATES_KEY);
     if (storedCerts) {
         this.certificates = JSON.parse(storedCerts);
+    }
+
+    const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
+    if (storedHomepage) {
+        this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
     }
   }
 
@@ -134,6 +151,7 @@ class LessonService {
   private saveTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
   private saveModules() { localStorage.setItem(DB_MODULES_KEY, JSON.stringify(this.modules)); }
   private saveCertificates() { localStorage.setItem(DB_CERTIFICATES_KEY, JSON.stringify(this.certificates)); }
+  private saveHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
 
   async getLessons(): Promise<Lesson[]> { return this.lessons; }
   async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
@@ -148,16 +166,23 @@ class LessonService {
     }
     this.saveLessons();
     
-    // Auto-update module if lesson is new/orphaned? 
-    // For simplicity, add any new lesson to "Leadership Foundations" if it's leadership
     if (lesson.category === 'Leadership' && !this.modules[0].lessonIds.includes(lesson.id)) {
         this.modules[0].lessonIds.push(lesson.id);
         this.saveModules();
     }
   }
 
-  // --- MODULES & CERTIFICATES ---
+  // --- HOMEPAGE CONTENT ---
+  async getHomepageContent(): Promise<HomepageContent> {
+      return this.homepage;
+  }
 
+  async updateHomepageContent(content: HomepageContent): Promise<void> {
+      this.homepage = content;
+      this.saveHomepage();
+  }
+
+  // --- MODULES & CERTIFICATES ---
   async getModules(): Promise<Module[]> { return this.modules; }
   
   async createModule(title: string, description: string, lessonIds: string[]): Promise<void> {
@@ -170,11 +195,8 @@ class LessonService {
   }
 
   async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
-      // Find modules containing this lesson
       const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
-      
       for (const mod of relevantModules) {
-          // Check if ALL lessons in this module are completed
           let allComplete = true;
           for (const lId of mod.lessonIds) {
               const attempted = await this.hasUserAttemptedLesson(userId, lId);
@@ -183,10 +205,7 @@ class LessonService {
                   break;
               }
           }
-          
-          if (allComplete) {
-              return mod;
-          }
+          if (allComplete) return mod;
       }
       return null;
   }
@@ -194,11 +213,6 @@ class LessonService {
   async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
       const mod = this.modules.find(m => m.id === moduleId);
       if (!mod) throw new Error("Module not found");
-
-      // We allow multiple certificates for the same module if they are re-issued (updated design)
-      // or we can update the existing one. For simplicity in this designer feature, we create new or update based on ID if we had one.
-      // Assuming 'Issue' creates a new record.
-      
       const cert: Certificate = {
           id: crypto.randomUUID(),
           userId,
@@ -208,9 +222,8 @@ class LessonService {
           issueDate: new Date().toISOString(),
           issuerName: 'Build Biblical Leaders',
           uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-          design: design // Save the custom design
+          design: design
       };
-
       this.certificates.unshift(cert);
       this.saveCertificates();
       return cert;
@@ -220,11 +233,8 @@ class LessonService {
       return this.certificates.filter(c => c.userId === userId);
   }
 
-  async getAllCertificates(): Promise<Certificate[]> {
-      return this.certificates;
-  }
+  async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
 
-  // --- RESOURCES & NEWS ---
   async getResources(): Promise<Resource[]> { return this.resources; }
   async addResource(resource: Resource): Promise<void> {
     this.resources.unshift(resource);
@@ -237,14 +247,11 @@ class LessonService {
     this.saveNews();
   }
 
-  // SIMULATES EXCEL PARSING based on the prompt's template specification
   async parseExcelUpload(file: File): Promise<LessonDraft> {
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate processing delay
-
+    await new Promise(resolve => setTimeout(resolve, 1500));
     const mockDraft: LessonDraft = {
       isValid: true,
       errors: [],
-      // SHEET 1: Lesson_Metadata
       metadata: {
         id: "GENESIS-CH1",
         title: "Bible Study – Genesis 1",
@@ -254,12 +261,10 @@ class LessonService {
         lesson_type: "Mixed",
         targetAudience: "All"
       },
-      // SHEET 1: Leadership Note fields
       leadershipNote: {
         title: "The Leadership Mindset in Creation",
         body: `<h3>1. Order from Chaos</h3><p>In the beginning, God created the heavens and the earth. The earth was without form and void, and darkness was over the face of the deep. And the Spirit of God was hovering over the face of the waters.</p><p>This passage teaches us about <strong>Initiative</strong>. Leadership often begins in chaos. It is the leader's role to speak light into darkness and bring order where there is none.</p>`
       },
-      // SHEET 2: Bible_Quiz
       bibleQuizzes: [
         {
           question_id: "GEN1-Q1",
@@ -284,7 +289,6 @@ class LessonService {
           ]
         }
       ],
-      // SHEET 3: Note_Quiz
       noteQuizzes: [
         {
           question_id: "NOTE-Q1",
@@ -299,13 +303,10 @@ class LessonService {
         }
       ]
     };
-
     if (!mockDraft.metadata.title) {
         mockDraft.isValid = false;
         mockDraft.errors.push("Missing Lesson Title in Metadata.");
     }
-    
-    // Check Quizzes
     const allQuizzes = [...mockDraft.bibleQuizzes, ...mockDraft.noteQuizzes];
     allQuizzes.forEach((q, idx) => {
         if (q.options.length !== 4) {
@@ -317,72 +318,20 @@ class LessonService {
             mockDraft.errors.push(`Question ${q.question_id || idx} has no correct answer marked.`);
         }
     });
-
     return mockDraft;
   }
 
   convertDraftToLesson(draft: LessonDraft, author: User): Lesson {
     const sections: LessonSection[] = [];
-    
-    // 1. Leadership Note Section
     if (draft.leadershipNote && draft.leadershipNote.body) {
-      sections.push({
-        id: crypto.randomUUID(),
-        type: 'note',
-        title: draft.leadershipNote.title,
-        body: draft.leadershipNote.body,
-        sequence: 1
-      });
+      sections.push({ id: crypto.randomUUID(), type: 'note', title: draft.leadershipNote.title, body: draft.leadershipNote.body, sequence: 1 });
     }
-
-    // 2. Bible Quizzes Section
     if (draft.bibleQuizzes && draft.bibleQuizzes.length > 0) {
-      sections.push({
-        id: crypto.randomUUID(),
-        type: 'quiz_group',
-        title: "Bible Knowledge Check",
-        sequence: 2,
-        quizzes: draft.bibleQuizzes.map((q, idx) => ({
-          id: crypto.randomUUID(),
-          type: 'Bible Quiz',
-          reference: q.reference,
-          text: q.text,
-          sequence: idx,
-          options: q.options.map((o: any) => ({
-            id: crypto.randomUUID(),
-            label: o.label,
-            text: o.text,
-            isCorrect: o.isCorrect,
-            explanation: o.explanation
-          }))
-        }))
-      });
+      sections.push({ id: crypto.randomUUID(), type: 'quiz_group', title: "Bible Knowledge Check", sequence: 2, quizzes: draft.bibleQuizzes.map((q, idx) => ({ id: crypto.randomUUID(), type: 'Bible Quiz', reference: q.reference, text: q.text, sequence: idx, options: q.options.map((o: any) => ({ id: crypto.randomUUID(), label: o.label, text: o.text, isCorrect: o.isCorrect, explanation: o.explanation })) })) });
     }
-
-    // 3. Note Quizzes Section
     if (draft.noteQuizzes && draft.noteQuizzes.length > 0) {
-      sections.push({
-        id: crypto.randomUUID(),
-        type: 'quiz_group',
-        title: "Leadership Application",
-        sequence: 3,
-        quizzes: draft.noteQuizzes.map((q, idx) => ({
-          id: crypto.randomUUID(),
-          type: 'Note Quiz',
-          reference: 'From Note',
-          text: q.text,
-          sequence: idx,
-          options: q.options.map((o: any) => ({
-            id: crypto.randomUUID(),
-            label: o.label,
-            text: o.text,
-            isCorrect: o.isCorrect,
-            explanation: o.explanation
-          }))
-        }))
-      });
+      sections.push({ id: crypto.randomUUID(), type: 'quiz_group', title: "Leadership Application", sequence: 3, quizzes: draft.noteQuizzes.map((q, idx) => ({ id: crypto.randomUUID(), type: 'Note Quiz', reference: 'From Note', text: q.text, sequence: idx, options: q.options.map((o: any) => ({ id: crypto.randomUUID(), label: o.label, text: o.text, isCorrect: o.isCorrect, explanation: o.explanation })) })) });
     }
-
     const lesson: Lesson = {
       id: draft.metadata.id || crypto.randomUUID(),
       title: draft.metadata.title || "Untitled Lesson",
@@ -402,44 +351,22 @@ class LessonService {
   }
 
   async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
-    const attempt: StudentAttempt = {
-      id: crypto.randomUUID(),
-      studentId,
-      lessonId,
-      quizId,
-      selectedOptionId,
-      isCorrect,
-      score: isCorrect ? 10 : 0,
-      attempted_at: new Date().toISOString()
-    };
+    const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
     this.attempts.push(attempt);
     this.saveAttempts();
   }
 
-  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> {
-    return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId);
-  }
+  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
 
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
-      // Check if user has answered ALL questions in the lesson? 
-      // For simplicity, if they have > 0 attempts, we count it as "started".
-      // But for module completion, we should probably check if they finished.
-      // Let's rely on the `getAttempts` count vs question count logic if needed.
-      // For now, simpler check: do they have at least one attempt?
-      // Real app: verify 100% completion.
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
-      
-      // Strict Mode: Check if all questions are answered
       const lesson = this.lessons.find(l => l.id === lessonId);
       if (!lesson) return false;
-      
       const totalQ = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
       const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
-      
       return answeredQ >= totalQ && totalQ > 0;
   }
 
-  // --- TIMER PERSISTENCE ---
   async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> {
       const key = `${userId}_${lessonId}`;
       this.timers[key] = seconds;

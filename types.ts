@@ -32,6 +32,20 @@ export interface User {
   earnedCertificates?: string[]; // IDs of earned certificates
 }
 
+export interface HomepageContent {
+  heroTagline: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  aboutMission: string;
+  aboutHeading: string;
+  aboutBody: string;
+  resourcesHeading: string;
+  resourcesTitle: string;
+  resourcesSubtitle: string;
+  newsTagline: string;
+  newsHeading: string;
+}
+
 export interface JoinRequest {
   id: string;
   studentId: string;

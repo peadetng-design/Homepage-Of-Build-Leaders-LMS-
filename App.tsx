@@ -99,7 +99,10 @@ const App: React.FC = () => {
   const handleRoleSwitch = (newRole: UserRole) => {
     if (user) {
       const originalRole = user.originalRole || user.role;
+      // When switching roles, we force the active path back to dashboard to prevent 
+      // rendering views that might not exist for the new role
       setUser({ ...user, role: newRole, originalRole });
+      setActivePath('dashboard');
     }
   };
 
@@ -151,7 +154,7 @@ const App: React.FC = () => {
               onSignOut={handleSignOut}
             />
             <main className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-              {/* Logic Fix: If 'home' is active, render Hero inside wrapper. Else render Dashboard. */}
+              {/* If 'home' is active, render Hero inside wrapper. Else render Dashboard. */}
               {activePath === 'home' ? (
                  <Hero 
                     onRegister={() => {}} 
@@ -202,7 +205,9 @@ const App: React.FC = () => {
 };
 
 const DashboardWrapper: React.FC<{user: User, onUpdateUser: (u: User) => void, activePath: string, resetKey: number, onChangePasswordClick: () => void}> = ({user, onUpdateUser, activePath, resetKey, onChangePasswordClick}) => {
-   return <Dashboard user={user} onUpdateUser={onUpdateUser} onChangePasswordClick={onChangePasswordClick} key={`${activePath}-${resetKey}`} initialView={activePath as any} />;
+   // FIX: Adding user.role to the key ensures the Dashboard completely resets when switching roles.
+   // This solves the issue where users were "stuck" on specific role views like Parent Onboarding.
+   return <Dashboard user={user} onUpdateUser={onUpdateUser} onChangePasswordClick={onChangePasswordClick} key={`${activePath}-${user.role}-${resetKey}`} initialView={activePath as any} />;
 }
 
 export default App;

@@ -1,4 +1,3 @@
-
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
@@ -20,8 +19,30 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   resourcesHeading: "Study Materials",
   resourcesTitle: "Equipping the Saints",
   resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  // Features (Why BBL)
+  feature1Title: "Study Guides",
+  feature1Desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.",
+  feature2Title: "Flashcards",
+  feature2Desc: "Digital and printable sets optimized for spaced repetition.",
+  feature3Title: "Quiz Generator",
+  feature3Desc: "AI-powered custom quizzes to target your weak areas.",
+  // News
   newsTagline: "Latest Updates",
-  newsHeading: "News & Announcements"
+  newsHeading: "News & Announcements",
+  news1Tag: "Tournament",
+  news1Date: "Oct 15, 2023",
+  news1Title: "Fall District Finals Registration Open",
+  news1Content: "Team registration for the upcoming district finals at First Baptist Church is now live. Ensure all student rosters are updated by Sept 30th.",
+  news2Tag: "New Feature",
+  news2Date: "Sep 28, 2023",
+  news2Title: "AI-Powered Study Buddy Launched",
+  news2Content: "We've integrated Gemini AI to generate infinite practice questions tailored to your specific study material. Try it out in the Student Dashboard!",
+  // Footer
+  footerYear: "2024",
+  footerSocials: "Facebook, Twitter, Instagram",
+  footerPhone: "+1 (555) 123-4567",
+  footerEmail: "contact@buildbiblicalleaders.com",
+  footerAddress: "123 Faith Lane, Grace City, GC 77777"
 };
 
 class LessonService {

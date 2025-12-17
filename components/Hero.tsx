@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Flame, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe, LayoutDashboard } from 'lucide-react';
+import { BookOpen, Flame, Sparkles, Users, UserCheck, GraduationCap, ArrowRight, Library, Calendar, Globe, LayoutDashboard, Mail, Phone, MapPin, Share2 } from 'lucide-react';
 import { User, HomepageContent } from '../types';
 import { lessonService } from '../services/lessonService';
 
@@ -210,7 +209,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
               </div>
             </section>
 
-            {/* Resources */}
+            {/* Resources / Features */}
             <section id="resources" className="scroll-mt-24">
                <div className="text-center mb-16 max-w-3xl mx-auto">
                   <span className="text-gold-600 font-bold uppercase tracking-widest text-xs mb-3 block">{content.resourcesHeading}</span>
@@ -219,9 +218,9 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {[
-                    { title: "Study Guides", icon: BookOpen, desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.", theme: "royal" },
-                    { title: "Flashcards", icon: Library, desc: "Digital and printable sets optimized for spaced repetition.", theme: "gold" },
-                    { title: "Quiz Generator", icon: Flame, desc: "AI-powered custom quizzes to target your weak areas.", theme: "royal" },
+                    { title: content.feature1Title, icon: BookOpen, desc: content.feature1Desc, theme: "royal" },
+                    { title: content.feature2Title, icon: Library, desc: content.feature2Desc, theme: "gold" },
+                    { title: content.feature3Title, icon: Flame, desc: content.feature3Desc, theme: "royal" },
                   ].map((resource, idx) => {
                     const isRoyal = resource.theme === 'royal';
                     return (
@@ -268,24 +267,26 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                       {/* News 1 */}
                        <div className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer group">
                           <div className="flex items-center gap-4 mb-6">
-                             <span className="px-3 py-1 bg-gold-500 text-white text-xs font-bold rounded-full shadow-lg shadow-gold-900/20">Tournament</span>
-                             <span className="text-blue-200 text-sm flex items-center gap-2"><Calendar size={14}/> Oct 15, 2023</span>
+                             <span className="px-3 py-1 bg-gold-500 text-white text-xs font-bold rounded-full shadow-lg shadow-gold-900/20">{content.news1Tag}</span>
+                             <span className="text-blue-200 text-sm flex items-center gap-2"><Calendar size={14}/> {content.news1Date}</span>
                           </div>
-                          <h3 className="text-2xl font-bold mb-3 group-hover:text-gold-300 transition-colors">Fall District Finals Registration Open</h3>
+                          <h3 className="text-2xl font-bold mb-3 group-hover:text-gold-300 transition-colors">{content.news1Title}</h3>
                           <p className="text-blue-100 text-base leading-relaxed">
-                             Team registration for the upcoming district finals at First Baptist Church is now live. Ensure all student rosters are updated by Sept 30th.
+                             {content.news1Content}
                           </p>
                        </div>
+                       {/* News 2 */}
                        <div className="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer group">
                           <div className="flex items-center gap-4 mb-6">
-                             <span className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow-lg shadow-blue-900/20">New Feature</span>
-                             <span className="text-blue-200 text-sm flex items-center gap-2"><Calendar size={14}/> Sep 28, 2023</span>
+                             <span className="px-3 py-1 bg-blue-500 text-white text-xs font-bold rounded-full shadow-lg shadow-blue-900/20">{content.news2Tag}</span>
+                             <span className="text-blue-200 text-sm flex items-center gap-2"><Calendar size={14}/> {content.news2Date}</span>
                           </div>
-                          <h3 className="text-2xl font-bold mb-3 group-hover:text-gold-300 transition-colors">AI-Powered Study Buddy Launched</h3>
+                          <h3 className="text-2xl font-bold mb-3 group-hover:text-gold-300 transition-colors">{content.news2Title}</h3>
                           <p className="text-blue-100 text-base leading-relaxed">
-                             We've integrated Gemini AI to generate infinite practice questions tailored to your specific study material. Try it out in the Student Dashboard!
+                             {content.news2Content}
                           </p>
                        </div>
                     </div>
@@ -296,26 +297,78 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
          </div>
       </div>
 
-      <footer className="bg-white py-12 border-t border-gray-100">
-         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <svg width="32" height="32" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-sm">
-                <rect width="40" height="40" rx="8" fill="url(#footerLogoGradient)" />
-                <path d="M12 7 L20 3 L28 7" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 11 L20 7 L28 11" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 15 L20 11 L28 15" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="20" cy="21" r="3.5" stroke="white" strokeWidth="3" />
-                <path d="M10 35C10 30 15 27 20 27C25 27 30 30 30 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
-                <defs>
-                  <linearGradient id="footerLogoGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#4338ca" />
-                    <stop offset="1" stopColor="#312e81" />
-                  </linearGradient>
-                </defs>
-              </svg>
-               <span className="font-bold text-gray-900">Build Biblical Leaders</span>
+      <footer className="bg-white py-16 border-t border-gray-100">
+         <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+               <div className="col-span-1 md:col-span-2">
+                  <div className="flex items-center gap-3 mb-6">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shadow-lg">
+                      <rect width="40" height="40" rx="10" fill="url(#footerLogoGradient)" />
+                      <path d="M12 7 L20 3 L28 7" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M12 11 L20 7 L28 11" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M12 15 L20 11 L28 15" stroke="#FBBF24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <circle cx="20" cy="21" r="3.5" stroke="white" strokeWidth="3" />
+                      <path d="M10 35C10 30 15 27 20 27C25 27 30 30 30 35" stroke="white" strokeWidth="3" strokeLinecap="round" />
+                      <defs>
+                        <linearGradient id="footerLogoGradient" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                          <stop stopColor="#4338ca" />
+                          <stop offset="1" stopColor="#312e81" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                    <span className="cinzel font-bold text-xl text-royal-900 tracking-wide">Build Biblical Leaders</span>
+                  </div>
+                  <p className="text-gray-500 max-w-sm mb-6 leading-relaxed">
+                    Empowering the next generation of faith-filled leaders through the rigorous study of the Word of God.
+                  </p>
+                  <div className="flex items-center gap-4">
+                     <span className="text-gray-400 font-bold uppercase text-xs tracking-widest">Connect:</span>
+                     <div className="flex gap-3">
+                        {content.footerSocials.split(',').map((soc, i) => (
+                           <span key={i} className="px-3 py-1 bg-gray-100 rounded-full text-gray-600 text-xs font-bold hover:bg-royal-50 hover:text-royal-600 cursor-pointer transition-colors">
+                              {soc.trim()}
+                           </span>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+               
+               <div>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">Contact Us</h4>
+                  <ul className="space-y-4">
+                     <li className="flex items-center gap-3 text-gray-600 hover:text-royal-600 transition-colors">
+                        <Mail size={16} className="text-indigo-400" />
+                        <a href={`mailto:${content.footerEmail}`} className="text-sm font-medium">{content.footerEmail}</a>
+                     </li>
+                     <li className="flex items-center gap-3 text-gray-600">
+                        <Phone size={16} className="text-indigo-400" />
+                        <span className="text-sm font-medium">{content.footerPhone}</span>
+                     </li>
+                     <li className="flex items-start gap-3 text-gray-600">
+                        <MapPin size={16} className="text-indigo-400 mt-0.5" />
+                        <span className="text-sm font-medium leading-snug">{content.footerAddress}</span>
+                     </li>
+                  </ul>
+               </div>
+
+               <div>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">Quick Info</h4>
+                  <ul className="space-y-3">
+                     <li className="text-gray-500 text-sm font-medium">Tournament Schedule</li>
+                     <li className="text-gray-500 text-sm font-medium">Discipleship Resources</li>
+                     <li className="text-gray-500 text-sm font-medium">Mentor Guidelines</li>
+                     <li className="text-gray-500 text-sm font-medium">Safety Policy</li>
+                  </ul>
+               </div>
             </div>
-            <p className="text-gray-400 text-sm">© 2023 Build Biblical Leaders. All rights reserved.</p>
+
+            <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-xs font-bold">
+               <p>© {content.footerYear} Build Biblical Leaders. All rights reserved.</p>
+               <div className="flex gap-8">
+                  <span className="hover:text-royal-600 cursor-pointer">Privacy Policy</span>
+                  <span className="hover:text-royal-600 cursor-pointer">Terms of Service</span>
+               </div>
+            </div>
          </div>
       </footer>
 

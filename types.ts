@@ -1,4 +1,3 @@
-
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -42,8 +41,30 @@ export interface HomepageContent {
   resourcesHeading: string;
   resourcesTitle: string;
   resourcesSubtitle: string;
+  // Feature Cards (Why BBL)
+  feature1Title: string;
+  feature1Desc: string;
+  feature2Title: string;
+  feature2Desc: string;
+  feature3Title: string;
+  feature3Desc: string;
+  // News Sections
   newsTagline: string;
   newsHeading: string;
+  news1Tag: string;
+  news1Date: string;
+  news1Title: string;
+  news1Content: string;
+  news2Tag: string;
+  news2Date: string;
+  news2Title: string;
+  news2Content: string;
+  // Footer
+  footerYear: string;
+  footerSocials: string;
+  footerPhone: string;
+  footerEmail: string;
+  footerAddress: string;
 }
 
 export interface JoinRequest {

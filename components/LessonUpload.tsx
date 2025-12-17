@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2 } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -332,7 +331,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
 
           {/* === HOMEPAGE CONTENT UI === */}
           {contentType === 'homepage' && homepageContent && (
-             <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in">
+             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-12">
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
                    <Home size={24} className="text-blue-600" />
                    <p className="text-sm text-blue-800">Changes made here will instantly update the text seen by guests on the landing page.</p>
@@ -355,7 +354,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div><label className={labelClass}>Body Text</label><textarea className={`${inputClass} h-24`} value={homepageContent.aboutBody} onChange={e => setHomepageContent({...homepageContent, aboutBody: e.target.value})} /></div>
                    </div>
 
-                   {/* RESOURCES SECTION */}
+                   {/* RESOURCES SECTION HEADER */}
                    <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
                       <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Resources Header</h3>
                       <div><label className={labelClass}>Top Label</label><input className={inputClass} value={homepageContent.resourcesHeading} onChange={e => setHomepageContent({...homepageContent, resourcesHeading: e.target.value})} /></div>
@@ -363,11 +362,61 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <div><label className={labelClass}>Subtitle</label><textarea className={`${inputClass} h-20`} value={homepageContent.resourcesSubtitle} onChange={e => setHomepageContent({...homepageContent, resourcesSubtitle: e.target.value})} /></div>
                    </div>
 
-                   {/* NEWS SECTION */}
+                   {/* WHY BBL / FEATURES SECTION */}
                    <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> News Header</h3>
-                      <div><label className={labelClass}>Top Label</label><input className={inputClass} value={homepageContent.newsTagline} onChange={e => setHomepageContent({...homepageContent, newsTagline: e.target.value})} /></div>
-                      <div><label className={labelClass}>Main Heading</label><input className={inputClass} value={homepageContent.newsHeading} onChange={e => setHomepageContent({...homepageContent, newsHeading: e.target.value})} /></div>
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><CheckCircle size={16} className="text-indigo-500" /> Feature Cards (Why BBL)</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2 border-l-4 border-indigo-200 pl-3">
+                            <label className={labelClass}>Feature 1 (Title & Description)</label>
+                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature1Title} onChange={e => setHomepageContent({...homepageContent, feature1Title: e.target.value})} />
+                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature1Desc} onChange={e => setHomepageContent({...homepageContent, feature1Desc: e.target.value})} />
+                        </div>
+                        <div className="col-span-2 border-l-4 border-gold-200 pl-3">
+                            <label className={labelClass}>Feature 2 (Title & Description)</label>
+                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature2Title} onChange={e => setHomepageContent({...homepageContent, feature2Title: e.target.value})} />
+                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature2Desc} onChange={e => setHomepageContent({...homepageContent, feature2Desc: e.target.value})} />
+                        </div>
+                        <div className="col-span-2 border-l-4 border-indigo-200 pl-3">
+                            <label className={labelClass}>Feature 3 (Title & Description)</label>
+                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature3Title} onChange={e => setHomepageContent({...homepageContent, feature3Title: e.target.value})} />
+                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature3Desc} onChange={e => setHomepageContent({...homepageContent, feature3Desc: e.target.value})} />
+                        </div>
+                      </div>
+                   </div>
+
+                   {/* NEWS SECTION CONTENT */}
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Newspaper size={16} className="text-indigo-500" /> Landing Page News Cards</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                            <div className="flex gap-2">
+                                <div className="flex-1"><label className={labelClass}>News 1 Tag</label><input className={inputClass} value={homepageContent.news1Tag} onChange={e => setHomepageContent({...homepageContent, news1Tag: e.target.value})} /></div>
+                                <div className="flex-1"><label className={labelClass}>News 1 Date</label><input className={inputClass} value={homepageContent.news1Date} onChange={e => setHomepageContent({...homepageContent, news1Date: e.target.value})} /></div>
+                            </div>
+                            <div><label className={labelClass}>News 1 Title</label><input className={`${inputClass} font-bold`} value={homepageContent.news1Title} onChange={e => setHomepageContent({...homepageContent, news1Title: e.target.value})} /></div>
+                            <div><label className={labelClass}>News 1 Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news1Content} onChange={e => setHomepageContent({...homepageContent, news1Content: e.target.value})} /></div>
+                         </div>
+                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                            <div className="flex gap-2">
+                                <div className="flex-1"><label className={labelClass}>News 2 Tag</label><input className={inputClass} value={homepageContent.news2Tag} onChange={e => setHomepageContent({...homepageContent, news2Tag: e.target.value})} /></div>
+                                <div className="flex-1"><label className={labelClass}>News 2 Date</label><input className={inputClass} value={homepageContent.news2Date} onChange={e => setHomepageContent({...homepageContent, news2Date: e.target.value})} /></div>
+                            </div>
+                            <div><label className={labelClass}>News 2 Title</label><input className={`${inputClass} font-bold`} value={homepageContent.news2Title} onChange={e => setHomepageContent({...homepageContent, news2Title: e.target.value})} /></div>
+                            <div><label className={labelClass}>News 2 Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news2Content} onChange={e => setHomepageContent({...homepageContent, news2Content: e.target.value})} /></div>
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* FOOTER DETAILS */}
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Share2 size={16} className="text-indigo-500" /> Footer Details (Socials & Contact)</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                         <div><label className={labelClass}><Circle size={10} className="inline mr-1"/> Copyright Year</label><input className={inputClass} value={homepageContent.footerYear} onChange={e => setHomepageContent({...homepageContent, footerYear: e.target.value})} /></div>
+                         <div><label className={labelClass}><Mail size={10} className="inline mr-1"/> Contact Email</label><input className={inputClass} value={homepageContent.footerEmail} onChange={e => setHomepageContent({...homepageContent, footerEmail: e.target.value})} /></div>
+                         <div><label className={labelClass}><Phone size={10} className="inline mr-1"/> Contact Phone</label><input className={inputClass} value={homepageContent.footerPhone} onChange={e => setHomepageContent({...homepageContent, footerPhone: e.target.value})} /></div>
+                         <div><label className={labelClass}><Share2 size={10} className="inline mr-1"/> Social Media Handles</label><input className={inputClass} value={homepageContent.footerSocials} onChange={e => setHomepageContent({...homepageContent, footerSocials: e.target.value})} /></div>
+                         <div className="lg:col-span-4"><label className={labelClass}><MapPin size={10} className="inline mr-1"/> Physical Address</label><input className={inputClass} value={homepageContent.footerAddress} onChange={e => setHomepageContent({...homepageContent, footerAddress: e.target.value})} /></div>
+                      </div>
                    </div>
                 </div>
              </div>

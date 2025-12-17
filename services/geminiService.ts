@@ -1,8 +1,7 @@
-
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Fix: Initialized the GoogleGenAI client according to the coding guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
 // Cache Keys
 const CACHE_KEY_VERSE = 'bbl_daily_verse_cache';
@@ -44,19 +43,10 @@ export const getDailyVerse = async (): Promise<{ verse: string; reference: strin
   const cached = getCachedData(CACHE_KEY_VERSE);
   if (cached) return cached;
 
-  // 2. Fallback if no API Key (Early exit)
-  if (!apiKey) {
-    return {
-      verse: "Thy word is a lamp unto my feet, and a light unto my path.",
-      reference: "Psalm 119:105",
-      reflection: "God's word guides us through the darkness."
-    };
-  }
-
-  // 3. API Call
+  // 2. API Call with gemini-3-flash-preview for text tasks as per guidelines
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: "Generate a short, inspiring Bible verse, its reference, and a very brief 1-sentence reflection for a student. Return as JSON with keys: verse, reference, reflection.",
       config: {
         responseMimeType: 'application/json'
@@ -72,7 +62,7 @@ export const getDailyVerse = async (): Promise<{ verse: string; reference: strin
     }
     throw new Error("No content");
   } catch (error) {
-    // 4. Graceful Error Handling (Quota Exceeded / Network Error)
+    // 3. Graceful Error Handling (Quota Exceeded / Network Error)
     console.warn("Gemini API unavailable (using fallback):", error);
     return {
       verse: "For I know the plans I have for you...",
@@ -87,17 +77,10 @@ export const getAIQuizQuestion = async (topic: string = 'General'): Promise<{ qu
   const cached = getCachedData(CACHE_KEY_QUIZ);
   if (cached) return cached;
 
-  if (!apiKey) {
-    return {
-      question: "Who was swallowed by a great fish?",
-      options: ["Jonah", "Moses", "David", "Peter"],
-      answer: "Jonah"
-    };
-  }
-
+  // 2. API Call with gemini-3-flash-preview
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: `Generate a multiple choice bible quiz question about ${topic}. Return JSON with keys: question, options (array of 4 strings), answer (string matching one option).`,
       config: {
         responseMimeType: 'application/json'

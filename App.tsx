@@ -103,6 +103,10 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateUser = (updatedUser: User) => {
+      setUser(updatedUser);
+  };
+
   const handleNavigation = (path: string) => {
     if (path === activePath) {
       setDashboardResetKey(prev => prev + 1);
@@ -159,6 +163,7 @@ const App: React.FC = () => {
                  <div className="p-4 md:p-8">
                     <DashboardWrapper 
                        user={user} 
+                       onUpdateUser={handleUpdateUser}
                        activePath={activePath}
                        resetKey={dashboardResetKey}
                        onChangePasswordClick={openChangePassword}
@@ -196,8 +201,8 @@ const App: React.FC = () => {
   );
 };
 
-const DashboardWrapper: React.FC<{user: User, activePath: string, resetKey: number, onChangePasswordClick: () => void}> = ({user, activePath, resetKey, onChangePasswordClick}) => {
-   return <Dashboard user={user} onChangePasswordClick={onChangePasswordClick} key={`${activePath}-${resetKey}`} initialView={activePath as any} />;
+const DashboardWrapper: React.FC<{user: User, onUpdateUser: (u: User) => void, activePath: string, resetKey: number, onChangePasswordClick: () => void}> = ({user, onUpdateUser, activePath, resetKey, onChangePasswordClick}) => {
+   return <Dashboard user={user} onUpdateUser={onUpdateUser} onChangePasswordClick={onChangePasswordClick} key={`${activePath}-${resetKey}`} initialView={activePath as any} />;
 }
 
 export default App;

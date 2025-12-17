@@ -57,6 +57,24 @@ export interface ChatChannel {
   createdAt: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  data: string; // Base64 or Blob URL
+  size: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  text: string;
+  timestamp: string;
+  attachment?: ChatAttachment; // New: optional file attachment
+}
+
 // --- CERTIFICATE MODEL ---
 export interface Module {
   id: string;

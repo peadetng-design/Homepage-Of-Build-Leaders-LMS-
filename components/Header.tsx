@@ -37,25 +37,25 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
     }
   };
 
-  // Roles Logic: Filter based on current permissions or original permissions
+  // Roles Logic: Restore switcher for all users
   const getAvailableRoles = () => {
      if (!user) return [];
      
-     // 1. Admin "View As" Logic (Superuser)
-     const isEffectiveAdmin = user.role === UserRole.ADMIN || user.originalRole === UserRole.ADMIN || (user.allowedRoles && user.allowedRoles.includes(UserRole.ADMIN));
+     const SYSTEM_ADMIN_EMAIL = 'peadetng@gmail.com';
+     const isSystemAdmin = user.email === SYSTEM_ADMIN_EMAIL || user.originalRole === UserRole.ADMIN;
 
-     if (isEffectiveAdmin) {
-        // Return ALL roles including ADMIN so they can switch back
+     if (isSystemAdmin) {
+        // System Admin can see and switch to ANY role
         return Object.values(UserRole).filter(r => r !== UserRole.GUEST);
      } 
      
-     // 2. Multi-Role User Logic (e.g. Student who created a Group)
-     // If the user has explicitly defined allowed roles > 1, show them
-     if (user.allowedRoles && user.allowedRoles.length > 1) {
-         return user.allowedRoles;
-     }
-
-     return [];
+     // All other users can switch between standard functional roles, but NEVER Admin
+     return [
+       UserRole.STUDENT,
+       UserRole.MENTOR,
+       UserRole.ORGANIZATION,
+       UserRole.PARENT
+     ];
   };
 
   const availableRoles = getAvailableRoles();
@@ -94,7 +94,7 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
 
       {user ? (
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Create Group Action - ACTIVATED */}
+          {/* Create Group Action */}
           <button 
             onClick={onCreateGroup}
             className="hidden md:flex items-center gap-2 bg-royal-500 hover:bg-royal-800 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors shadow-sm"
@@ -103,20 +103,20 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
             <span>Create Group</span>
           </button>
 
-          {/* Role Switcher - Render if available roles exist */}
-          {availableRoles.length > 0 && (
-            <div className="relative" ref={roleRef}>
-              <button 
-                onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
-              >
-                {user.role} View <ChevronDown size={12} />
-              </button>
-              
-              {/* Dropdown Menu */}
-              {roleMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-                  <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase">Switch Perspective</div>
+          {/* Role Switcher - Enabled for all users */}
+          <div className="relative" ref={roleRef}>
+            <button 
+              onClick={() => setRoleMenuOpen(!roleMenuOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
+            >
+              {user.role} View <ChevronDown size={12} />
+            </button>
+            
+            {/* Dropdown Menu */}
+            {roleMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div className="text-xs text-gray-400 font-medium px-2 py-1 uppercase border-b border-gray-50 mb-1">Switch Perspective</div>
+                <div className="max-h-64 overflow-y-auto custom-scrollbar">
                   {availableRoles.map(role => (
                     <button
                       key={role}
@@ -131,9 +131,9 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           <div className="h-6 w-px bg-gray-200 mx-1"></div>
 
@@ -143,10 +143,14 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
           </button>
 
-          <button className="relative p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
-             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
-               {user.name.charAt(0)}
-             </div>
+          <button className="relative p-0.5 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
+             {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full object-cover shadow-sm border border-gray-100" />
+             ) : (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gold-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                    {user.name.charAt(0)}
+                </div>
+             )}
           </button>
         </div>
       ) : (

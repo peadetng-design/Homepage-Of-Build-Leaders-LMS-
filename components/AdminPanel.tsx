@@ -662,6 +662,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            </div>
         )}
 
+        {/* Missing 'upload' tab logic to show editor when Add New or Edit is clicked */}
+        {activeTab === 'upload' && (
+           <LessonUpload 
+             currentUser={currentUser}
+             initialData={editingLesson || undefined}
+             onSuccess={() => {
+                setEditingLesson(null);
+                setActiveTab('lessons');
+                fetchData();
+             }}
+             onCancel={() => {
+                setEditingLesson(null);
+                setActiveTab('lessons');
+             }}
+           />
+        )}
+
         {activeTab === 'curated' && (isMentor || isOrg) && (
             <div className="grid gap-4">
                 <h3 className="font-bold text-gray-700">Your Curated Lessons</h3>

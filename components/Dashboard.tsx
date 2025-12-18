@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { UserRole, User, Lesson, ChatMessage } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
@@ -20,7 +21,6 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  // Fix: Added missing icon imports for ArrowLeft and Settings
   ArrowLeft, Settings
 } from 'lucide-react';
 
@@ -247,6 +247,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
   const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
+  const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
   const isAdminView = user.role === UserRole.ADMIN;
   const isMentorView = user.role === UserRole.MENTOR;
@@ -484,7 +485,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
       return (
         <LessonUpload 
             currentUser={user}
+            initialData={editingLesson || undefined}
             onSuccess={() => {
+                setEditingLesson(null);
                 setCurrentView('dashboard');
                 if (isOrgView) {
                     setOrgSubTab('lessons');
@@ -495,7 +498,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                     setMentorActiveTab('lessons');
                 }
             }}
-            onCancel={() => setCurrentView('dashboard')}
+            onCancel={() => {
+                setEditingLesson(null);
+                setCurrentView('dashboard');
+            }}
         />
       );
   }
@@ -535,7 +541,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
            {!isStudentView && (
               <Tooltip content={isAdminView ? "Upload Lessons, Resources, or News." : "Upload Excel files or use the Manual Builder."}>
                 <button 
-                  onClick={() => setCurrentView('upload')}
+                  onClick={() => { setEditingLesson(null); setCurrentView('upload'); }}
                   className="flex items-center gap-2 px-5 py-3 bg-royal-800 text-white rounded-xl font-bold hover:bg-royal-900 shadow-lg shadow-royal-900/20 transition-all transform hover:-translate-y-0.5"
                 >
                   <Upload size={18} /> 

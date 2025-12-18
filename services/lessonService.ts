@@ -1,3 +1,4 @@
+
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
@@ -64,68 +65,19 @@ class LessonService {
 
   private init() {
     const storedLessons = localStorage.getItem(DB_LESSONS_KEY);
-    if (storedLessons) {
-      this.lessons = JSON.parse(storedLessons);
-    } else {
-      this.lessons = [
-        {
-            id: 'demo-lesson-1',
-            moduleId: 'mod-foundations',
-            orderInModule: 1,
-            title: 'Advanced Leadership: Shepherd Leadership',
-            description: 'A deep dive into 1 Peter 5 for Mentors and Pastors.',
-            category: 'Leadership',
-            lesson_type: 'Leadership',
-            targetAudience: 'Mentor',
-            author: 'Main Admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            status: 'published',
-            views: 12,
-            sections: [
-                {
-                    id: 'sec-1', type: 'note', title: 'The Shepherd Model', sequence: 1, 
-                    body: '<p>Shepherding is not just about leading; it is about caring. 1 Peter 5 exhorts elders to be shepherds of God\'s flock...</p>'
-                },
-                {
-                    id: 'sec-2', type: 'quiz_group', title: 'Reflection', sequence: 2,
-                    quizzes: [
-                        {
-                            id: 'q1', type: 'Note Quiz', text: 'According to 1 Peter 5, what is the motivation for serving?', sequence: 1,
-                            options: [
-                                { id: 'o1', label: 'A', text: 'Greed', isCorrect: false, explanation: 'Incorrect.' },
-                                { id: 'o2', label: 'B', text: 'Willingness to serve', isCorrect: true, explanation: 'Correct. "Not because you must, but because you are willing."' },
-                                { id: 'o3', label: 'C', text: 'Power', isCorrect: false, explanation: 'Incorrect.' },
-                                { id: 'o4', label: 'D', text: 'Obligation', isCorrect: false, explanation: 'Incorrect.' }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
-      ]; 
-      this.saveLessons();
-    }
+    if (storedLessons) this.lessons = JSON.parse(storedLessons);
 
     const storedAttempts = localStorage.getItem(DB_ATTEMPTS_KEY);
-    if (storedAttempts) {
-      this.attempts = JSON.parse(storedAttempts);
-    }
+    if (storedAttempts) this.attempts = JSON.parse(storedAttempts);
 
     const storedResources = localStorage.getItem(DB_RESOURCES_KEY);
-    if (storedResources) {
-      this.resources = JSON.parse(storedResources);
-    }
+    if (storedResources) this.resources = JSON.parse(storedResources);
 
     const storedNews = localStorage.getItem(DB_NEWS_KEY);
-    if (storedNews) {
-      this.news = JSON.parse(storedNews);
-    }
+    if (storedNews) this.news = JSON.parse(storedNews);
 
     const storedTimers = localStorage.getItem(DB_TIMERS_KEY);
-    if (storedTimers) {
-        this.timers = JSON.parse(storedTimers);
-    }
+    if (storedTimers) this.timers = JSON.parse(storedTimers);
 
     const storedModules = localStorage.getItem(DB_MODULES_KEY);
     if (storedModules) {
@@ -134,13 +86,13 @@ class LessonService {
         this.modules = [
             {
                 id: 'mod-foundations',
-                title: 'Leadership Foundations',
-                description: 'Essential principles for new mentors.',
-                lessonIds: ['demo-lesson-1'],
+                title: 'Foundations of Biblical Leadership',
+                description: 'Essential principles for starting your journey.',
+                lessonIds: [],
                 completionRule: { minimumCompletionPercentage: 100 },
                 certificateConfig: {
                     title: 'Leadership Foundation Certificate',
-                    description: 'This verifies mastery of basic shepherd leadership models.',
+                    description: 'This certifies completion of introductory leadership models.',
                     templateId: 'classic',
                     issuedBy: 'Build Biblical Leaders'
                 }
@@ -150,14 +102,10 @@ class LessonService {
     }
 
     const storedCerts = localStorage.getItem(DB_CERTIFICATES_KEY);
-    if (storedCerts) {
-        this.certificates = JSON.parse(storedCerts);
-    }
+    if (storedCerts) this.certificates = JSON.parse(storedCerts);
 
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
-    if (storedHomepage) {
-        this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
-    }
+    if (storedHomepage) this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
   }
 
   private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
@@ -175,11 +123,8 @@ class LessonService {
   
   async publishLesson(lesson: Lesson): Promise<void> {
     const index = this.lessons.findIndex(l => l.id === lesson.id);
-    if (index >= 0) {
-      this.lessons[index] = lesson;
-    } else {
-      this.lessons.unshift(lesson);
-    }
+    if (index >= 0) this.lessons[index] = lesson;
+    else this.lessons.unshift(lesson);
     this.saveLessons();
     
     if (lesson.moduleId) {
@@ -208,30 +153,33 @@ class LessonService {
       for (const mod of relevantModules) {
           let allLessonsComplete = true;
           let totalScore = 0;
-          let totalQuizzesInModule = 0;
+          let lessonsProcessed = 0;
 
           for (const lId of mod.lessonIds) {
               const lesson = this.lessons.find(l => l.id === lId);
               if (!lesson) continue;
               
               const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
-              const uniqueQuizzesDone = new Set(lessonAttempts.map(a => a.quizId));
-              const totalQInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
               
-              if (uniqueQuizzesDone.size < totalQInLesson || totalQInLesson === 0) {
+              if (uniqueQuizzesAttempted < uniqueQuizzesInLesson || uniqueQuizzesInLesson === 0) {
                   allLessonsComplete = false;
                   break;
               }
 
-              const distinctCorrect = lessonAttempts.filter(a => a.isCorrect).map(a => a.quizId);
-              const numCorrect = new Set(distinctCorrect).size;
-              totalScore += (numCorrect / totalQInLesson) * 100;
-              totalQuizzesInModule += 1;
+              // Calculate accuracy for this lesson
+              const latestAttemptsPerQuiz = new Map<string, boolean>();
+              lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
+              const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
+              
+              totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
+              lessonsProcessed++;
           }
 
-          if (!allLessonsComplete || totalQuizzesInModule === 0) continue;
+          if (!allLessonsComplete || lessonsProcessed === 0) continue;
 
-          const avgScore = totalScore / totalQuizzesInModule;
+          const avgScore = totalScore / lessonsProcessed;
           if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
               const alreadyIssued = this.certificates.find(c => c.userId === userId && c.moduleId === mod.id);
               if (!alreadyIssued) return mod;
@@ -275,71 +223,61 @@ class LessonService {
   // --- PARSER: 4-SHEET LOGIC ---
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulated parsing of the 4-sheet structure
     const mockDraft: LessonDraft = {
       isValid: true,
       errors: [],
       moduleMetadata: {
-        id: "GENESIS-MODULE-1",
-        title: "Foundations of Creation & Leadership",
-        description: "A study of Genesis chapters 1–3 with leadership principles",
+        id: "GENESIS-MOD-1",
+        title: "Foundations of Creation",
+        description: "A deep dive into Genesis 1-3",
         lessonIds: [],
         completionRule: { minimumCompletionPercentage: 100 },
         certificateConfig: {
-          title: "Certificate of Completion",
-          description: "Foundations of Biblical Leadership",
+          title: "Certificate of Creation Mastery",
+          description: "This certifies expertise in early Genesis leadership principles.",
           templateId: "classic",
-          issuedBy: "Build Biblical Leaders"
+          issuedBy: "Kingdom Academy"
         }
       },
       lessons: [
         {
           metadata: {
-            lesson_id: "GENESIS-CH1",
-            module_id: "GENESIS-MODULE-1",
-            title: "Genesis 1 – Creation",
+            lesson_id: "GEN-CH1",
+            module_id: "GENESIS-MOD-1",
+            title: "Genesis 1: Divine Order",
             description: "God’s creative order and leadership",
             book: "Genesis",
             chapter: 1,
             lesson_order: 1,
-            lesson_type: "Mixed",
+            lesson_type: "Bible",
             targetAudience: "All"
           },
           leadershipNote: {
             title: "Leadership Lessons from Creation",
-            body: `<h3>Order from Chaos</h3><p>Genesis 1 shows the ultimate leadership act: bringing order and purpose where there was none...</p>`
+            body: `<p>Leadership often starts in chaos (void and formless). It requires speaking light into darkness.</p>`
           },
           bibleQuizzes: [
             {
-              question_id: "GEN1-Q1",
+              question_id: "Q1",
               reference: "Genesis 1:1",
-              text: "According to Genesis 1:1, what did God create in the beginning?",
+              text: "What did God create in the beginning?",
               options: [
-                { label: "A", text: "Heaven and Earth", isCorrect: true, explanation: "Explicitly stated in verse 1." },
-                { label: "B", text: "Light", isCorrect: false, explanation: "Created in verse 3." },
-                { label: "C", text: "Animals", isCorrect: false, explanation: "Created later." },
-                { label: "D", text: "Angels", isCorrect: false, explanation: "Not mentioned here." }
+                { label: "A", text: "Heaven and Earth", isCorrect: true, explanation: "Explicitly stated in the first verse." },
+                { label: "B", text: "Animals", isCorrect: false, explanation: "These were created later in the chapter." },
+                { label: "C", text: "The Sun", isCorrect: false, explanation: "Created on Day 4." },
+                { label: "D", text: "Plants", isCorrect: false, explanation: "Created on Day 3." }
               ]
             }
           ],
-          noteQuizzes: [
-            {
-              question_id: "NOTE-Q1",
-              text: "What is the primary leadership lesson from the creation account?",
-              options: [
-                { label: "A", text: "Order from Chaos", isCorrect: true, explanation: "Highlighted in the note body." },
-                { label: "B", text: "Speed", isCorrect: false, explanation: "Note focuses on structure, not speed." },
-                { label: "C", text: "Solo effort", isCorrect: false, explanation: "Irrelevant." },
-                { label: "D", text: "Avoidance", isCorrect: false, explanation: "Incorrect." }
-              ]
-            }
-          ]
+          noteQuizzes: []
         }
       ]
     };
 
-    if (!mockDraft.moduleMetadata) {
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
         mockDraft.isValid = false;
-        mockDraft.errors.push("Sheet 1 (Module_Metadata) is missing or invalid.");
+        mockDraft.errors.push("Invalid file format. Please upload .xlsx or .csv.");
     }
     return mockDraft;
   }
@@ -353,22 +291,17 @@ class LessonService {
     for (const dLesson of draft.lessons) {
         const sections: LessonSection[] = [];
         if (dLesson.leadershipNote?.body) {
-            sections.push({ id: crypto.randomUUID(), type: 'note', title: dLesson.leadershipNote.title, body: dLesson.leadershipNote.body, sequence: 1 });
+            sections.push({ 
+                id: crypto.randomUUID(), type: 'note', 
+                title: dLesson.leadershipNote.title, 
+                body: dLesson.leadershipNote.body, sequence: 1 
+            });
         }
         if (dLesson.bibleQuizzes.length > 0) {
             sections.push({
                 id: crypto.randomUUID(), type: 'quiz_group', title: "Bible Knowledge Check", sequence: 2,
                 quizzes: dLesson.bibleQuizzes.map((q, idx) => ({
                     id: q.question_id || crypto.randomUUID(), type: 'Bible Quiz', reference: q.reference, text: q.text, sequence: idx,
-                    options: q.options.map((o: any) => ({ ...o, id: crypto.randomUUID() }))
-                }))
-            });
-        }
-        if (dLesson.noteQuizzes.length > 0) {
-            sections.push({
-                id: crypto.randomUUID(), type: 'quiz_group', title: "Leadership Application", sequence: 3,
-                quizzes: dLesson.noteQuizzes.map((q, idx) => ({
-                    id: q.question_id || crypto.randomUUID(), type: 'Note Quiz', reference: 'From Note', text: q.text, sequence: idx,
                     options: q.options.map((o: any) => ({ ...o, id: crypto.randomUUID() }))
                 }))
             });

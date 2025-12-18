@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck } from 'lucide-react';
+// Fix: Added PenTool to the lucide-react import list
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -16,50 +18,38 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [contentType, setContentType] = useState<ContentType>('lesson');
   const [mode, setMode] = useState<'manual' | 'bulk'>(initialData ? 'manual' : 'bulk');
 
-  // Bulk Import State
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Manual Builder State
   const [modules, setModules] = useState<Module[]>([]);
   const [showModuleWizard, setShowModuleWizard] = useState(false);
   const [newModule, setNewModule] = useState<Partial<Module>>({
       id: '', title: '', description: '', 
       completionRule: { minimumCompletionPercentage: 100 },
-      certificateConfig: { title: 'Certificate of Completion', description: '', templateId: 'classic', issuedBy: 'Build Biblical Leaders' }
+      certificateConfig: { title: 'Certificate of Achievement', description: '', templateId: 'classic', issuedBy: 'Build Biblical Leaders' }
   });
 
   const [manualLesson, setManualLesson] = useState<Partial<Lesson>>(initialData ? { ...initialData } : {
     title: '', description: '', lesson_type: 'Mixed', targetAudience: 'All', book: '', chapter: 1, sections: [], moduleId: '', orderInModule: 1
   });
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-
-  // Homepage Content State
   const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
 
   useEffect(() => {
-      if (contentType === 'homepage') {
-          lessonService.getHomepageContent().then(setHomepageContent);
-      }
-      if (contentType === 'lesson') {
-          lessonService.getModules().then(setModules);
-      }
+      if (contentType === 'homepage') lessonService.getHomepageContent().then(setHomepageContent);
+      if (contentType === 'lesson') lessonService.getModules().then(setModules);
   }, [contentType]);
 
-  // --- HANDLERS: MODULES ---
   const handleCreateModule = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!newModule.id || !newModule.title) return;
       const modObj: Module = {
-          id: newModule.id,
-          title: newModule.title,
-          description: newModule.description || '',
-          lessonIds: [],
-          completionRule: newModule.completionRule || { minimumCompletionPercentage: 100 },
+          id: newModule.id, title: newModule.title, description: newModule.description || '',
+          lessonIds: [], completionRule: newModule.completionRule || { minimumCompletionPercentage: 100 },
           certificateConfig: newModule.certificateConfig || { title: 'Certificate', description: '', templateId: 'classic', issuedBy: '' }
       };
       await lessonService.createModule(modObj);
@@ -69,7 +59,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       setShowModuleWizard(false);
   };
 
-  // --- HANDLERS: BULK IMPORT ---
   const handleLessonFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -83,30 +72,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     try {
       const result = await lessonService.parseExcelUpload(file);
       setDraft(result);
-    } catch (err: any) {
-      setError("Failed to parse file: " + err.message);
-    } finally {
-      setIsParsing(false);
-    }
+    } catch (err: any) { setError("Failed to parse file: " + err.message); }
+    finally { setIsParsing(false); }
   };
 
   const commitImport = async () => {
     if (!draft) return;
-    try {
-      await lessonService.commitDraft(draft, currentUser);
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message);
-    }
+    try { await lessonService.commitDraft(draft, currentUser); onSuccess(); }
+    catch (err: any) { setError(err.message); }
   };
 
-  // --- HANDLERS: MANUAL BUILDER ---
   const saveManualLesson = async () => {
     setError(null);
     try {
       if (!manualLesson.title) throw new Error("Lesson Title is required");
-      if (!manualLesson.moduleId) throw new Error("A module assignment is required for certificate tracking.");
-
+      if (!manualLesson.moduleId) throw new Error("A module assignment is required for certification tracking.");
       const finalLesson: Lesson = {
         id: initialData?.id || crypto.randomUUID(),
         moduleId: manualLesson.moduleId || '',
@@ -126,9 +106,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       };
       await lessonService.publishLesson(finalLesson);
       onSuccess();
-    } catch (err: any) {
-      setError(err.message);
-    }
+    } catch (err: any) { setError(err.message); }
   };
 
   const addSection = (type: SectionType) => {
@@ -141,14 +119,9 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     setExpandedSection(newSection.id);
   };
 
-  const updateSection = (id: string, updates: Partial<LessonSection>) => {
-    setManualLesson(prev => ({ ...prev, sections: prev.sections?.map(s => s.id === id ? { ...s, ...updates } : s) }));
-  };
-
-  const removeSection = (id: string) => {
-    setManualLesson(prev => ({ ...prev, sections: prev.sections?.filter(s => s.id !== id) }));
-  };
-
+  const updateSection = (id: string, updates: Partial<LessonSection>) => setManualLesson(prev => ({ ...prev, sections: prev.sections?.map(s => s.id === id ? { ...s, ...updates } : s) }));
+  const removeSection = (id: string) => setManualLesson(prev => ({ ...prev, sections: prev.sections?.filter(s => s.id !== id) }));
+  
   const addQuestion = (sectionId: string) => {
     const newQuiz: QuizQuestion = {
         id: crypto.randomUUID(), type: 'Bible Quiz', text: 'New Question', reference: '', sequence: 0,
@@ -159,220 +132,116 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
             { id: crypto.randomUUID(), label: 'D', text: '', isCorrect: false, explanation: '' },
         ]
     };
-    setManualLesson(prev => ({
-        ...prev,
-        sections: prev.sections?.map(s => {
-            if (s.id === sectionId) return { ...s, quizzes: [...(s.quizzes || []), { ...newQuiz, sequence: (s.quizzes?.length || 0) + 1 }] };
-            return s;
-        })
-    }));
+    setManualLesson(prev => ({ ...prev, sections: prev.sections?.map(s => s.id === sectionId ? { ...s, quizzes: [...(s.quizzes || []), { ...newQuiz, sequence: (s.quizzes?.length || 0) + 1 }] } : s) }));
   };
 
-  const updateQuestion = (sectionId: string, quizId: string, updates: Partial<QuizQuestion>) => {
-      setManualLesson(prev => ({
-          ...prev,
-          sections: prev.sections?.map(s => {
-              if (s.id === sectionId) return { ...s, quizzes: s.quizzes?.map(q => q.id === quizId ? { ...q, ...updates } : q) };
-              return s;
-          })
-      }));
-  };
+  const updateQuestion = (secId: string, qId: string, upd: Partial<QuizQuestion>) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.map(q => q.id === qId ? { ...q, ...upd } : q) } : s) }));
+  const updateOption = (secId: string, qId: string, oId: string, upd: Partial<QuizOption>) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.map(q => q.id === qId ? { ...q, options: q.options.map(o => upd.isCorrect && o.id !== oId ? { ...o, isCorrect: false } : o.id === oId ? { ...o, ...upd } : o) } : q) } : s) }));
+  const removeQuestion = (secId: string, qId: string) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.filter(q => q.id !== qId) } : s) }));
 
-  const updateOption = (sectionId: string, quizId: string, optionId: string, updates: Partial<QuizOption>) => {
-      setManualLesson(prev => ({
-          ...prev,
-          sections: prev.sections?.map(s => {
-              if (s.id === sectionId) {
-                  return { 
-                      ...s, 
-                      quizzes: s.quizzes?.map(q => {
-                          if (q.id === quizId) {
-                              const updatedOptions = q.options.map(o => {
-                                  if (updates.isCorrect && o.id !== optionId) return { ...o, isCorrect: false };
-                                  if (o.id === optionId) return { ...o, ...updates };
-                                  return o;
-                              });
-                              return { ...q, options: updatedOptions };
-                          }
-                          return q;
-                      }) 
-                  };
-              }
-              return s;
-          })
-      }));
-  };
-
-  const removeQuestion = (sectionId: string, quizId: string) => {
-      setManualLesson(prev => ({
-          ...prev,
-          sections: prev.sections?.map(s => {
-              if (s.id === sectionId) return { ...s, quizzes: s.quizzes?.filter(q => q.id !== quizId) };
-              return s;
-          })
-      }));
-  };
-
-  const handleUpdateHomepage = async () => {
-      if (!homepageContent) return;
-      try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); }
-  };
-
-  const renderAudienceOptions = () => (
-    <>
-        <option value="All">All Users (Public)</option>
-        <option value="Student">(Student Only)</option>
-        <option value="Mentors_Org_Parents">(Mentors, Org, Parents)</option>
-        <option value="Mentor">(Mentors Only)</option>
-        <option value="Organization">(Organization Only)</option>
-        <option value="Parent">(Parent Only)</option>
-    </>
-  );
-
-  const inputClass = "w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm";
   const labelClass = "text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block";
+  const inputClass = "w-full p-3 border rounded-xl focus:ring-2 focus:ring-royal-500 outline-none transition-all text-sm bg-white";
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-    <div className="bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col h-[90vh] w-full max-w-6xl animate-in zoom-in-95 duration-200">
-       
-       <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex-shrink-0">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-3">
-                <div className="bg-indigo-600 text-white p-2 rounded-lg">
-                    {initialData ? <Edit3 size={20} /> : <Upload size={20} />}
-                </div>
-                <h2 className="font-bold text-gray-800 text-lg">
-                    {initialData ? 'Edit Content' : 'Upload Content'}
-                </h2>
-            </div>
-            <button onClick={onCancel} className="p-2 hover:bg-gray-200 rounded-full text-gray-500"><X size={20} /></button>
+    <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col h-[90vh] w-full max-w-6xl animate-in zoom-in-95 duration-200">
+       <div className="bg-gray-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-4">
+              <div className="bg-royal-800 text-white p-3 rounded-2xl shadow-lg">
+                  {initialData ? <Edit3 size={24} /> : <Upload size={24} />}
+              </div>
+              <div>
+                  <h2 className="font-bold text-gray-800 text-xl">{initialData ? 'Edit Content' : 'Mass Content Ingestion'}</h2>
+                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">LMS Administration Console</p>
+              </div>
           </div>
-
-          {isAdmin && !initialData && (
-             <div className="flex gap-2 p-1 bg-gray-200 rounded-lg w-max overflow-x-auto max-w-full">
-                <button onClick={() => { setContentType('lesson'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'lesson' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                   <BookOpen size={16}/> Lessons
-                </button>
-                <button onClick={() => { setContentType('homepage'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'homepage' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                   <Home size={16}/> Homepage Content
-                </button>
-             </div>
-          )}
+          <div className="flex gap-2">
+            {isAdmin && !initialData && (
+                <div className="flex gap-1 p-1 bg-gray-200 rounded-xl mr-4">
+                    <button onClick={() => setContentType('lesson')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${contentType === 'lesson' ? 'bg-white shadow text-royal-700' : 'text-gray-500'}`}>Lessons</button>
+                    <button onClick={() => setContentType('homepage')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${contentType === 'homepage' ? 'bg-white shadow text-royal-700' : 'text-gray-500'}`}>Landing Page</button>
+                </div>
+            )}
+            <button onClick={onCancel} className="p-2 hover:bg-gray-200 rounded-full text-gray-500"><X size={24} /></button>
+          </div>
        </div>
 
-       <div id="upload-modal-content" className="flex-1 overflow-y-auto custom-scrollbar p-6">
+       <div id="upload-modal-content" className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-[#fdfdfd]">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 flex items-start gap-3 shadow-sm animate-in slide-in-from-top-2">
-               <AlertCircle className="mt-0.5 flex-shrink-0" size={20} />
-               <div>
-                 <h4 className="font-bold text-sm">Validation Error</h4>
-                 <p className="text-sm">{error}</p>
-               </div>
+            <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
+               <AlertCircle className="shrink-0" size={24} />
+               <div><h4 className="font-bold">Parsing / Validation Error</h4><p className="text-sm opacity-80">{error}</p></div>
             </div>
           )}
 
-          {/* === LESSON UPLOAD UI === */}
           {contentType === 'lesson' && (
-             <div className="space-y-6">
+             <div className="space-y-8">
                 {!initialData && (
-                    <div className="flex justify-center mb-6">
-                        <div className="bg-gray-100 p-1 rounded-lg flex shadow-inner">
-                            <button onClick={() => setMode('bulk')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Excel Import (4 Sheets)</button>
-                            <button onClick={() => setMode('manual')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Manual Builder</button>
+                    <div className="flex justify-center">
+                        <div className="bg-gray-100 p-1.5 rounded-2xl flex shadow-inner">
+                            <button onClick={() => setMode('bulk')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mode === 'bulk' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500 hover:text-gray-700'}`}><FileIcon size={18}/> Excel Import (4 Sheets)</button>
+                            <button onClick={() => setMode('manual')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mode === 'manual' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500 hover:text-gray-700'}`}><PenTool size={18}/> Manual Builder</button>
                         </div>
                     </div>
                 )}
                 
                 {mode === 'manual' ? (
-                   <div className="max-w-5xl mx-auto space-y-8">
-                      {/* MODULE ASSIGNMENT SECTION */}
-                      <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-200 shadow-sm">
-                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-indigo-900 flex items-center gap-2"><Layers size={18} className="text-indigo-600"/> Module Assignment (Required)</h3>
-                            <button onClick={() => setShowModuleWizard(true)} className="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700"><Plus size={14}/> Create New Module</button>
+                   <div className="max-w-5xl mx-auto space-y-10 pb-20">
+                      <div className="bg-indigo-50/50 p-8 rounded-3xl border-2 border-indigo-100 shadow-sm">
+                         <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-indigo-900 text-lg flex items-center gap-3"><Layers className="text-indigo-600"/> 1. Define Module & Hierarchy</h3>
+                            <button onClick={() => setShowModuleWizard(true)} className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:shadow-lg transition-all"><Plus size={16}/> New Module</button>
                          </div>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className={labelClass}>Select Parent Module</label>
-                                <select 
-                                    className={`${inputClass} bg-white`} 
-                                    value={manualLesson.moduleId} 
-                                    onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}
-                                >
-                                    <option value="">-- Choose Module --</option>
-                                    {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className={labelClass}>Order in Module (1, 2, 3...)</label>
-                                <input 
-                                    type="number" 
-                                    className={inputClass} 
-                                    value={manualLesson.orderInModule} 
-                                    onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})}
-                                />
-                            </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div><label className={labelClass}>Module Container</label><select className={inputClass} value={manualLesson.moduleId} onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}><option value="">-- Choose Module for Certification --</option>{modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></div>
+                            <div><label className={labelClass}>Sequence Order (1-200)</label><input type="number" className={inputClass} value={manualLesson.orderInModule} onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})} /></div>
                          </div>
                       </div>
 
                       {showModuleWizard && (
-                          <div className="bg-white p-6 rounded-xl border-2 border-indigo-500 shadow-2xl animate-in zoom-in-95">
-                              <div className="flex justify-between mb-4 border-b pb-2">
-                                  <h4 className="font-bold text-indigo-800 flex items-center gap-2"><BadgeCheck size={18}/> New Module Creation</h4>
-                                  <button onClick={() => setShowModuleWizard(false)}><X size={16}/></button>
-                              </div>
-                              <form onSubmit={handleCreateModule} className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                      <div><label className={labelClass}>Unique Module ID</label><input required placeholder="e.g. GENESIS-MOD-1" className={inputClass} value={newModule.id} onChange={e => setNewModule({...newModule, id: e.target.value.toUpperCase()})} /></div>
-                                      <div><label className={labelClass}>Display Title</label><input required placeholder="Foundations of Faith" className={inputClass} value={newModule.title} onChange={e => setNewModule({...newModule, title: e.target.value})} /></div>
+                          <div className="bg-white p-8 rounded-3xl border-2 border-indigo-500 shadow-2xl animate-in zoom-in-95">
+                              <div className="flex justify-between mb-6 border-b pb-4"><h4 className="font-bold text-indigo-800 text-xl">Module Metadata Config</h4><button onClick={() => setShowModuleWizard(false)}><X size={24}/></button></div>
+                              <form onSubmit={handleCreateModule} className="space-y-6">
+                                  <div className="grid grid-cols-2 gap-6">
+                                      <div><label className={labelClass}>Unique ID</label><input required placeholder="e.g. FAITH-101" className={inputClass} value={newModule.id} onChange={e => setNewModule({...newModule, id: e.target.value.toUpperCase()})} /></div>
+                                      <div><label className={labelClass}>Module Title</label><input required placeholder="Foundations of Faith" className={inputClass} value={newModule.title} onChange={e => setNewModule({...newModule, title: e.target.value})} /></div>
                                   </div>
-                                  <div><label className={labelClass}>Certificate Award Title</label><input required className={inputClass} value={newModule.certificateConfig?.title} onChange={e => setNewModule({...newModule, certificateConfig: {...newModule.certificateConfig!, title: e.target.value}})} /></div>
-                                  <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700">Save Module & Link Lesson</button>
+                                  <div><label className={labelClass}>Certificate Award Label</label><input required className={inputClass} value={newModule.certificateConfig?.title} onChange={e => setNewModule({...newModule, certificateConfig: {...newModule.certificateConfig!, title: e.target.value}})} /></div>
+                                  <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 shadow-lg">Initialize Module Container</button>
                               </form>
                           </div>
                       )}
 
-                      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                         <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><CheckCircle size={18} className="text-green-500"/> Lesson Details</h3>
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2"><label className={labelClass}>Lesson Title</label><input className={inputClass} value={manualLesson.title} onChange={e => setManualLesson({...manualLesson, title: e.target.value})} placeholder="e.g. Genesis Chapter 1"/></div>
-                            <div className="md:col-span-2"><label className={labelClass}>Description</label><input className={inputClass} value={manualLesson.description} onChange={e => setManualLesson({...manualLesson, description: e.target.value})} placeholder="Short summary"/></div>
-                            <div><label className={labelClass}>Type</label><select className={`${inputClass} bg-white`} value={manualLesson.lesson_type} onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}><option value="Mixed">Mixed</option><option value="Bible">Bible</option><option value="Leadership">Leadership</option></select></div>
-                            <div><label className={labelClass}>Audience</label><select className={`${inputClass} bg-white`} value={manualLesson.targetAudience} onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}>{renderAudienceOptions()}</select></div>
+                      <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                         <h3 className="font-bold text-gray-800 text-lg mb-6 flex items-center gap-3"><CheckCircle className="text-green-500"/> 2. Lesson Metadata</h3>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="md:col-span-2"><label className={labelClass}>Display Title</label><input className={inputClass} value={manualLesson.title} onChange={e => setManualLesson({...manualLesson, title: e.target.value})} /></div>
+                            <div><label className={labelClass}>Audience Context</label><select className={inputClass} value={manualLesson.targetAudience} onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}><option value="All">All Users</option><option value="Student">Student Only</option><option value="Mentor">Mentor Only</option></select></div>
+                            <div><label className={labelClass}>Lesson Type</label><select className={inputClass} value={manualLesson.lesson_type} onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}><option value="Mixed">Mixed</option><option value="Bible">Bible</option><option value="Leadership">Leadership</option></select></div>
                          </div>
                       </div>
 
-                      <div className="space-y-4">
-                         <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
-                             <h3 className="font-bold text-gray-800 flex items-center gap-2">Content Sections</h3>
-                             <div className="flex gap-2">
-                                <button onClick={() => addSection('note')} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200 flex items-center gap-1">+ Note</button>
-                                <button onClick={() => addSection('quiz_group')} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 flex items-center gap-1">+ Quiz Group</button>
-                             </div>
-                         </div>
-                         {manualLesson.sections?.map((s, idx) => (
-                             <div key={s.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                                 <div className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer" onClick={() => setExpandedSection(expandedSection === s.id ? null : s.id)}>
-                                     <div className="flex items-center gap-3">
-                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${s.type === 'note' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{s.type.replace('_', ' ')}</span>
-                                         <span className="font-bold text-gray-800">{s.title}</span>
-                                     </div>
-                                     {expandedSection === s.id ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+                      <div className="space-y-6">
+                         <div className="flex justify-between items-center bg-gray-50 px-6 py-4 rounded-2xl border border-gray-200"><h3 className="font-bold text-gray-800">3. Content Architecture</h3><div className="flex gap-2"><button onClick={() => addSection('note')} className="px-5 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700">+ Note</button><button onClick={() => addSection('quiz_group')} className="px-5 py-2 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700">+ Quiz Group</button></div></div>
+                         {manualLesson.sections?.map((s) => (
+                             <div key={s.id} className="border border-gray-100 rounded-3xl overflow-hidden bg-white shadow-md">
+                                 <div className="bg-gray-50/50 p-6 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setExpandedSection(expandedSection === s.id ? null : s.id)}>
+                                     <div className="flex items-center gap-4"><span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest ${s.type === 'note' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{s.type}</span><span className="font-bold text-gray-900">{s.title}</span></div>
+                                     {expandedSection === s.id ? <ChevronUp size={24}/> : <ChevronDown size={24}/>}
                                  </div>
                                  {expandedSection === s.id && (
-                                     <div className="p-6 border-t space-y-6">
-                                         <div><label className={labelClass}>Section Title</label><input className={inputClass} value={s.title} onChange={e => updateSection(s.id, {title: e.target.value})} /></div>
+                                     <div className="p-8 border-t space-y-8 animate-in slide-in-from-top-4">
+                                         <div><label className={labelClass}>Component Title</label><input className={inputClass} value={s.title} onChange={e => updateSection(s.id, {title: e.target.value})} /></div>
                                          {s.type === 'note' ? (
-                                             <div><label className={labelClass}>Note Body (HTML)</label><textarea className="w-full p-4 border rounded-lg h-60 font-mono text-sm" value={s.body || ''} onChange={e => updateSection(s.id, {body: e.target.value})} /></div>
+                                             <div><label className={labelClass}>Note Body (Rich Text / HTML)</label><textarea className="w-full p-5 border rounded-2xl h-80 font-mono text-sm shadow-inner" value={s.body || ''} onChange={e => updateSection(s.id, {body: e.target.value})} /></div>
                                          ) : (
-                                             <div className="space-y-6">
-                                                 <div className="flex justify-between items-center"><h4 className="font-bold text-sm">Questions ({s.quizzes?.length || 0})</h4><button onClick={() => addQuestion(s.id)} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold">+ Add Question</button></div>
-                                                 {s.quizzes?.map((q, qIdx) => (
-                                                     <div key={q.id} className="bg-gray-50 p-5 rounded-xl border relative">
-                                                         <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-2 right-2 text-red-400"><Trash2 size={16}/></button>
-                                                         <input className={`${inputClass} mb-2`} placeholder="Question Text" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
-                                                         <div className="space-y-2">{q.options.map(opt => (<div key={opt.id} className="flex gap-2"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${opt.isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300'}`}>{opt.label}</button><input className="flex-1 p-2 border rounded-md" value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div>))}</div>
+                                             <div className="space-y-8">
+                                                 <div className="flex justify-between items-center"><h4 className="font-bold text-sm uppercase tracking-widest text-gray-400">Questions ({s.quizzes?.length || 0})</h4><button onClick={() => addQuestion(s.id)} className="text-xs font-bold bg-royal-100 text-royal-700 px-4 py-2 rounded-xl">+ Add Question</button></div>
+                                                 {s.quizzes?.map((q, idx) => (
+                                                     <div key={q.id} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
+                                                         <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 size={20}/></button>
+                                                         <div className="grid grid-cols-1 gap-6"><input className={inputClass} placeholder="Question Prompt" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
+                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map(opt => (<div key={opt.id} className="space-y-2"><div className="flex gap-3"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold shadow-sm transition-all ${opt.isCorrect ? 'bg-green-600 border-green-600 text-white scale-110' : 'bg-white border-gray-200 text-gray-400'}`}>{opt.label}</button><input className="flex-1 p-2.5 border rounded-xl" placeholder={`Option ${opt.label}`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div><textarea className="w-full p-2 text-xs border border-dashed rounded-lg bg-white/50" placeholder="Option-specific explanation..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} /></div>))}</div></div>
                                                      </div>
                                                  ))}
                                              </div>
@@ -384,38 +253,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       </div>
                    </div>
                 ) : (
-                   <div className="space-y-8 max-w-4xl mx-auto">
+                   <div className="max-w-4xl mx-auto space-y-10 pb-20">
                       {!draft ? (
-                          <div className="space-y-6">
-                            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100"><h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2"><HelpCircle size={20}/> New Excel Structure</h3><p className="text-sm text-blue-800 mb-4">Upload a single Excel file with 4 sheets: <strong>Module_Metadata</strong>, <strong>Lesson_Metadata</strong>, <strong>Bible_Quiz</strong>, and <strong>Note_Quiz</strong>.</p></div>
-                            <div className="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:bg-gray-50 relative transition-colors cursor-pointer"><input type="file" accept=".xlsx,.csv" onChange={handleLessonFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" /><div className="flex flex-col items-center pointer-events-none"><Upload size={32} className="text-indigo-600 mb-4" /><p className="font-bold text-gray-700">Click to Upload Excel File</p><p className="text-sm text-gray-400 mt-1">{file ? file.name : "Drag & drop or browse"}</p></div></div>
-                            {file && (<button onClick={processFile} disabled={isParsing} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">{isParsing ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />} Parse & Preview</button>)}
+                          <div className="space-y-8">
+                            <div className="bg-royal-900 text-white p-10 rounded-3xl shadow-2xl relative overflow-hidden"><div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div><div className="relative z-10"><h3 className="text-2xl font-serif font-bold mb-4 flex items-center gap-3"><HelpCircle className="text-gold-400"/> Bulk Import Specification</h3><p className="text-indigo-200 text-lg mb-6">A single .xlsx file with 4 specific sheets is required for synchronization:</p><div className="grid grid-cols-2 md:grid-cols-4 gap-4"><div className="bg-white/10 p-4 rounded-2xl border border-white/10 text-center"><span className="block font-bold mb-1">1</span><span className="text-[10px] uppercase font-bold text-gold-400">Module_Metadata</span></div><div className="bg-white/10 p-4 rounded-2xl border border-white/10 text-center"><span className="block font-bold mb-1">2</span><span className="text-[10px] uppercase font-bold text-gold-400">Lesson_Metadata</span></div><div className="bg-white/10 p-4 rounded-2xl border border-white/10 text-center"><span className="block font-bold mb-1">3</span><span className="text-[10px] uppercase font-bold text-gold-400">Bible_Quiz</span></div><div className="bg-white/10 p-4 rounded-2xl border border-white/10 text-center"><span className="block font-bold mb-1">4</span><span className="text-[10px] uppercase font-bold text-gold-400">Note_Quiz</span></div></div></div></div>
+                            <div className="border-4 border-dashed border-gray-200 rounded-[2.5rem] p-20 text-center hover:bg-gray-50 relative transition-all group cursor-pointer"><input type="file" accept=".xlsx,.csv" onChange={handleLessonFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" /><div className="flex flex-col items-center pointer-events-none group-hover:scale-105 transition-transform"><div className="p-6 bg-royal-100 rounded-3xl mb-6 text-royal-700 shadow-inner"><Upload size={48} /></div><p className="font-bold text-xl text-gray-800">Tap to Upload Spreadsheet</p><p className="text-gray-400 mt-2 font-medium">{file ? file.name : "Ensure all 4 tabs are present"}</p></div></div>
+                            {file && (<button onClick={processFile} disabled={isParsing} className="w-full py-5 bg-royal-800 text-white font-bold rounded-3xl hover:bg-royal-950 shadow-2xl transition-all flex items-center justify-center gap-4 text-xl">{isParsing ? <Loader2 className="animate-spin" /> : <ArrowRight />} BEGIN PARSING ENGINE</button>)}
                           </div>
                       ) : (
-                          <div className="animate-in fade-in slide-in-from-bottom-4">
-                              <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-gray-900">Import Preview</h3><button onClick={() => { setDraft(null); setFile(null); }} className="text-sm text-gray-500 hover:text-red-500 underline">Discard & Upload New</button></div>
-                              
-                              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6">
-                                  <h4 className="font-bold text-indigo-900 flex items-center gap-2 mb-2"><Layers size={20}/> Module: {draft.moduleMetadata?.title}</h4>
-                                  <p className="text-sm text-indigo-700">{draft.moduleMetadata?.description}</p>
-                                  <div className="mt-4 flex gap-4">
-                                      <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold uppercase">Award: {draft.moduleMetadata?.certificateConfig.title}</span>
-                                      <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold uppercase">Min Score: {draft.moduleMetadata?.completionRule.minimumCompletionPercentage}%</span>
-                                  </div>
-                              </div>
-
-                              <div className="grid gap-4">
-                                  {draft.lessons.map(l => (
-                                      <div key={l.metadata.lesson_id} className="bg-white border rounded-xl p-4 flex justify-between items-center shadow-sm">
-                                          <div>
-                                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lesson {l.metadata.lesson_order}</span>
-                                              <h4 className="font-bold text-gray-800">{l.metadata.title}</h4>
-                                              <p className="text-xs text-gray-500">{l.bibleQuizzes.length + l.noteQuizzes.length} Questions • {l.metadata.targetAudience}</p>
-                                          </div>
-                                          <CheckCircle size={20} className="text-green-500" />
-                                      </div>
-                                  ))}
-                              </div>
+                          <div className="animate-in fade-in slide-in-from-bottom-8">
+                              <div className="flex justify-between items-center mb-8"><h3 className="text-2xl font-bold text-gray-900">Synchronized Import Preview</h3><button onClick={() => { setDraft(null); setFile(null); }} className="text-sm font-bold text-red-500 underline hover:text-red-700">Discard & Restart</button></div>
+                              <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-xl mb-8 relative overflow-hidden"><div className="absolute top-0 right-0 p-8 opacity-10"><Layers size={100} /></div><div className="relative z-10"><h4 className="font-serif font-bold text-2xl flex items-center gap-3 mb-2"><BadgeCheck className="text-gold-500" /> Module: {draft.moduleMetadata?.title}</h4><p className="text-indigo-200 font-medium mb-6">{draft.moduleMetadata?.description}</p><div className="flex flex-wrap gap-4"><span className="bg-white/10 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10">Certification: {draft.moduleMetadata?.certificateConfig.title}</span><span className="bg-white/10 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10">Accuracy Threshold: {draft.moduleMetadata?.completionRule.minimumCompletionPercentage}%</span></div></div></div>
+                              <div className="grid gap-4">{draft.lessons.map(l => (<div key={l.metadata.lesson_id} className="bg-white border-2 border-gray-100 rounded-2xl p-6 flex justify-between items-center shadow-sm hover:border-royal-200 transition-colors"><div><div className="flex items-center gap-3 mb-1"><span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-lg uppercase tracking-tighter">Order {l.metadata.lesson_order}</span><h4 className="font-bold text-gray-900 text-lg">{l.metadata.title}</h4></div><p className="text-xs text-gray-400 font-medium">{l.bibleQuizzes.length} Bible Quizzes • {l.metadata.targetAudience} Level</p></div><CheckCircle size={28} className="text-green-500" /></div>))}</div>
                           </div>
                       )}
                    </div>
@@ -424,51 +273,23 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           )}
 
           {contentType === 'homepage' && homepageContent && (
-             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-12">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
-                   <Home size={24} className="text-blue-600" />
-                   <p className="text-sm text-blue-800">Changes made here will instantly update the text seen by guests on the landing page.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Hero Section</h3>
-                      <div><label className={labelClass}>Tagline</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div>
-                      <div><label className={labelClass}>Main Title</label><input className={inputClass} value={homepageContent.heroTitle} onChange={e => setHomepageContent({...homepageContent, heroTitle: e.target.value})} /></div>
-                      <div><label className={labelClass}>Hero Subtitle</label><textarea className={`${inputClass} h-24`} value={homepageContent.heroSubtitle} onChange={e => setHomepageContent({...homepageContent, heroSubtitle: e.target.value})} /></div>
-                   </div>
-                   
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ListChecks size={18} className="text-indigo-500" /> "Why BBL?" Section</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                         <div className="md:col-span-2"><label className={labelClass}>Section Heading</label><input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} /></div>
-                         <div><label className={labelClass}>Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div>
-                         <div><label className={labelClass}>Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div>
-                         <div><label className={labelClass}>Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div>
-                         <div><label className={labelClass}>Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Share2 size={16} className="text-indigo-500" /> Footer Details</h3>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                         <div className="lg:col-span-2"><label className={labelClass}>Footer Copyright Text</label><input className={inputClass} value={homepageContent.footerCopyright} onChange={e => setHomepageContent({...homepageContent, footerCopyright: e.target.value})} /></div>
-                      </div>
-                   </div>
+             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-20">
+                <div className="bg-amber-50 p-6 rounded-3xl border-2 border-amber-100 flex items-center gap-4 shadow-sm"><Home size={32} className="text-amber-600" /><p className="text-sm font-bold text-amber-900">Direct Branding Engine: These fields modify the public appearance of the landing page.</p></div>
+                <div className="grid grid-cols-1 gap-10">
+                   <div className="space-y-6 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm"><h3 className="font-bold text-gray-900 text-lg border-b pb-4 flex items-center gap-3"><ArrowRight className="text-indigo-500" /> Hero & Headlines</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div><label className={labelClass}>Promo Tagline</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div><div><label className={labelClass}>Main Title</label><input className={inputClass} value={homepageContent.heroTitle} onChange={e => setHomepageContent({...homepageContent, heroTitle: e.target.value})} /></div><div className="md:col-span-2"><label className={labelClass}>Hero Subtitle Paragraph</label><textarea className={`${inputClass} h-32`} value={homepageContent.heroSubtitle} onChange={e => setHomepageContent({...homepageContent, heroSubtitle: e.target.value})} /></div></div></div>
+                   <div className="space-y-6 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm"><h3 className="font-bold text-gray-900 text-lg border-b pb-4 flex items-center gap-3"><ListChecks className="text-indigo-500" /> "Why BBL?" Checklist</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><div className="md:col-span-2"><label className={labelClass}>Section Heading</label><input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} /></div><div><label className={labelClass}>Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div><div><label className={labelClass}>Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div><div><label className={labelClass}>Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div><div><label className={labelClass}>Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div></div></div>
                 </div>
              </div>
           )}
        </div>
 
-       <div className="bg-gray-50 p-6 border-t border-gray-100 flex justify-end gap-3 flex-shrink-0 z-10 relative">
-          <button type="button" onClick={onCancel} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-200 rounded-lg transition-colors border border-gray-200 bg-white">Cancel</button>
-          
+       <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end gap-4 shrink-0">
+          <button onClick={onCancel} className="px-8 py-3 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors bg-white border border-gray-200">Cancel</button>
           {contentType === 'lesson' && (
-             <button type="button" onClick={mode === 'manual' ? saveManualLesson : commitImport} disabled={mode === 'bulk' && (!draft?.isValid)} className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5 active:translate-y-0"><Save size={18} /> {mode === 'manual' ? (initialData ? 'Update Lesson' : 'Save Lesson') : 'Import Module'}</button>
+             <button onClick={mode === 'manual' ? saveManualLesson : commitImport} disabled={mode === 'bulk' && (!draft?.isValid)} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:grayscale transition-all transform hover:-translate-y-1"><Save size={20} /> {mode === 'manual' ? 'Commit to Library' : 'Perform Synchronization'}</button>
           )}
-
           {contentType === 'homepage' && (
-             <button onClick={handleUpdateHomepage} className="px-8 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md flex items-center gap-2"><Save size={18} /> Update Homepage</button>
+             <button onClick={async () => { if (!homepageContent) return; try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); } }} className="px-10 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl flex items-center gap-3"><Save size={20} /> Push Updates Live</button>
           )}
        </div>
     </div>

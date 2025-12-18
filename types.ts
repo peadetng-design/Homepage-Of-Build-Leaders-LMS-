@@ -12,23 +12,23 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  originalRole?: UserRole; // Tracks the true role when using "View As"
-  allowedRoles?: UserRole[]; // List of roles the user is authorized to switch between
+  originalRole?: UserRole;
+  allowedRoles?: UserRole[];
   avatarUrl?: string;
   passwordHash?: string; 
   isVerified?: boolean;
   verificationToken?: string;
   lastLogin?: string;
   authProvider?: 'email' | 'google' | 'apple';
-  classCode?: string; // For Mentors
-  groupName?: string; // Name of the group created by the mentor
-  organizationCode?: string; // For Organizations
-  mentorId?: string; // For Students
-  organizationId?: string; // For Mentors and Students
-  linkedStudentId?: string; // For Parents
-  createdBy?: string; // ID of the user who invited/created this user
-  curatedLessonIds?: string[]; // IDs of lessons selected for their group
-  earnedCertificates?: string[]; // IDs of earned certificates
+  classCode?: string;
+  groupName?: string;
+  organizationCode?: string;
+  mentorId?: string;
+  organizationId?: string;
+  linkedStudentId?: string;
+  createdBy?: string;
+  curatedLessonIds?: string[];
+  earnedCertificates?: string[];
 }
 
 export interface HomepageContent {
@@ -41,20 +41,17 @@ export interface HomepageContent {
   resourcesHeading: string;
   resourcesTitle: string;
   resourcesSubtitle: string;
-  // Why BBL Section
   whyBblHeading: string;
   whyBblItem1: string;
   whyBblItem2: string;
   whyBblItem3: string;
   whyBblItem4: string;
-  // Feature Cards (Why BBL - Legacy naming but used for the grid)
   feature1Title: string;
   feature1Desc: string;
   feature2Title: string;
   feature2Desc: string;
   feature3Title: string;
   feature3Desc: string;
-  // News Sections
   newsTagline: string;
   newsHeading: string;
   news1Tag: string;
@@ -65,7 +62,6 @@ export interface HomepageContent {
   news2Date: string;
   news2Title: string;
   news2Content: string;
-  // Footer
   footerYear: string;
   footerSocials: string;
   footerPhone: string;
@@ -74,66 +70,31 @@ export interface HomepageContent {
   footerCopyright: string;
 }
 
-export interface JoinRequest {
-  id: string;
-  studentId: string;
-  studentName: string;
-  mentorId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  timestamp: string;
-}
-
-export interface ChatChannel {
-  id: string;
-  name: string;
-  description?: string;
-  creatorId: string;
-  scope: 'global' | 'org' | 'class'; // global=admin, org=org, class=mentor
-  orgId?: string; // If scope is org
-  mentorId?: string; // If scope is class
-  
-  // Membership Rules
-  includeRoles: UserRole[]; // e.g., [MENTOR, ORGANIZATION]
-  includeStudentsOfMentors?: boolean; // If true, include students of the included mentors
-  
-  createdAt: string;
-}
-
-export interface ChatAttachment {
-  name: string;
-  type: string;
-  data: string; // Base64 or Blob URL
-  size: number;
-}
-
-export interface ChatMessage {
-  id: string;
-  channelId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: UserRole;
-  text: string;
-  timestamp: string;
-  attachment?: ChatAttachment; // New: optional file attachment
-}
-
-// --- CERTIFICATE MODEL ---
+// --- MODULE & CERTIFICATE MODEL ---
 export interface Module {
-  id: string;
+  id: string; // module_id in template
   title: string;
   description: string;
-  lessonIds: string[]; // Lessons required to complete this module
-  badgeUrl?: string;
+  lessonIds: string[]; 
+  completionRule: {
+    minimumCompletionPercentage: number;
+  };
+  certificateConfig: {
+    title: string;
+    description: string;
+    templateId: string;
+    issuedBy: string;
+  };
 }
 
 export interface CertificateDesign {
   templateId: 'classic' | 'modern' | 'minimal';
   primaryColor: string;
   secondaryColor: string;
-  titleOverride?: string; // Allow renaming "Certificate of Completion"
-  messageOverride?: string; // Allow changing "This certifies that..."
-  signatureUrl?: string; // Data URL for image
-  signatureName?: string; // Text based signature
+  titleOverride?: string;
+  messageOverride?: string;
+  signatureUrl?: string;
+  signatureName?: string;
 }
 
 export interface Certificate {
@@ -143,28 +104,19 @@ export interface Certificate {
   moduleId: string;
   moduleTitle: string;
   issueDate: string;
-  issuerName: string; // e.g., "Build Biblical Leaders" or Org Name
+  issuerName: string;
   uniqueCode: string;
-  design?: CertificateDesign; // New: Stores the look and feel
+  design?: CertificateDesign;
 }
 
 // --- LMS DATA MODEL ---
-
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
 export type SectionType = 'note' | 'quiz_group';
-
-// Exact options requested
-export type TargetAudience = 
-  'Student' | 
-  'Mentor' | 
-  'Parent' | 
-  'Organization' | 
-  'Mentors_Org_Parents' | 
-  'All';
+export type TargetAudience = 'Student' | 'Mentor' | 'Parent' | 'Organization' | 'Mentors_Org_Parents' | 'All';
 
 export interface QuizOption {
   id: string;
-  label: string; // A, B, C, D
+  label: string; 
   text: string;
   isCorrect: boolean;
   explanation: string;
@@ -173,7 +125,7 @@ export interface QuizOption {
 export interface QuizQuestion {
   id: string;
   type: 'Bible Quiz' | 'Note Quiz';
-  reference?: string; // e.g., "Genesis 1:1"
+  reference?: string;
   text: string;
   options: QuizOption[];
   sequence: number;
@@ -182,14 +134,16 @@ export interface QuizQuestion {
 export interface LessonSection {
   id: string;
   type: SectionType;
-  title: string; // Heading
-  body?: string; // For notes
-  quizzes?: QuizQuestion[]; // For quiz groups
+  title: string;
+  body?: string;
+  quizzes?: QuizQuestion[];
   sequence: number;
 }
 
 export interface Lesson {
   id: string;
+  moduleId: string; // Link to parent module
+  orderInModule: number;
   title: string;
   description: string;
   category?: string;
@@ -216,34 +170,78 @@ export interface StudentAttempt {
   attempted_at: string;
 }
 
-// Updated structure to match Excel Import requirements
+// Updated structure for 4-sheet Excel Import
 export interface LessonDraft {
-  metadata: {
-    id?: string;
-    title: string;
-    description: string;
-    book: string;
-    chapter: number;
-    lesson_type: LessonType;
-    targetAudience: TargetAudience;
-  };
-  leadershipNote: { 
-    title: string; 
-    body: string; 
-  };
-  bibleQuizzes: any[]; // Raw import data matching internal QuizQuestion structure but flexible
-  noteQuizzes: any[];  // Raw import data
+  moduleMetadata: Module | null;
+  lessons: {
+    metadata: {
+      lesson_id: string;
+      module_id: string;
+      title: string;
+      description: string;
+      book: string;
+      chapter: number;
+      lesson_order: number;
+      lesson_type: LessonType;
+      targetAudience: TargetAudience;
+    };
+    leadershipNote: { 
+      title: string; 
+      body: string; 
+    };
+    bibleQuizzes: any[]; 
+    noteQuizzes: any[]; 
+  }[];
   isValid: boolean;
   errors: string[];
 }
 
-// --- NEW CONTENT TYPES ---
+export interface JoinRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  mentorId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  timestamp: string;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description?: string;
+  creatorId: string;
+  scope: 'global' | 'org' | 'class';
+  orgId?: string;
+  mentorId?: string;
+  includeRoles: UserRole[];
+  includeStudentsOfMentors?: boolean;
+  createdAt: string;
+}
+
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  data: string;
+  size: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  text: string;
+  timestamp: string;
+  attachment?: ChatAttachment;
+}
+
 export interface Resource {
   id: string;
   title: string;
   description: string;
   fileType: 'pdf' | 'doc' | 'image' | 'other';
-  url: string; // In a real app this is a URL, here we might use a blob or mock
+  url: string;
   uploadedBy: string;
   uploadedAt: string;
   size: string;
@@ -256,32 +254,6 @@ export interface NewsItem {
   date: string;
   category: 'Announcement' | 'Event' | 'Update';
   author: string;
-}
-
-// --- END LMS DATA MODEL ---
-
-export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  role: UserRole;
-  isLoading: boolean;
-}
-
-export interface NavItem {
-  label: string;
-  icon: string;
-  path: string;
-  badge?: number;
-  roles?: UserRole[];
-}
-
-export interface DashboardCardData {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: string;
-  color: string;
-  trend?: 'up' | 'down' | 'neutral';
 }
 
 export interface AuditLog {
@@ -301,8 +273,8 @@ export interface Invite {
   email: string;
   role: UserRole;
   invitedBy: string;
-  inviterId?: string; // ID of the user who created the invite
-  organizationId?: string; // If invited by Org Admin
+  inviterId?: string;
+  organizationId?: string;
   createdAt: string;
   expiresAt: string;
   status: 'pending' | 'accepted' | 'expired';

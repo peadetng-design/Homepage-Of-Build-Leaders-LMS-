@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent } from '../types';
+import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -14,8 +14,6 @@ type ContentType = 'lesson' | 'resource' | 'news' | 'homepage';
 
 const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onCancel, initialData }) => {
   const [contentType, setContentType] = useState<ContentType>('lesson');
-  
-  // Mode State
   const [mode, setMode] = useState<'manual' | 'bulk'>(initialData ? 'manual' : 'bulk');
 
   // Bulk Import State
@@ -23,21 +21,20 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [bulkTargetAudience, setBulkTargetAudience] = useState<TargetAudience>('All');
 
   // Manual Builder State
+  const [modules, setModules] = useState<Module[]>([]);
+  const [showModuleWizard, setShowModuleWizard] = useState(false);
+  const [newModule, setNewModule] = useState<Partial<Module>>({
+      id: '', title: '', description: '', 
+      completionRule: { minimumCompletionPercentage: 100 },
+      certificateConfig: { title: 'Certificate of Completion', description: '', templateId: 'classic', issuedBy: 'Build Biblical Leaders' }
+  });
+
   const [manualLesson, setManualLesson] = useState<Partial<Lesson>>(initialData ? { ...initialData } : {
-    title: '', description: '', lesson_type: 'Mixed', targetAudience: 'All', book: '', chapter: 1, sections: []
+    title: '', description: '', lesson_type: 'Mixed', targetAudience: 'All', book: '', chapter: 1, sections: [], moduleId: '', orderInModule: 1
   });
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-
-  // Resource & News State
-  const [resourceFile, setResourceFile] = useState<File | null>(null);
-  const [resourceTitle, setResourceTitle] = useState('');
-  const [resourceDesc, setResourceDesc] = useState('');
-  const [newsTitle, setNewsTitle] = useState('');
-  const [newsContent, setNewsContent] = useState('');
-  const [newsCategory, setNewsCategory] = useState<'Announcement'|'Event'|'Update'>('Announcement');
 
   // Homepage Content State
   const [homepageContent, setHomepageContent] = useState<HomepageContent | null>(null);
@@ -48,10 +45,31 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (contentType === 'homepage') {
           lessonService.getHomepageContent().then(setHomepageContent);
       }
+      if (contentType === 'lesson') {
+          lessonService.getModules().then(setModules);
+      }
   }, [contentType]);
 
-  // --- HANDLERS: BULK IMPORT ---
+  // --- HANDLERS: MODULES ---
+  const handleCreateModule = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newModule.id || !newModule.title) return;
+      const modObj: Module = {
+          id: newModule.id,
+          title: newModule.title,
+          description: newModule.description || '',
+          lessonIds: [],
+          completionRule: newModule.completionRule || { minimumCompletionPercentage: 100 },
+          certificateConfig: newModule.certificateConfig || { title: 'Certificate', description: '', templateId: 'classic', issuedBy: '' }
+      };
+      await lessonService.createModule(modObj);
+      const updatedModules = await lessonService.getModules();
+      setModules(updatedModules);
+      setManualLesson(prev => ({ ...prev, moduleId: modObj.id }));
+      setShowModuleWizard(false);
+  };
 
+  // --- HANDLERS: BULK IMPORT ---
   const handleLessonFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
@@ -75,9 +93,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const commitImport = async () => {
     if (!draft) return;
     try {
-      draft.metadata.targetAudience = bulkTargetAudience;
-      const lesson = lessonService.convertDraftToLesson(draft, currentUser);
-      await lessonService.publishLesson(lesson);
+      await lessonService.commitDraft(draft, currentUser);
       onSuccess();
     } catch (err: any) {
       setError(err.message);
@@ -85,28 +101,16 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   };
 
   // --- HANDLERS: MANUAL BUILDER ---
-
   const saveManualLesson = async () => {
     setError(null);
     try {
       if (!manualLesson.title) throw new Error("Lesson Title is required");
-      if (!manualLesson.sections || manualLesson.sections.length === 0) throw new Error("Please add at least one section (Note or Quiz)");
-
-      let missingAnswer = false;
-      let missingQuestionText = false;
-      manualLesson.sections.forEach(s => {
-          if (s.type === 'quiz_group' && s.quizzes) {
-              s.quizzes.forEach(q => {
-                  if (!q.text) missingQuestionText = true;
-                  if (!q.options.some(o => o.isCorrect)) missingAnswer = true;
-              });
-          }
-      });
-      if (missingQuestionText) throw new Error("All questions must have text.");
-      if (missingAnswer) throw new Error("All quiz questions must have exactly one correct option selected.");
+      if (!manualLesson.moduleId) throw new Error("A module assignment is required for certificate tracking.");
 
       const finalLesson: Lesson = {
         id: initialData?.id || crypto.randomUUID(),
+        moduleId: manualLesson.moduleId || '',
+        orderInModule: manualLesson.orderInModule || 1,
         title: manualLesson.title,
         description: manualLesson.description || '',
         lesson_type: manualLesson.lesson_type || 'Mixed',
@@ -124,18 +128,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       onSuccess();
     } catch (err: any) {
       setError(err.message);
-      const modal = document.getElementById('upload-modal-content');
-      if (modal) modal.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   const addSection = (type: SectionType) => {
     const newSection: LessonSection = {
-      id: crypto.randomUUID(),
-      type,
-      title: type === 'note' ? 'New Leadership Note' : 'New Quiz Group',
-      body: type === 'note' ? '' : undefined,
-      quizzes: type === 'quiz_group' ? [] : undefined,
+      id: crypto.randomUUID(), type, title: type === 'note' ? 'New Leadership Note' : 'New Quiz Group',
+      body: type === 'note' ? '' : undefined, quizzes: type === 'quiz_group' ? [] : undefined,
       sequence: (manualLesson.sections?.length || 0) + 1
     };
     setManualLesson(prev => ({ ...prev, sections: [...(prev.sections || []), newSection] }));
@@ -152,11 +151,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
 
   const addQuestion = (sectionId: string) => {
     const newQuiz: QuizQuestion = {
-        id: crypto.randomUUID(),
-        type: 'Bible Quiz',
-        text: 'New Question',
-        reference: '',
-        sequence: 0,
+        id: crypto.randomUUID(), type: 'Bible Quiz', text: 'New Question', reference: '', sequence: 0,
         options: [
             { id: crypto.randomUUID(), label: 'A', text: '', isCorrect: false, explanation: '' },
             { id: crypto.randomUUID(), label: 'B', text: '', isCorrect: false, explanation: '' },
@@ -167,9 +162,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     setManualLesson(prev => ({
         ...prev,
         sections: prev.sections?.map(s => {
-            if (s.id === sectionId) {
-                return { ...s, quizzes: [...(s.quizzes || []), { ...newQuiz, sequence: (s.quizzes?.length || 0) + 1 }] };
-            }
+            if (s.id === sectionId) return { ...s, quizzes: [...(s.quizzes || []), { ...newQuiz, sequence: (s.quizzes?.length || 0) + 1 }] };
             return s;
         })
     }));
@@ -179,9 +172,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       setManualLesson(prev => ({
           ...prev,
           sections: prev.sections?.map(s => {
-              if (s.id === sectionId) {
-                  return { ...s, quizzes: s.quizzes?.map(q => q.id === quizId ? { ...q, ...updates } : q) };
-              }
+              if (s.id === sectionId) return { ...s, quizzes: s.quizzes?.map(q => q.id === quizId ? { ...q, ...updates } : q) };
               return s;
           })
       }));
@@ -216,57 +207,15 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       setManualLesson(prev => ({
           ...prev,
           sections: prev.sections?.map(s => {
-              if (s.id === sectionId) {
-                  return { ...s, quizzes: s.quizzes?.filter(q => q.id !== quizId) };
-              }
+              if (s.id === sectionId) return { ...s, quizzes: s.quizzes?.filter(q => q.id !== quizId) };
               return s;
           })
       }));
   };
 
-  // --- HANDLERS: RESOURCE & NEWS ---
-  
-  const saveResource = async () => {
-     if (!resourceTitle || !resourceFile) { setError("Please provide a title and select a file."); return; }
-     try {
-       const newRes: Resource = {
-         id: crypto.randomUUID(),
-         title: resourceTitle,
-         description: resourceDesc,
-         fileType: resourceFile.name.endsWith('.pdf') ? 'pdf' : 'doc',
-         url: URL.createObjectURL(resourceFile),
-         uploadedBy: currentUser.name,
-         uploadedAt: new Date().toISOString(),
-         size: `${(resourceFile.size / 1024 / 1024).toFixed(2)} MB`
-       };
-       await lessonService.addResource(newRes);
-       onSuccess();
-     } catch(e: any) { setError(e.message); }
-  };
-
-  const saveNews = async () => {
-     if (!newsTitle || !newsContent) { setError("Title and content are required."); return; }
-     try {
-       const newItem: NewsItem = {
-         id: crypto.randomUUID(),
-         title: newsTitle,
-         content: newsContent,
-         date: new Date().toISOString(),
-         category: newsCategory,
-         author: currentUser.name
-       };
-       await lessonService.addNews(newItem);
-       onSuccess();
-     } catch(e: any) { setError(e.message); }
-  };
-
-  // --- HANDLERS: HOMEPAGE ---
   const handleUpdateHomepage = async () => {
       if (!homepageContent) return;
-      try {
-          await lessonService.updateHomepageContent(homepageContent);
-          onSuccess();
-      } catch (e: any) { setError(e.message); }
+      try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); }
   };
 
   const renderAudienceOptions = () => (
@@ -305,12 +254,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                 <button onClick={() => { setContentType('lesson'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'lesson' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
                    <BookOpen size={16}/> Lessons
                 </button>
-                <button onClick={() => { setContentType('resource'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'resource' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                   <FileIcon size={16}/> Resources
-                </button>
-                <button onClick={() => { setContentType('news'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'news' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                   <Newspaper size={16}/> News
-                </button>
                 <button onClick={() => { setContentType('homepage'); setError(null); }} className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all whitespace-nowrap ${contentType === 'homepage' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
                    <Home size={16}/> Homepage Content
                 </button>
@@ -329,122 +272,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
             </div>
           )}
 
-          {/* === HOMEPAGE CONTENT UI === */}
-          {contentType === 'homepage' && homepageContent && (
-             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-12">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
-                   <Home size={24} className="text-blue-600" />
-                   <p className="text-sm text-blue-800">Changes made here will instantly update the text seen by guests on the landing page.</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   {/* HERO SECTION */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Hero Section</h3>
-                      <div><label className={labelClass}>Tagline (Gold Bar)</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div>
-                      <div><label className={labelClass}>Main Title</label><input className={inputClass} value={homepageContent.heroTitle} onChange={e => setHomepageContent({...homepageContent, heroTitle: e.target.value})} /></div>
-                      <div><label className={labelClass}>Hero Subtitle</label><textarea className={`${inputClass} h-24`} value={homepageContent.heroSubtitle} onChange={e => setHomepageContent({...homepageContent, heroSubtitle: e.target.value})} /></div>
-                   </div>
-
-                   {/* ABOUT SECTION */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> About Us</h3>
-                      <div><label className={labelClass}>Mission Label</label><input className={inputClass} value={homepageContent.aboutMission} onChange={e => setHomepageContent({...homepageContent, aboutMission: e.target.value})} /></div>
-                      <div><label className={labelClass}>Heading</label><input className={inputClass} value={homepageContent.aboutHeading} onChange={e => setHomepageContent({...homepageContent, aboutHeading: e.target.value})} /></div>
-                      <div><label className={labelClass}>Body Text</label><textarea className={`${inputClass} h-24`} value={homepageContent.aboutBody} onChange={e => setHomepageContent({...homepageContent, aboutBody: e.target.value})} /></div>
-                   </div>
-
-                   {/* WHY BBL (Checklist) */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ListChecks size={18} className="text-indigo-500" /> "Why BBL?" Section (Checklist)</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                         <div className="md:col-span-2">
-                            <label className={labelClass}>Section Heading</label>
-                            <input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} />
-                         </div>
-                         <div><label className={labelClass}>Checklist Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div>
-                         <div><label className={labelClass}>Checklist Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div>
-                         <div><label className={labelClass}>Checklist Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div>
-                         <div><label className={labelClass}>Checklist Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div>
-                      </div>
-                   </div>
-
-                   {/* RESOURCES SECTION HEADER */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Resources Header</h3>
-                      <div><label className={labelClass}>Top Label</label><input className={inputClass} value={homepageContent.resourcesHeading} onChange={e => setHomepageContent({...homepageContent, resourcesHeading: e.target.value})} /></div>
-                      <div><label className={labelClass}>Main Heading</label><input className={inputClass} value={homepageContent.resourcesTitle} onChange={e => setHomepageContent({...homepageContent, resourcesTitle: e.target.value})} /></div>
-                      <div><label className={labelClass}>Subtitle</label><textarea className={`${inputClass} h-20`} value={homepageContent.resourcesSubtitle} onChange={e => setHomepageContent({...homepageContent, resourcesSubtitle: e.target.value})} /></div>
-                   </div>
-
-                   {/* FEATURE CARDS */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><CheckCircle size={16} className="text-indigo-500" /> Grid Feature Cards</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 border-l-4 border-indigo-200 pl-3">
-                            <label className={labelClass}>Feature 1 (Title & Description)</label>
-                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature1Title} onChange={e => setHomepageContent({...homepageContent, feature1Title: e.target.value})} />
-                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature1Desc} onChange={e => setHomepageContent({...homepageContent, feature1Desc: e.target.value})} />
-                        </div>
-                        <div className="col-span-2 border-l-4 border-gold-200 pl-3">
-                            <label className={labelClass}>Feature 2 (Title & Description)</label>
-                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature2Title} onChange={e => setHomepageContent({...homepageContent, feature2Title: e.target.value})} />
-                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature2Desc} onChange={e => setHomepageContent({...homepageContent, feature2Desc: e.target.value})} />
-                        </div>
-                        <div className="col-span-2 border-l-4 border-indigo-200 pl-3">
-                            <label className={labelClass}>Feature 3 (Title & Description)</label>
-                            <input className={`${inputClass} mb-2 font-bold`} value={homepageContent.feature3Title} onChange={e => setHomepageContent({...homepageContent, feature3Title: e.target.value})} />
-                            <textarea className={`${inputClass} h-16`} value={homepageContent.feature3Desc} onChange={e => setHomepageContent({...homepageContent, feature3Desc: e.target.value})} />
-                        </div>
-                      </div>
-                   </div>
-
-                   {/* NEWS SECTION CONTENT */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Newspaper size={16} className="text-indigo-500" /> Landing Page News Cards</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                            <div className="flex gap-2">
-                                <div className="flex-1"><label className={labelClass}>News 1 Tag</label><input className={inputClass} value={homepageContent.news1Tag} onChange={e => setHomepageContent({...homepageContent, news1Tag: e.target.value})} /></div>
-                                <div className="flex-1"><label className={labelClass}>News 1 Date</label><input className={inputClass} value={homepageContent.news1Date} onChange={e => setHomepageContent({...homepageContent, news1Date: e.target.value})} /></div>
-                            </div>
-                            <div><label className={labelClass}>News 1 Title</label><input className={`${inputClass} font-bold`} value={homepageContent.news1Title} onChange={e => setHomepageContent({...homepageContent, news1Title: e.target.value})} /></div>
-                            <div><label className={labelClass}>News 1 Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news1Content} onChange={e => setHomepageContent({...homepageContent, news1Content: e.target.value})} /></div>
-                         </div>
-                         <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                            <div className="flex gap-2">
-                                <div className="flex-1"><label className={labelClass}>News 2 Tag</label><input className={inputClass} value={homepageContent.news2Tag} onChange={e => setHomepageContent({...homepageContent, news2Tag: e.target.value})} /></div>
-                                <div className="flex-1"><label className={labelClass}>News 2 Date</label><input className={inputClass} value={homepageContent.news2Date} onChange={e => setHomepageContent({...homepageContent, news2Date: e.target.value})} /></div>
-                            </div>
-                            <div><label className={labelClass}>News 2 Title</label><input className={`${inputClass} font-bold`} value={homepageContent.news2Title} onChange={e => setHomepageContent({...homepageContent, news2Title: e.target.value})} /></div>
-                            <div><label className={labelClass}>News 2 Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news2Content} onChange={e => setHomepageContent({...homepageContent, news2Content: e.target.value})} /></div>
-                         </div>
-                      </div>
-                   </div>
-
-                   {/* FOOTER DETAILS */}
-                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
-                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Share2 size={16} className="text-indigo-500" /> Footer Details (Socials & Contact)</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                         <div><label className={labelClass}><Circle size={10} className="inline mr-1"/> Copyright Year</label><input className={inputClass} value={homepageContent.footerYear} onChange={e => setHomepageContent({...homepageContent, footerYear: e.target.value})} /></div>
-                         <div><label className={labelClass}><Mail size={10} className="inline mr-1"/> Contact Email</label><input className={inputClass} value={homepageContent.footerEmail} onChange={e => setHomepageContent({...homepageContent, footerEmail: e.target.value})} /></div>
-                         <div><label className={labelClass}><Phone size={10} className="inline mr-1"/> Contact Phone</label><input className={inputClass} value={homepageContent.footerPhone} onChange={e => setHomepageContent({...homepageContent, footerPhone: e.target.value})} /></div>
-                         <div><label className={labelClass}><Share2 size={10} className="inline mr-1"/> Social Media Handles</label><input className={inputClass} value={homepageContent.footerSocials} onChange={e => setHomepageContent({...homepageContent, footerSocials: e.target.value})} /></div>
-                         <div className="lg:col-span-4"><label className={labelClass}><MapPin size={10} className="inline mr-1"/> Physical Address</label><input className={inputClass} value={homepageContent.footerAddress} onChange={e => setHomepageContent({...homepageContent, footerAddress: e.target.value})} /></div>
-                         <div className="lg:col-span-4"><label className={labelClass}><Circle size={10} className="inline mr-1"/> Footer Copyright Text</label><input className={inputClass} value={homepageContent.footerCopyright} onChange={e => setHomepageContent({...homepageContent, footerCopyright: e.target.value})} /></div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          )}
-
           {/* === LESSON UPLOAD UI === */}
           {contentType === 'lesson' && (
              <div className="space-y-6">
                 {!initialData && (
                     <div className="flex justify-center mb-6">
                         <div className="bg-gray-100 p-1 rounded-lg flex shadow-inner">
-                            <button onClick={() => setMode('bulk')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Excel Import</button>
+                            <button onClick={() => setMode('bulk')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${mode === 'bulk' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Excel Import (4 Sheets)</button>
                             <button onClick={() => setMode('manual')} className={`px-6 py-2 rounded-md text-sm font-bold transition-all ${mode === 'manual' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>Manual Builder</button>
                         </div>
                     </div>
@@ -452,6 +286,53 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                 
                 {mode === 'manual' ? (
                    <div className="max-w-5xl mx-auto space-y-8">
+                      {/* MODULE ASSIGNMENT SECTION */}
+                      <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-200 shadow-sm">
+                         <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-indigo-900 flex items-center gap-2"><Layers size={18} className="text-indigo-600"/> Module Assignment (Required)</h3>
+                            <button onClick={() => setShowModuleWizard(true)} className="text-xs font-bold bg-indigo-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 hover:bg-indigo-700"><Plus size={14}/> Create New Module</button>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelClass}>Select Parent Module</label>
+                                <select 
+                                    className={`${inputClass} bg-white`} 
+                                    value={manualLesson.moduleId} 
+                                    onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}
+                                >
+                                    <option value="">-- Choose Module --</option>
+                                    {modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className={labelClass}>Order in Module (1, 2, 3...)</label>
+                                <input 
+                                    type="number" 
+                                    className={inputClass} 
+                                    value={manualLesson.orderInModule} 
+                                    onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})}
+                                />
+                            </div>
+                         </div>
+                      </div>
+
+                      {showModuleWizard && (
+                          <div className="bg-white p-6 rounded-xl border-2 border-indigo-500 shadow-2xl animate-in zoom-in-95">
+                              <div className="flex justify-between mb-4 border-b pb-2">
+                                  <h4 className="font-bold text-indigo-800 flex items-center gap-2"><BadgeCheck size={18}/> New Module Creation</h4>
+                                  <button onClick={() => setShowModuleWizard(false)}><X size={16}/></button>
+                              </div>
+                              <form onSubmit={handleCreateModule} className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                      <div><label className={labelClass}>Unique Module ID</label><input required placeholder="e.g. GENESIS-MOD-1" className={inputClass} value={newModule.id} onChange={e => setNewModule({...newModule, id: e.target.value.toUpperCase()})} /></div>
+                                      <div><label className={labelClass}>Display Title</label><input required placeholder="Foundations of Faith" className={inputClass} value={newModule.title} onChange={e => setNewModule({...newModule, title: e.target.value})} /></div>
+                                  </div>
+                                  <div><label className={labelClass}>Certificate Award Title</label><input required className={inputClass} value={newModule.certificateConfig?.title} onChange={e => setNewModule({...newModule, certificateConfig: {...newModule.certificateConfig!, title: e.target.value}})} /></div>
+                                  <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700">Save Module & Link Lesson</button>
+                              </form>
+                          </div>
+                      )}
+
                       <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                          <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2"><CheckCircle size={18} className="text-green-500"/> Lesson Details</h3>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -459,43 +340,39 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                             <div className="md:col-span-2"><label className={labelClass}>Description</label><input className={inputClass} value={manualLesson.description} onChange={e => setManualLesson({...manualLesson, description: e.target.value})} placeholder="Short summary"/></div>
                             <div><label className={labelClass}>Type</label><select className={`${inputClass} bg-white`} value={manualLesson.lesson_type} onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}><option value="Mixed">Mixed</option><option value="Bible">Bible</option><option value="Leadership">Leadership</option></select></div>
                             <div><label className={labelClass}>Audience</label><select className={`${inputClass} bg-white`} value={manualLesson.targetAudience} onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}>{renderAudienceOptions()}</select></div>
-                            <div><label className={labelClass}>Book</label><input className={inputClass} value={manualLesson.book} onChange={e => setManualLesson({...manualLesson, book: e.target.value})} placeholder="e.g. Genesis"/></div>
-                            <div><label className={labelClass}>Chapter</label><input type="number" className={inputClass} value={manualLesson.chapter} onChange={e => setManualLesson({...manualLesson, chapter: parseInt(e.target.value)})}/></div>
                          </div>
                       </div>
+
                       <div className="space-y-4">
                          <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
                              <h3 className="font-bold text-gray-800 flex items-center gap-2">Content Sections</h3>
                              <div className="flex gap-2">
-                                <button onClick={() => addSection('note')} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200 flex items-center gap-1 transition-colors">+ Note</button>
-                                <button onClick={() => addSection('quiz_group')} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 flex items-center gap-1 transition-colors">+ Quiz Group</button>
+                                <button onClick={() => addSection('note')} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg text-sm font-bold hover:bg-blue-200 flex items-center gap-1">+ Note</button>
+                                <button onClick={() => addSection('quiz_group')} className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-bold hover:bg-purple-200 flex items-center gap-1">+ Quiz Group</button>
                              </div>
                          </div>
                          {manualLesson.sections?.map((s, idx) => (
-                             <div key={s.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all hover:shadow-md">
-                                 <div className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setExpandedSection(expandedSection === s.id ? null : s.id)}>
+                             <div key={s.id} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+                                 <div className="bg-gray-50 p-4 flex justify-between items-center cursor-pointer" onClick={() => setExpandedSection(expandedSection === s.id ? null : s.id)}>
                                      <div className="flex items-center gap-3">
-                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${s.type === 'note' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{s.type.replace('_', ' ')}</span>
-                                         <span className="font-bold text-gray-800 text-lg">{s.title}</span>
+                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${s.type === 'note' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{s.type.replace('_', ' ')}</span>
+                                         <span className="font-bold text-gray-800">{s.title}</span>
                                      </div>
-                                     <div className="flex items-center gap-2">
-                                         <button onClick={(e) => { e.stopPropagation(); removeSection(s.id); }} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"><Trash2 size={18}/></button>
-                                         {expandedSection === s.id ? <ChevronUp size={20} className="text-gray-500"/> : <ChevronDown size={20} className="text-gray-500"/>}
-                                     </div>
+                                     {expandedSection === s.id ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
                                  </div>
                                  {expandedSection === s.id && (
-                                     <div className="p-6 border-t border-gray-200 space-y-6 animate-in slide-in-from-top-2">
+                                     <div className="p-6 border-t space-y-6">
                                          <div><label className={labelClass}>Section Title</label><input className={inputClass} value={s.title} onChange={e => updateSection(s.id, {title: e.target.value})} /></div>
                                          {s.type === 'note' ? (
-                                             <div><label className={labelClass}>Note Content (HTML supported)</label><textarea className="w-full p-4 border rounded-lg h-60 font-mono text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={s.body || ''} onChange={e => updateSection(s.id, {body: e.target.value})} placeholder="<p>Enter your study notes here...</p>" /></div>
+                                             <div><label className={labelClass}>Note Body (HTML)</label><textarea className="w-full p-4 border rounded-lg h-60 font-mono text-sm" value={s.body || ''} onChange={e => updateSection(s.id, {body: e.target.value})} /></div>
                                          ) : (
                                              <div className="space-y-6">
-                                                 <div className="flex justify-between items-center border-b border-gray-100 pb-2"><h4 className="font-bold text-sm text-gray-700 uppercase tracking-wide">Questions ({s.quizzes?.length || 0})</h4><button onClick={() => addQuestion(s.id)} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold hover:bg-indigo-100 transition-colors">+ Add Question</button></div>
+                                                 <div className="flex justify-between items-center"><h4 className="font-bold text-sm">Questions ({s.quizzes?.length || 0})</h4><button onClick={() => addQuestion(s.id)} className="text-xs bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg font-bold">+ Add Question</button></div>
                                                  {s.quizzes?.map((q, qIdx) => (
-                                                     <div key={q.id} className="bg-gray-50 p-5 rounded-xl border border-gray-200 shadow-sm">
-                                                         <div className="flex justify-between mb-4"><span className="font-bold text-gray-700 bg-white px-2 py-1 rounded border border-gray-200 text-sm">Question {qIdx + 1}</span><button onClick={() => removeQuestion(s.id, q.id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded transition-colors"><Trash2 size={16}/></button></div>
-                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div className="md:col-span-2"><input className={inputClass} placeholder="Enter Question Text..." value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} /></div><div><input className={inputClass} placeholder="Reference (e.g. Gen 1:1)" value={q.reference} onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} /></div></div>
-                                                         <div className="space-y-3"><label className="text-xs font-bold text-gray-500 uppercase">Answer Options</label>{q.options.map(opt => (<div key={opt.id} className={`flex flex-col md:flex-row gap-3 items-start p-3 rounded-lg border transition-all ${opt.isCorrect ? 'bg-green-50 border-green-500 ring-1 ring-green-500' : 'bg-white border-gray-200'}`}><div className="flex items-center gap-3 w-full md:w-auto"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${opt.isCorrect ? 'border-green-500 bg-green-500 text-white' : 'border-gray-300 bg-white text-transparent hover:border-green-400'}`} title="Mark as Correct Answer"><CheckCircle size={14} fill="currentColor" className={opt.isCorrect ? 'opacity-100' : 'opacity-0'} /></button><span className="font-bold text-gray-400 text-sm w-6">{opt.label}</span></div><div className="flex-1 w-full space-y-2"><input className={`w-full p-2 border rounded-md text-sm outline-none ${opt.isCorrect ? 'font-bold text-green-900 border-green-200' : 'text-gray-700 border-gray-200'}`} placeholder={`Option ${opt.label} Text`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /><input className="w-full p-2 border border-dashed border-gray-300 rounded-md text-xs text-gray-600 bg-gray-50 focus:bg-white transition-colors outline-none" placeholder="Explanation (Optional)" value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} /></div></div>))}</div>
+                                                     <div key={q.id} className="bg-gray-50 p-5 rounded-xl border relative">
+                                                         <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-2 right-2 text-red-400"><Trash2 size={16}/></button>
+                                                         <input className={`${inputClass} mb-2`} placeholder="Question Text" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
+                                                         <div className="space-y-2">{q.options.map(opt => (<div key={opt.id} className="flex gap-2"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-8 h-8 rounded-full border-2 flex items-center justify-center ${opt.isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300'}`}>{opt.label}</button><input className="flex-1 p-2 border rounded-md" value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div>))}</div>
                                                      </div>
                                                  ))}
                                              </div>
@@ -504,23 +381,41 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                  )}
                              </div>
                          ))}
-                         {manualLesson.sections?.length === 0 && <div className="text-center text-gray-400 py-12 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">No content added yet.</div>}
                       </div>
                    </div>
                 ) : (
                    <div className="space-y-8 max-w-4xl mx-auto">
                       {!draft ? (
-                          <>
-                            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100"><h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2"><HelpCircle size={20}/> Instructions</h3><p className="text-sm text-blue-800 mb-4">Upload a single Excel (.xlsx) file with 3 sheets: <strong>Lesson_Metadata</strong>, <strong>Bible_Quiz</strong>, and <strong>Note_Quiz</strong>.</p></div>
-                            <div className="bg-royal-50 p-6 rounded-xl border border-royal-100 flex items-center justify-between gap-4"><div><h3 className="font-bold text-gray-900">Audience Config</h3><p className="text-xs text-gray-600">Applies to all imported lessons.</p></div><select value={bulkTargetAudience} onChange={(e) => setBulkTargetAudience(e.target.value as TargetAudience)} className="p-3 rounded-lg border-2 border-indigo-200 text-sm font-bold outline-none">{renderAudienceOptions()}</select></div>
-                            <div className="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:bg-gray-50 relative transition-colors cursor-pointer group"><input type="file" accept=".xlsx,.csv" onChange={handleLessonFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" /><div className="flex flex-col items-center pointer-events-none"><div className="bg-indigo-100 p-4 rounded-full mb-4 text-indigo-600 group-hover:scale-110 transition-transform"><Upload size={32} /></div><p className="font-bold text-gray-700">Click to Upload Excel File</p><p className="text-sm text-gray-400 mt-1">{file ? file.name : "Drag & drop or browse"}</p></div></div>
-                            {file && (<button onClick={processFile} disabled={isParsing} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg transition-transform hover:-translate-y-0.5">{isParsing ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />} Parse & Preview</button>)}
-                          </>
+                          <div className="space-y-6">
+                            <div className="bg-blue-50 p-6 rounded-xl border border-blue-100"><h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2"><HelpCircle size={20}/> New Excel Structure</h3><p className="text-sm text-blue-800 mb-4">Upload a single Excel file with 4 sheets: <strong>Module_Metadata</strong>, <strong>Lesson_Metadata</strong>, <strong>Bible_Quiz</strong>, and <strong>Note_Quiz</strong>.</p></div>
+                            <div className="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:bg-gray-50 relative transition-colors cursor-pointer"><input type="file" accept=".xlsx,.csv" onChange={handleLessonFileChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" /><div className="flex flex-col items-center pointer-events-none"><Upload size={32} className="text-indigo-600 mb-4" /><p className="font-bold text-gray-700">Click to Upload Excel File</p><p className="text-sm text-gray-400 mt-1">{file ? file.name : "Drag & drop or browse"}</p></div></div>
+                            {file && (<button onClick={processFile} disabled={isParsing} className="w-full py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg">{isParsing ? <Loader2 className="animate-spin" size={20} /> : <ArrowRight size={20} />} Parse & Preview</button>)}
+                          </div>
                       ) : (
                           <div className="animate-in fade-in slide-in-from-bottom-4">
                               <div className="flex justify-between items-center mb-6"><h3 className="text-xl font-bold text-gray-900">Import Preview</h3><button onClick={() => { setDraft(null); setFile(null); }} className="text-sm text-gray-500 hover:text-red-500 underline">Discard & Upload New</button></div>
-                              {draft.isValid ? (<div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl flex items-center gap-3 mb-6 font-bold shadow-sm"><CheckCircle size={24} /> File Validated Successfully!</div>) : (<div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-xl mb-6 shadow-sm"><div className="font-bold flex items-center gap-2 mb-2"><AlertTriangle size={20}/> Validation Errors Found</div><ul className="list-disc list-inside text-sm space-y-1">{draft.errors.map((err, i) => <li key={i}>{err}</li>)}</ul></div>)}
-                              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6 shadow-md"><div className="bg-gray-50 p-4 border-b border-gray-200"><h4 className="font-bold text-gray-700 text-lg">{draft.metadata.title}</h4><p className="text-xs text-gray-500">{draft.metadata.book} {draft.metadata.chapter} • {draft.bibleQuizzes.length + draft.noteQuizzes.length} Questions</p></div><div className="p-6 space-y-6"><div><span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Leadership Note Preview</span><div className="mt-2 p-4 bg-gray-50 rounded-lg border border-gray-100"><p className="text-sm font-bold text-gray-800 mb-1">{draft.leadershipNote.title}</p><p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">{(draft.leadershipNote.body || "").replace(/<[^>]*>?/gm, '')}</p></div></div><div><span className="text-xs font-bold text-gray-400 uppercase tracking-wide">Quiz Parsing Check</span>{draft.bibleQuizzes[0] ? (<div className="mt-2 bg-gray-50 p-4 rounded-lg border border-gray-100"><p className="text-sm font-medium mb-3 text-gray-800">{draft.bibleQuizzes[0].text}</p><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{draft.bibleQuizzes[0].options.map((o:any) => (<div key={o.label} className={`text-sm p-3 rounded-lg border flex items-center justify-between transition-colors ${o.isCorrect ? 'bg-[#2ecc71]/10 border-[#2ecc71] text-green-900 ring-1 ring-[#2ecc71]' : 'bg-white border-gray-200 text-gray-500'}`}><span className="flex items-center gap-2"><span className="font-bold opacity-50">{o.label}.</span> {o.text}</span>{o.isCorrect && <CheckCircle size={16} className="text-[#2ecc71] fill-current" />}</div>))}</div><p className="text-xs text-gray-400 mt-2 italic">Showing 1 of {draft.bibleQuizzes.length} Bible Quizzes</p></div>) : <p className="text-sm text-gray-400 italic mt-1">No Bible quizzes found.</p>}</div></div></div>
+                              
+                              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6">
+                                  <h4 className="font-bold text-indigo-900 flex items-center gap-2 mb-2"><Layers size={20}/> Module: {draft.moduleMetadata?.title}</h4>
+                                  <p className="text-sm text-indigo-700">{draft.moduleMetadata?.description}</p>
+                                  <div className="mt-4 flex gap-4">
+                                      <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold uppercase">Award: {draft.moduleMetadata?.certificateConfig.title}</span>
+                                      <span className="text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded font-bold uppercase">Min Score: {draft.moduleMetadata?.completionRule.minimumCompletionPercentage}%</span>
+                                  </div>
+                              </div>
+
+                              <div className="grid gap-4">
+                                  {draft.lessons.map(l => (
+                                      <div key={l.metadata.lesson_id} className="bg-white border rounded-xl p-4 flex justify-between items-center shadow-sm">
+                                          <div>
+                                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Lesson {l.metadata.lesson_order}</span>
+                                              <h4 className="font-bold text-gray-800">{l.metadata.title}</h4>
+                                              <p className="text-xs text-gray-500">{l.bibleQuizzes.length + l.noteQuizzes.length} Questions • {l.metadata.targetAudience}</p>
+                                          </div>
+                                          <CheckCircle size={20} className="text-green-500" />
+                                      </div>
+                                  ))}
+                              </div>
                           </div>
                       )}
                    </div>
@@ -528,12 +423,40 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
              </div>
           )}
 
-          {contentType === 'resource' && (
-              <div className="max-w-2xl mx-auto space-y-6"><div className="bg-blue-50 p-6 rounded-xl border border-blue-100"><h3 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><FileIcon size={20}/> Upload Document</h3><div className="space-y-4"><div><label className={labelClass}>Resource Title</label><input className={inputClass} value={resourceTitle} onChange={e => setResourceTitle(e.target.value)} placeholder="e.g. 2024 Rulebook"/></div><div><label className={labelClass}>Description</label><textarea className={inputClass} value={resourceDesc} onChange={e => setResourceDesc(e.target.value)} placeholder="Short description..."/></div><div><label className={labelClass}>File (PDF, Doc, Image)</label><input type="file" onChange={e => setResourceFile(e.target.files ? e.target.files[0] : null)} className="w-full p-2 bg-white rounded border border-blue-200"/></div></div></div></div>
-          )}
+          {contentType === 'homepage' && homepageContent && (
+             <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-12">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
+                   <Home size={24} className="text-blue-600" />
+                   <p className="text-sm text-blue-800">Changes made here will instantly update the text seen by guests on the landing page.</p>
+                </div>
 
-          {contentType === 'news' && (
-              <div className="max-w-2xl mx-auto space-y-6"><div className="bg-orange-50 p-6 rounded-xl border border-orange-100"><h3 className="font-bold text-orange-900 mb-4 flex items-center gap-2"><Newspaper size={20}/> Post News / Announcement</h3><div className="space-y-4"><div><label className={labelClass}>Headline</label><input className={inputClass} value={newsTitle} onChange={e => setNewsTitle(e.target.value)} placeholder="e.g. Finals Registration Open"/></div><div><label className={labelClass}>Category</label><select className={`${inputClass} bg-white`} value={newsCategory} onChange={e => setNewsCategory(e.target.value as any)}><option>Announcement</option><option>Event</option><option>Update</option></select></div><div><label className={labelClass}>Content</label><textarea className={`${inputClass} h-32`} value={newsContent} onChange={e => setNewsContent(e.target.value)} placeholder="Write your announcement..."/></div></div></div></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ArrowRight size={16} className="text-indigo-500" /> Hero Section</h3>
+                      <div><label className={labelClass}>Tagline</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div>
+                      <div><label className={labelClass}>Main Title</label><input className={inputClass} value={homepageContent.heroTitle} onChange={e => setHomepageContent({...homepageContent, heroTitle: e.target.value})} /></div>
+                      <div><label className={labelClass}>Hero Subtitle</label><textarea className={`${inputClass} h-24`} value={homepageContent.heroSubtitle} onChange={e => setHomepageContent({...homepageContent, heroSubtitle: e.target.value})} /></div>
+                   </div>
+                   
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><ListChecks size={18} className="text-indigo-500" /> "Why BBL?" Section</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                         <div className="md:col-span-2"><label className={labelClass}>Section Heading</label><input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} /></div>
+                         <div><label className={labelClass}>Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div>
+                         <div><label className={labelClass}>Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div>
+                         <div><label className={labelClass}>Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div>
+                         <div><label className={labelClass}>Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div>
+                      </div>
+                   </div>
+
+                   <div className="space-y-4 bg-white p-6 rounded-xl border border-gray-100 shadow-sm md:col-span-2">
+                      <h3 className="font-bold text-gray-800 border-b pb-2 flex items-center gap-2"><Share2 size={16} className="text-indigo-500" /> Footer Details</h3>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                         <div className="lg:col-span-2"><label className={labelClass}>Footer Copyright Text</label><input className={inputClass} value={homepageContent.footerCopyright} onChange={e => setHomepageContent({...homepageContent, footerCopyright: e.target.value})} /></div>
+                      </div>
+                   </div>
+                </div>
+             </div>
           )}
        </div>
 
@@ -541,15 +464,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           <button type="button" onClick={onCancel} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-200 rounded-lg transition-colors border border-gray-200 bg-white">Cancel</button>
           
           {contentType === 'lesson' && (
-             <button type="button" onClick={mode === 'manual' ? saveManualLesson : commitImport} disabled={mode === 'bulk' && (!draft?.isValid)} className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5 active:translate-y-0"><Save size={18} /> {mode === 'manual' ? (initialData ? 'Update Lesson' : 'Save Lesson') : 'Import Lesson'}</button>
-          )}
-          
-          {contentType === 'resource' && (
-             <button onClick={saveResource} className="px-8 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md flex items-center gap-2"><Upload size={18} /> Upload Resource</button>
-          )}
-
-          {contentType === 'news' && (
-             <button onClick={saveNews} className="px-8 py-2 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 shadow-md flex items-center gap-2"><Save size={18} /> Post News</button>
+             <button type="button" onClick={mode === 'manual' ? saveManualLesson : commitImport} disabled={mode === 'bulk' && (!draft?.isValid)} className="px-8 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-0.5 active:translate-y-0"><Save size={18} /> {mode === 'manual' ? (initialData ? 'Update Lesson' : 'Save Lesson') : 'Import Module'}</button>
           )}
 
           {contentType === 'homepage' && (

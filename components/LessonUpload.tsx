@@ -21,6 +21,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
 
   const [modules, setModules] = useState<Module[]>([]);
   const [showModuleWizard, setShowModuleWizard] = useState(false);
@@ -82,11 +83,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     catch (err: any) { setError(err.message); }
   };
 
-  const saveManualLesson = async () => {
+  const saveManualLesson = async (shouldClose: boolean = true) => {
     setError(null);
+    setSaveFeedback(null);
     try {
       if (!manualLesson.title) throw new Error("Lesson Title is required");
       if (!manualLesson.moduleId) throw new Error("A module assignment is required for certification tracking.");
+      
       const finalLesson: Lesson = {
         id: initialData?.id || crypto.randomUUID(),
         moduleId: manualLesson.moduleId || '',
@@ -104,8 +107,29 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
         views: initialData?.views || 0,
         sections: manualLesson.sections || []
       };
+      
       await lessonService.publishLesson(finalLesson);
-      onSuccess();
+      
+      if (shouldClose) {
+        onSuccess();
+      } else {
+        // Reset form for "Add Lesson" flow
+        setManualLesson({
+            title: '', 
+            description: '', 
+            lesson_type: 'Mixed', 
+            targetAudience: 'All', 
+            book: '', 
+            chapter: 1, 
+            sections: [], 
+            moduleId: manualLesson.moduleId, // Retain module
+            orderInModule: (manualLesson.orderInModule || 1) + 1 // Auto-increment sequence
+        });
+        setExpandedSection(null);
+        setSaveFeedback(`Lesson "${finalLesson.title}" successfully saved! Builder reset for the next lesson.`);
+        // Scroll back to top
+        document.getElementById('upload-modal-content')?.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (err: any) { setError(err.message); }
   };
 
@@ -171,6 +195,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
             <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
                <AlertCircle className="shrink-0" size={24} />
                <div><h4 className="font-bold">Parsing / Validation Error</h4><p className="text-sm opacity-80">{error}</p></div>
+            </div>
+          )}
+
+          {saveFeedback && (
+            <div className="bg-green-50 border border-green-200 text-green-700 p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
+               <CheckCircle className="shrink-0" size={24} />
+               <div><h4 className="font-bold">Entry Recorded</h4><p className="text-sm opacity-80">{saveFeedback}</p></div>
             </div>
           )}
 
@@ -301,9 +332,28 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
 
        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end gap-4 shrink-0">
           <button onClick={onCancel} className="px-8 py-3 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors bg-white border border-gray-200">Cancel</button>
-          {contentType === 'lesson' && (
-             <button onClick={mode === 'manual' ? saveManualLesson : commitImport} disabled={mode === 'bulk' && (!draft?.isValid)} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:grayscale transition-all transform hover:-translate-y-1"><Save size={20} /> {mode === 'manual' ? 'Commit to Library' : 'Perform Synchronization'}</button>
+          
+          {contentType === 'lesson' && mode === 'manual' && (
+              <>
+                 <button 
+                   onClick={() => saveManualLesson(false)} 
+                   className="px-10 py-3 bg-white border-2 border-royal-800 text-royal-800 font-bold rounded-2xl hover:bg-royal-50 flex items-center gap-3 transition-all transform hover:-translate-y-1 shadow-sm"
+                 >
+                    <Plus size={20} /> SAVE & ADD NEW LESSON
+                 </button>
+                 <button 
+                   onClick={() => saveManualLesson(true)} 
+                   className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 transition-all transform hover:-translate-y-1"
+                 >
+                    <Save size={20} /> COMMIT TO LIBRARY
+                 </button>
+              </>
           )}
+
+          {contentType === 'lesson' && mode === 'bulk' && (
+             <button onClick={commitImport} disabled={!draft?.isValid} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 disabled:opacity-50 disabled:grayscale transition-all transform hover:-translate-y-1"><Save size={20} /> PERFORM SYNCHRONIZATION</button>
+          )}
+
           {contentType === 'homepage' && (
              <button onClick={async () => { if (!homepageContent) return; try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); } }} className="px-10 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl flex items-center gap-3"><Save size={20} /> Push Updates Live</button>
           )}

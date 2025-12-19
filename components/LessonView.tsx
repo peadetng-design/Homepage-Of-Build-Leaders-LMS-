@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-// Fix: Added Printer to the lucide-react imports
 import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer } from 'lucide-react';
 
 interface LessonViewProps {
@@ -21,7 +20,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   
   const [showTracker, setShowTracker] = useState(false);
   const [moduleProgress, setModuleProgress] = useState<{ completed: number, total: number, lessons: { title: string, done: boolean }[] } | null>(null);
-  // Fix: Added viewingCert state inside the component
   const [viewingCert, setViewingCert] = useState<Certificate | null>(null);
 
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -289,6 +287,10 @@ const Circle: React.FC<{ size: number, className?: string }> = ({ size, classNam
 const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?: string, attemptHistory: StudentAttempt[], onSelect: (opt: QuizOption) => void }> = ({ quiz, index, selectedOptionId, attemptHistory, onSelect }) => {
   const isAnswered = !!selectedOptionId;
   const attemptsForThisQuiz = attemptHistory.filter(h => h.quizId === quiz.id).length;
+  
+  // Logic to determine if user's ultimate selection was correct for distracter coloring
+  const selectedOpt = quiz.options.find(o => o.id === selectedOptionId);
+  const userWasCorrect = selectedOpt?.isCorrect;
 
   return (
     <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 relative transition-shadow hover:shadow-xl">
@@ -318,20 +320,40 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
             let btnClass = "w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 flex flex-col group overflow-hidden ";
             let feedbackClass = "flex items-center gap-4 w-full ";
             let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm shrink-0 ";
+            let textClass = "flex-1 transition-all duration-500 ";
 
             if (!isAnswered) {
                 btnClass += "bg-white border-gray-100 hover:border-royal-200 hover:bg-royal-50 cursor-pointer";
                 circleClass += "border-gray-200 text-gray-400 group-hover:border-royal-500 group-hover:text-royal-600";
+                textClass += "font-bold text-gray-800";
             } else {
-                if (isCorrect) {
-                    btnClass += "bg-green-50 border-green-500 ring-4 ring-green-100";
-                    circleClass += "bg-green-500 border-green-500 text-white";
-                } else if (isSelected) {
-                    btnClass += "bg-red-50 border-red-500 ring-4 ring-red-100";
-                    circleClass += "bg-red-500 border-red-500 text-white";
-                } else {
-                    btnClass += "bg-gray-50 border-gray-200 opacity-60";
-                    circleClass += "border-gray-300 text-gray-400";
+                // If user selected CORRECTLY
+                if (userWasCorrect) {
+                    if (isCorrect) {
+                        textClass += "text-green-600 font-black animate-in zoom-in scale-105";
+                        btnClass += "bg-green-50 border-green-500 ring-4 ring-green-100";
+                        circleClass += "bg-green-500 border-green-500 text-white";
+                    } else {
+                        textClass += "text-red-600 font-black animate-in zoom-in";
+                        btnClass += "bg-gray-50 border-gray-200 opacity-60";
+                        circleClass += "border-gray-300 text-gray-400";
+                    }
+                } 
+                // If user selected WRONGLY
+                else {
+                    if (isSelected) { // The wrong one they picked
+                        textClass += "text-red-600 font-black animate-in zoom-in scale-105";
+                        btnClass += "bg-red-50 border-red-500 ring-4 ring-red-100";
+                        circleClass += "bg-red-500 border-red-500 text-white";
+                    } else if (isCorrect) { // The one they should have picked
+                        textClass += "text-green-600 font-black animate-in zoom-in";
+                        btnClass += "bg-white border-green-200";
+                        circleClass += "bg-green-100 border-green-500 text-green-700";
+                    } else { // The other two wrong options
+                        textClass += "text-orange-500 font-black animate-in zoom-in";
+                        btnClass += "bg-gray-50 border-gray-200 opacity-40";
+                        circleClass += "border-gray-300 text-gray-400";
+                    }
                 }
             }
 
@@ -340,7 +362,7 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                     <button disabled={isAnswered} onClick={() => onSelect(option)} className={btnClass}>
                         <div className={feedbackClass}>
                             <span className={circleClass}>{option.label}</span>
-                            <span className="font-bold text-gray-800 flex-1">{option.text}</span>
+                            <span className={textClass}>{option.text}</span>
                             {isAnswered && isCorrect && <CheckCircle size={24} className="text-green-600 animate-in zoom-in" />}
                             {isAnswered && isSelected && !isCorrect && <X size={24} className="text-red-600 animate-in zoom-in" />}
                         </div>

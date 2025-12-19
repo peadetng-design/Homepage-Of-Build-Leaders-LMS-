@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -242,8 +243,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                  {s.quizzes?.map((q, idx) => (
                                                      <div key={q.id} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
                                                          <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 size={20}/></button>
-                                                         <div className="grid grid-cols-1 gap-6"><input className={inputClass} placeholder="Question Prompt" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
-                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map(opt => (<div key={opt.id} className="space-y-2"><div className="flex gap-3"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold shadow-sm transition-all ${opt.isCorrect ? 'bg-green-600 border-green-600 text-white scale-110' : 'bg-white border-gray-200 text-gray-400'}`}>{opt.label}</button><input className="flex-1 p-2.5 border rounded-xl" placeholder={`Option ${opt.label}`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div><textarea className="w-full p-2 text-xs border border-dashed rounded-lg bg-white/50" placeholder="Option-specific explanation..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} /></div>))}</div></div>
+                                                         <div className="grid grid-cols-1 gap-6">
+                                                            {/* Reference Text Area (Bold, thick-bordered, 90% font size) */}
+                                                            <div>
+                                                                <label className={labelClass}>Reference Text / Context</label>
+                                                                <textarea 
+                                                                    className="w-full p-4 border-4 border-gray-300 rounded-2xl focus:border-royal-500 outline-none transition-all font-bold text-[12.6px] bg-white h-48 custom-scrollbar" 
+                                                                    placeholder="Enter scriptural reference or context (up to 2000+ words)..." 
+                                                                    value={q.reference || ''} 
+                                                                    onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} 
+                                                                />
+                                                            </div>
+
+                                                            <input className={inputClass} placeholder="Question Prompt" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map(opt => (<div key={opt.id} className="space-y-2"><div className="flex gap-3"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold shadow-sm transition-all ${opt.isCorrect ? 'bg-green-600 border-green-600 text-white scale-110' : 'bg-white border-gray-200 text-gray-400'}`}>{opt.label}</button><input className="flex-1 p-2.5 border rounded-xl" placeholder={`Option ${opt.label}`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div><textarea className="w-full p-2 text-xs border border-dashed rounded-lg bg-white/50" placeholder="Option-specific explanation..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} /></div>))}</div>
+                                                         </div>
                                                      </div>
                                                  ))}
                                              </div>

@@ -335,7 +335,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                          <h3 className="font-bold text-gray-800 text-lg mb-6 flex items-center gap-3"><CheckCircle className="text-green-500"/> 2. Lesson Metadata</h3>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="md:col-span-2"><label className={labelClass}>Display Title</label><input className={inputClass} value={manualLesson.title} onChange={e => setManualLesson({...manualLesson, title: e.target.value})} /></div>
-                            <div><label className={labelClass}>Audience Context</label><select className={inputClass} value={manualLesson.targetAudience} onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}><option value="All">All Users</option><option value="Student">Student Only</option><option value="Mentor">Mentor Only</option></select></div>
+                            <div>
+                                <label className={labelClass}>Audience Context</label>
+                                <select 
+                                    className={inputClass} 
+                                    value={manualLesson.targetAudience} 
+                                    onChange={e => setManualLesson({...manualLesson, targetAudience: e.target.value as TargetAudience})}
+                                >
+                                    <option value="All">All Users</option>
+                                    <option value="Student">Student Only</option>
+                                    <option value="Mentor">Mentor Only</option>
+                                    <option value="Parent">Parent Only</option>
+                                    <option value="Organization">Organization Only</option>
+                                    <option value="Mentors_Org_Parents">Mentor, Organization and Parent Only</option>
+                                </select>
+                            </div>
                             <div><label className={labelClass}>Lesson Type</label><select className={inputClass} value={manualLesson.lesson_type} onChange={e => setManualLesson({...manualLesson, lesson_type: e.target.value as LessonType})}><option value="Mixed">Mixed</option><option value="Bible">Bible</option><option value="Leadership">Leadership</option></select></div>
                          </div>
                       </div>

@@ -1,8 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module } from '../types';
+import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History } from 'lucide-react';
+import CertificateGenerator from './CertificateGenerator';
+// Fix: Added Printer to the lucide-react imports
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -11,13 +12,18 @@ interface LessonViewProps {
 }
 
 const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) => {
-  const [attempts, setAttempts] = useState<Record<string, string>>({}); // quizId -> selectedOptionId
+  const [attempts, setAttempts] = useState<Record<string, string>>({}); 
   const [attemptHistory, setAttemptHistory] = useState<StudentAttempt[]>([]);
   const [score, setScore] = useState({ total: 0, correct: 0 });
   const [completedModule, setCompletedModule] = useState<Module | null>(null);
   const [isIssuingCert, setIsIssuingCert] = useState(false);
-  const [certIssued, setCertIssued] = useState(false);
+  const [issuedCert, setIssuedCert] = useState<Certificate | null>(null);
   
+  const [showTracker, setShowTracker] = useState(false);
+  const [moduleProgress, setModuleProgress] = useState<{ completed: number, total: number, lessons: { title: string, done: boolean }[] } | null>(null);
+  // Fix: Added viewingCert state inside the component
+  const [viewingCert, setViewingCert] = useState<Certificate | null>(null);
+
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerRef = useRef<any>(null);
 
@@ -52,14 +58,17 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const checkModuleStatus = async () => {
       const module = await lessonService.checkModuleCompletion(currentUser.id, lesson.id);
       if (module) setCompletedModule(module);
+      
+      const progress = await lessonService.getModuleProgress(currentUser.id, lesson.moduleId);
+      setModuleProgress(progress);
   };
 
   const handleClaimCertificate = async () => {
       if (!completedModule) return;
       setIsIssuingCert(true);
       try {
-          await lessonService.issueCertificate(currentUser.id, currentUser.name, completedModule.id);
-          setCertIssued(true);
+          const cert = await lessonService.issueCertificate(currentUser.id, currentUser.name, completedModule.id);
+          setIssuedCert(cert);
       } finally { setIsIssuingCert(false); }
   };
 
@@ -77,6 +86,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     });
     setAttempts(attemptMap);
     setScore({ total: Object.keys(attemptMap).length, correct: correctCount });
+    
+    const progress = await lessonService.getModuleProgress(currentUser.id, lesson.moduleId);
+    setModuleProgress(progress);
   };
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
@@ -152,34 +164,127 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         ))}
 
+        {/* --- CONGRATULATORY SECTION --- */}
         <div className="text-center pt-12 border-t border-gray-100">
            {isCompleted && (
-               <div className="inline-block p-6 bg-green-50 rounded-full text-green-600 mb-6 animate-bounce shadow-xl border border-green-100">
-                 <CheckCircle size={48} />
+               <div className="space-y-6 animate-in pop-in duration-700">
+                   <div className="inline-block p-6 bg-green-50 rounded-full text-green-600 mb-2 animate-bounce shadow-xl border border-green-100">
+                        <CheckCircle size={64} />
+                   </div>
+                   <h2 className="text-4xl font-serif font-bold text-gray-900 leading-tight">Excellent Work! <br/> Lesson Completed</h2>
+                   <p className="text-gray-500 max-w-md mx-auto text-lg italic">"I have hidden your word in my heart that I might not sin against you." — Psalm 119:11</p>
+                   
+                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+                        {moduleProgress && (
+                             <button 
+                                onClick={() => setShowTracker(true)}
+                                className="px-8 py-3 bg-indigo-50 text-indigo-700 font-bold rounded-full hover:bg-indigo-100 transition-all flex items-center gap-2 border border-indigo-200"
+                             >
+                                <ListChecks size={20} /> MODULE TRACKER ({moduleProgress.completed}/{moduleProgress.total})
+                             </button>
+                        )}
+                        <button onClick={onBack} className="px-8 py-3 bg-gray-900 text-white font-bold rounded-full hover:bg-black transition-colors">Return to Library</button>
+                   </div>
                </div>
            )}
-           <h3 className="text-2xl font-bold text-gray-900 mb-4">{isCompleted ? "Lesson Mastery Achieved!" : "Progressing through Lesson..."}</h3>
-           
+
+           {/* --- MODULE MASTERY BANNER --- */}
            {completedModule && (
-               <div className="mb-10 p-8 bg-gradient-to-br from-gold-50 to-orange-50 border border-gold-200 rounded-3xl shadow-xl animate-in zoom-in-95">
-                   <BadgeCheck size={64} className="text-gold-600 mx-auto mb-4" />
-                   <h4 className="font-serif font-bold text-2xl text-gold-900 mb-2">Module Completed: {completedModule.title}</h4>
-                   <p className="text-gold-700 mb-6">Excellent work! You have completed all requirements for this module's certification.</p>
-                   {certIssued ? (
-                       <button className="px-8 py-3 bg-green-600 text-white font-bold rounded-full shadow-lg flex items-center gap-2 mx-auto cursor-default"><CheckCircle size={20} /> Certificate Claimed</button>
-                   ) : (
-                       <button onClick={handleClaimCertificate} disabled={isIssuingCert} className="px-10 py-4 bg-gradient-to-r from-gold-500 to-orange-600 text-white font-bold rounded-full shadow-2xl hover:scale-105 transform transition-all flex items-center gap-3 mx-auto">
-                           {isIssuingCert ? <Loader2 className="animate-spin" /> : <Trophy />} CLAIM CERTIFICATE
-                       </button>
-                   )}
+               <div className="mt-16 p-10 bg-gradient-to-br from-gold-500 via-orange-500 to-gold-600 text-white rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-1000">
+                   <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Trophy size={200} /></div>
+                   <div className="relative z-10">
+                       <BadgeCheck size={80} className="mx-auto mb-6 text-white drop-shadow-lg" />
+                       <h3 className="text-sm font-bold tracking-[0.3em] uppercase mb-2">Milestone Unlocked</h3>
+                       <h2 className="text-4xl font-serif font-bold mb-4 leading-tight">Module Mastery: <br/> {completedModule.title}</h2>
+                       <p className="text-gold-50 mb-8 max-w-sm mx-auto font-medium opacity-90">You have successfully met all completion requirements for this Biblical Leadership module.</p>
+                       
+                       {issuedCert ? (
+                           <div className="flex flex-col items-center gap-4">
+                                <div className="p-4 bg-white/20 rounded-2xl border border-white/30 text-white font-bold flex items-center gap-3">
+                                    <CheckCircle size={24} /> Certification Issued!
+                                </div>
+                                <button 
+                                    onClick={() => setViewingCert(issuedCert)}
+                                    className="px-10 py-4 bg-white text-orange-600 font-bold rounded-full shadow-2xl hover:scale-105 transform transition-all flex items-center gap-3"
+                                >
+                                    <Printer size={20} /> PRINT CERTIFICATE
+                                </button>
+                           </div>
+                       ) : (
+                           <button 
+                                onClick={handleClaimCertificate} 
+                                disabled={isIssuingCert} 
+                                className="px-10 py-4 bg-white text-orange-600 font-bold rounded-full shadow-2xl hover:scale-105 transform transition-all flex items-center gap-3 mx-auto"
+                           >
+                                {isIssuingCert ? <Loader2 className="animate-spin" /> : <Trophy />} CLAIM YOUR CERTIFICATION
+                           </button>
+                       )}
+                   </div>
                </div>
            )}
-           <button onClick={onBack} className="px-8 py-3 bg-royal-900 text-white font-bold rounded-full hover:bg-royal-800 transition-colors">Return to Dashboard</button>
         </div>
       </div>
+
+      {/* --- MODULE TRACKER MODAL --- */}
+      {showTracker && moduleProgress && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
+                  <div className="bg-royal-900 p-8 text-white relative">
+                      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                      <div className="relative z-10 flex justify-between items-center">
+                          <h3 className="text-2xl font-serif font-bold flex items-center gap-3">
+                             <ListChecks className="text-gold-500" /> Module Progress
+                          </h3>
+                          <button onClick={() => setShowTracker(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20} /></button>
+                      </div>
+                  </div>
+                  <div className="p-8">
+                      <div className="flex justify-between items-end mb-6">
+                          <div>
+                              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Status</p>
+                              <p className="text-2xl font-bold text-gray-900">{moduleProgress.completed} of {moduleProgress.total} Lessons Done</p>
+                          </div>
+                          <div className="text-right">
+                              <p className="text-3xl font-bold text-royal-600">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
+                          </div>
+                      </div>
+                      
+                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-8">
+                          <div className="h-full bg-royal-500 transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
+                      </div>
+
+                      <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                          {moduleProgress.lessons.map((l, i) => (
+                              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl border ${l.done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                                  {l.done ? <CheckCircle size={20} className="text-green-500 shrink-0" /> : <Circle size={20} className="text-gray-300 shrink-0" />}
+                                  <span className={`font-bold flex-1 truncate ${l.done ? 'text-green-900' : 'text-gray-600'}`}>{l.title}</span>
+                                  {!l.done && <ChevronRight size={16} className="text-gray-400" />}
+                              </div>
+                          ))}
+                      </div>
+
+                      <button onClick={() => setShowTracker(false)} className="w-full mt-8 py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-lg">Close Tracker</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* --- CERTIFICATE VIEWER --- */}
+      {viewingCert && (
+          <CertificateGenerator 
+             certificate={viewingCert} 
+             onClose={() => setViewingCert(null)} 
+          />
+      )}
     </div>
   );
 };
+
+const Circle: React.FC<{ size: number, className?: string }> = ({ size, className }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        <circle cx="12" cy="12" r="10" />
+    </svg>
+);
 
 const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?: string, attemptHistory: StudentAttempt[], onSelect: (opt: QuizOption) => void }> = ({ quiz, index, selectedOptionId, attemptHistory, onSelect }) => {
   const isAnswered = !!selectedOptionId;
@@ -240,7 +345,6 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                             {isAnswered && isSelected && !isCorrect && <X size={24} className="text-red-600 animate-in zoom-in" />}
                         </div>
                         
-                        {/* Slide and Appear Animation for Explanation */}
                         <div className={`transition-all duration-500 ease-out overflow-hidden ${isAnswered ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
                             <div className={`p-4 rounded-xl border-t-2 ${isCorrect ? 'bg-green-100/50 border-green-200' : 'bg-red-100/50 border-red-200'}`}>
                                 <p className="text-sm text-gray-700 leading-relaxed">

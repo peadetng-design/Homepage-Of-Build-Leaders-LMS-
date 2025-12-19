@@ -70,12 +70,12 @@ export interface HomepageContent {
   footerCopyright: string;
 }
 
-// --- MODULE & CERTIFICATE MODEL ---
 export interface Module {
-  id: string; // module_id in template
+  id: string;
   title: string;
   description: string;
   lessonIds: string[]; 
+  totalLessonsRequired: number; // New: Manually specified count
   completionRule: {
     minimumCompletionPercentage: number;
   };
@@ -109,7 +109,6 @@ export interface Certificate {
   design?: CertificateDesign;
 }
 
-// --- LMS DATA MODEL ---
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
 export type SectionType = 'note' | 'quiz_group';
 export type TargetAudience = 'Student' | 'Mentor' | 'Parent' | 'Organization' | 'Mentors_Org_Parents' | 'All';
@@ -142,7 +141,7 @@ export interface LessonSection {
 
 export interface Lesson {
   id: string;
-  moduleId: string; // Link to parent module
+  moduleId: string;
   orderInModule: number;
   title: string;
   description: string;
@@ -170,7 +169,6 @@ export interface StudentAttempt {
   attempted_at: string;
 }
 
-// Updated structure for 4-sheet Excel Import
 export interface LessonDraft {
   moduleMetadata: Module | null;
   lessons: {

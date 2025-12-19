@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-// Fix: Added PenTool to the lucide-react import list
 import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool } from 'lucide-react';
 
 interface LessonUploadProps {
@@ -26,7 +24,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [modules, setModules] = useState<Module[]>([]);
   const [showModuleWizard, setShowModuleWizard] = useState(false);
   const [newModule, setNewModule] = useState<Partial<Module>>({
-      id: '', title: '', description: '', 
+      id: '', title: '', description: '', totalLessonsRequired: 1,
       completionRule: { minimumCompletionPercentage: 100 },
       certificateConfig: { title: 'Certificate of Achievement', description: '', templateId: 'classic', issuedBy: 'Build Biblical Leaders' }
   });
@@ -49,7 +47,8 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (!newModule.id || !newModule.title) return;
       const modObj: Module = {
           id: newModule.id, title: newModule.title, description: newModule.description || '',
-          lessonIds: [], completionRule: newModule.completionRule || { minimumCompletionPercentage: 100 },
+          lessonIds: [], totalLessonsRequired: newModule.totalLessonsRequired || 1,
+          completionRule: newModule.completionRule || { minimumCompletionPercentage: 100 },
           certificateConfig: newModule.certificateConfig || { title: 'Certificate', description: '', templateId: 'classic', issuedBy: '' }
       };
       await lessonService.createModule(modObj);
@@ -206,7 +205,10 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                       <div><label className={labelClass}>Unique ID</label><input required placeholder="e.g. FAITH-101" className={inputClass} value={newModule.id} onChange={e => setNewModule({...newModule, id: e.target.value.toUpperCase()})} /></div>
                                       <div><label className={labelClass}>Module Title</label><input required placeholder="Foundations of Faith" className={inputClass} value={newModule.title} onChange={e => setNewModule({...newModule, title: e.target.value})} /></div>
                                   </div>
-                                  <div><label className={labelClass}>Certificate Award Label</label><input required className={inputClass} value={newModule.certificateConfig?.title} onChange={e => setNewModule({...newModule, certificateConfig: {...newModule.certificateConfig!, title: e.target.value}})} /></div>
+                                  <div className="grid grid-cols-2 gap-6">
+                                      <div><label className={labelClass}>Certificate Award Label</label><input required className={inputClass} value={newModule.certificateConfig?.title} onChange={e => setNewModule({...newModule, certificateConfig: {...newModule.certificateConfig!, title: e.target.value}})} /></div>
+                                      <div><label className={labelClass}>Total Lessons in Module</label><input type="number" min="1" required className={inputClass} value={newModule.totalLessonsRequired} onChange={e => setNewModule({...newModule, totalLessonsRequired: parseInt(e.target.value)})} /></div>
+                                  </div>
                                   <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 shadow-lg">Initialize Module Container</button>
                               </form>
                           </div>

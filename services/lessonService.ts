@@ -1,4 +1,3 @@
-
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
@@ -89,6 +88,7 @@ class LessonService {
                 title: 'Foundations of Biblical Leadership',
                 description: 'Essential principles for starting your journey.',
                 lessonIds: [],
+                totalLessonsRequired: 1,
                 completionRule: { minimumCompletionPercentage: 100 },
                 certificateConfig: {
                     title: 'Leadership Foundation Certificate',
@@ -148,12 +148,37 @@ class LessonService {
       this.saveModules();
   }
 
+  async getModuleProgress(userId: string, moduleId: string): Promise<{ completed: number, total: number, lessons: { title: string, done: boolean }[] }> {
+      const mod = this.modules.find(m => m.id === moduleId);
+      if (!mod) return { completed: 0, total: 0, lessons: [] };
+
+      const details = [];
+      let completedCount = 0;
+
+      for (const lId of mod.lessonIds) {
+          const lesson = this.lessons.find(l => l.id === lId);
+          if (!lesson) continue;
+          
+          const isDone = await this.hasUserAttemptedLesson(userId, lId);
+          if (isDone) completedCount++;
+          details.push({ title: lesson.title, done: isDone });
+      }
+
+      return {
+          completed: completedCount,
+          total: Math.max(mod.totalLessonsRequired, mod.lessonIds.length),
+          lessons: details
+      };
+  }
+
   async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
       const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
       for (const mod of relevantModules) {
-          let allLessonsComplete = true;
-          let totalScore = 0;
           let lessonsProcessed = 0;
+          let totalScore = 0;
+          let lessonsDone = 0;
+
+          const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
 
           for (const lId of mod.lessonIds) {
               const lesson = this.lessons.find(l => l.id === lId);
@@ -163,21 +188,17 @@ class LessonService {
               const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
               const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
               
-              if (uniqueQuizzesAttempted < uniqueQuizzesInLesson || uniqueQuizzesInLesson === 0) {
-                  allLessonsComplete = false;
-                  break;
+              if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
+                  lessonsDone++;
+                  const latestAttemptsPerQuiz = new Map<string, boolean>();
+                  lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
+                  const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
+                  totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
+                  lessonsProcessed++;
               }
-
-              // Calculate accuracy for this lesson
-              const latestAttemptsPerQuiz = new Map<string, boolean>();
-              lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
-              const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
-              
-              totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
-              lessonsProcessed++;
           }
 
-          if (!allLessonsComplete || lessonsProcessed === 0) continue;
+          if (lessonsDone < requiredCount || lessonsProcessed === 0) continue;
 
           const avgScore = totalScore / lessonsProcessed;
           if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
@@ -220,10 +241,8 @@ class LessonService {
   async getNews(): Promise<NewsItem[]> { return this.news; }
   async addNews(news: NewsItem): Promise<void> { this.news.unshift(news); this.saveNews(); }
 
-  // --- PARSER: 4-SHEET LOGIC ---
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 1500));
-    // Simulated parsing of the 4-sheet structure
     const mockDraft: LessonDraft = {
       isValid: true,
       errors: [],
@@ -232,6 +251,7 @@ class LessonService {
         title: "Foundations of Creation",
         description: "A deep dive into Genesis 1-3",
         lessonIds: [],
+        totalLessonsRequired: 1,
         completionRule: { minimumCompletionPercentage: 100 },
         certificateConfig: {
           title: "Certificate of Creation Mastery",

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool, Check } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -90,6 +90,17 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (!manualLesson.title) throw new Error("Lesson Title is required");
       if (!manualLesson.moduleId) throw new Error("A module assignment is required for certification tracking.");
       
+      // Validation: Ensure every quiz has exactly one correct option
+      for (const section of manualLesson.sections || []) {
+        if (section.type === 'quiz_group') {
+          for (const [idx, quiz] of (section.quizzes || []).entries()) {
+            if (!quiz.options.some(o => o.isCorrect)) {
+              throw new Error(`Question #${idx + 1} in "${section.title}" has no correct answer selected. Please indicate the correct option before saving.`);
+            }
+          }
+        }
+      }
+
       const finalLesson: Lesson = {
         id: initialData?.id || crypto.randomUUID(),
         moduleId: manualLesson.moduleId || '',
@@ -113,7 +124,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (shouldClose) {
         onSuccess();
       } else {
-        // Reset form for "Add Lesson" flow
         setManualLesson({
             title: '', 
             description: '', 
@@ -122,12 +132,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
             book: '', 
             chapter: 1, 
             sections: [], 
-            moduleId: manualLesson.moduleId, // Retain module
-            orderInModule: (manualLesson.orderInModule || 1) + 1 // Auto-increment sequence
+            moduleId: manualLesson.moduleId, 
+            orderInModule: (manualLesson.orderInModule || 1) + 1 
         });
         setExpandedSection(null);
         setSaveFeedback(`Lesson "${finalLesson.title}" successfully saved! Builder reset for the next lesson.`);
-        // Scroll back to top
         document.getElementById('upload-modal-content')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) { setError(err.message); }
@@ -160,7 +169,27 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   };
 
   const updateQuestion = (secId: string, qId: string, upd: Partial<QuizQuestion>) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.map(q => q.id === qId ? { ...q, ...upd } : q) } : s) }));
-  const updateOption = (secId: string, qId: string, oId: string, upd: Partial<QuizOption>) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.map(q => q.id === qId ? { ...q, options: q.options.map(o => upd.isCorrect && o.id !== oId ? { ...o, isCorrect: false } : o.id === oId ? { ...o, ...upd } : o) } : q) } : s) }));
+  
+  const updateOption = (secId: string, qId: string, oId: string, upd: Partial<QuizOption>) => setManualLesson(p => ({ 
+    ...p, 
+    sections: p.sections?.map(s => s.id === secId ? { 
+      ...s, 
+      quizzes: s.quizzes?.map(q => q.id === qId ? { 
+        ...q, 
+        options: q.options.map(o => {
+          // If we are setting this option to correct, clear correctness on all other options in this question
+          if (upd.isCorrect && o.id !== oId) {
+             return { ...o, isCorrect: false };
+          }
+          if (o.id === oId) {
+             return { ...o, ...upd };
+          }
+          return o;
+        }) 
+      } : q) 
+    } : s) 
+  }));
+
   const removeQuestion = (secId: string, qId: string) => setManualLesson(p => ({ ...p, sections: p.sections?.map(s => s.id === secId ? { ...s, quizzes: s.quizzes?.filter(q => q.id !== qId) } : s) }));
 
   const labelClass = "text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 block";
@@ -194,7 +223,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
                <AlertCircle className="shrink-0" size={24} />
-               <div><h4 className="font-bold">Parsing / Validation Error</h4><p className="text-sm opacity-80">{error}</p></div>
+               <div><h4 className="font-bold">Validation Error</h4><p className="text-sm opacity-80">{error}</p></div>
             </div>
           )}
 
@@ -286,8 +315,49 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                                 />
                                                             </div>
 
-                                                            <input className={inputClass} placeholder="Question Prompt" value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{q.options.map(opt => (<div key={opt.id} className="space-y-2"><div className="flex gap-3"><button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center font-bold shadow-sm transition-all ${opt.isCorrect ? 'bg-green-600 border-green-600 text-white scale-110' : 'bg-white border-gray-200 text-gray-400'}`}>{opt.label}</button><input className="flex-1 p-2.5 border rounded-xl" placeholder={`Option ${opt.label}`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} /></div><textarea className="w-full p-2 text-xs border border-dashed rounded-lg bg-white/50" placeholder="Option-specific explanation..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} /></div>))}</div>
+                                                            <div>
+                                                              <label className={labelClass}>Question Prompt</label>
+                                                              <input className={inputClass} placeholder="Enter the question here..." value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
+                                                            </div>
+
+                                                            <div className="bg-white p-4 rounded-2xl border-2 border-gray-100">
+                                                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 text-center">Correct Option Selection Panel</p>
+                                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                                {q.options.map(opt => (
+                                                                  <div key={opt.id} className={`p-4 rounded-2xl border-2 transition-all group ${opt.isCorrect ? 'bg-green-50 border-green-500 shadow-md ring-4 ring-green-50' : 'bg-gray-50 border-gray-100 hover:border-royal-200'}`}>
+                                                                    <div className="flex gap-3 items-center mb-3">
+                                                                      <button 
+                                                                        onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} 
+                                                                        className={`shrink-0 w-12 h-12 rounded-xl border-2 flex items-center justify-center font-bold shadow-sm transition-all ${opt.isCorrect ? 'bg-green-600 border-green-600 text-white scale-110' : 'bg-white border-gray-300 text-gray-400 hover:border-royal-400 hover:text-royal-500'}`}
+                                                                      >
+                                                                        {opt.isCorrect ? <Check size={24} /> : opt.label}
+                                                                      </button>
+                                                                      <input 
+                                                                        className="flex-1 p-2 bg-transparent font-bold text-gray-800 outline-none border-b-2 border-transparent focus:border-royal-500 transition-colors" 
+                                                                        placeholder={`Type Option ${opt.label}...`} 
+                                                                        value={opt.text} 
+                                                                        onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} 
+                                                                      />
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex flex-col gap-2">
+                                                                      <textarea 
+                                                                        className="w-full p-2 text-[10px] border border-dashed rounded-lg bg-white/50 h-16 outline-none focus:border-royal-300" 
+                                                                        placeholder="Explain why this choice is correct or incorrect..." 
+                                                                        value={opt.explanation} 
+                                                                        onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} 
+                                                                      />
+                                                                      <button 
+                                                                         onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})}
+                                                                         className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition-all border ${opt.isCorrect ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600'}`}
+                                                                      >
+                                                                        {opt.isCorrect ? 'CURRENTLY MARKED AS CORRECT' : 'CLICK TO MARK AS CORRECT'}
+                                                                      </button>
+                                                                    </div>
+                                                                  </div>
+                                                                ))}
+                                                              </div>
+                                                            </div>
                                                          </div>
                                                      </div>
                                                  ))}

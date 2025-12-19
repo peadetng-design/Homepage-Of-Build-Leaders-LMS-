@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -364,8 +363,8 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                             <div>
                                                                 <label className={labelClass}>Reference Text / Context</label>
                                                                 <textarea 
-                                                                    className="w-full p-4 border-4 border-gray-300 rounded-2xl focus:border-royal-500 outline-none transition-all font-bold text-[12.6px] bg-white h-48 custom-scrollbar" 
-                                                                    placeholder="Enter scriptural reference or context (up to 2000+ words)..." 
+                                                                    className="w-full p-4 border-4 border-gray-300 rounded-2xl focus:border-royal-500 outline-none transition-all font-bold text-[12.6px] bg-white h-28 custom-scrollbar" 
+                                                                    placeholder="Enter scriptural reference or context (Not more than 100 words)..." 
                                                                     value={q.reference || ''} 
                                                                     onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} 
                                                                 />

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -300,8 +299,8 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
         <span className="shrink-0 w-10 h-10 rounded-xl bg-royal-800 text-white font-bold flex items-center justify-center text-lg">{index}</span>
         <div className="flex-1 w-full">
             {quiz.reference && (
-                <div className="mb-6 p-6 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 font-serif leading-relaxed italic relative">
-                    <div className="absolute top-2 right-4 text-4xl opacity-10 text-slate-900">”</div>
+                <div className="mb-4 p-5 bg-slate-50 border-4 border-slate-200 rounded-2xl text-slate-700 font-serif font-bold italic relative text-lg leading-relaxed">
+                    <div className="absolute top-1 right-3 text-3xl opacity-10 text-slate-900">”</div>
                     {quiz.reference}
                 </div>
             )}

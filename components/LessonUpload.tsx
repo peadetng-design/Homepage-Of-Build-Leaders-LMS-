@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool, Check } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, Newspaper, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, Circle, AlertCircle, AlertTriangle, Home, Mail, Phone, MapPin, Share2, ListChecks, Layers, BadgeCheck, PenTool, Check, Flag, Sparkles } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -22,6 +22,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [moduleComplete, setModuleComplete] = useState(false);
 
   const [modules, setModules] = useState<Module[]>([]);
   const [showModuleWizard, setShowModuleWizard] = useState(false);
@@ -43,6 +44,12 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (contentType === 'homepage') lessonService.getHomepageContent().then(setHomepageContent);
       if (contentType === 'lesson') lessonService.getModules().then(setModules);
   }, [contentType]);
+
+  const selectedModule = modules.find(m => m.id === manualLesson.moduleId);
+  const totalInModule = selectedModule?.totalLessonsRequired || 0;
+  const currentOrder = manualLesson.orderInModule || 1;
+  const isTerminationPoint = totalInModule > 0 && currentOrder >= totalInModule;
+  const isLimitExceeded = totalInModule > 0 && currentOrder > totalInModule;
 
   const handleCreateModule = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -124,19 +131,25 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (shouldClose) {
         onSuccess();
       } else {
-        setManualLesson({
-            title: '', 
-            description: '', 
-            lesson_type: 'Mixed', 
-            targetAudience: 'All', 
-            book: '', 
-            chapter: 1, 
-            sections: [], 
-            moduleId: manualLesson.moduleId, 
-            orderInModule: (manualLesson.orderInModule || 1) + 1 
-        });
-        setExpandedSection(null);
-        setSaveFeedback(`Lesson "${finalLesson.title}" successfully saved! Builder reset for the next lesson.`);
+        // If this was the last lesson of the module quota
+        if (isTerminationPoint) {
+            setModuleComplete(true);
+            setSaveFeedback(`Final Lesson "${finalLesson.title}" saved. Module capacity (${totalInModule}/${totalInModule}) has been reached.`);
+        } else {
+            setManualLesson({
+                title: '', 
+                description: '', 
+                lesson_type: 'Mixed', 
+                targetAudience: 'All', 
+                book: '', 
+                chapter: 1, 
+                sections: [], 
+                moduleId: manualLesson.moduleId, 
+                orderInModule: (manualLesson.orderInModule || 1) + 1 
+            });
+            setExpandedSection(null);
+            setSaveFeedback(`Lesson "${finalLesson.title}" successfully saved! Builder reset for Lesson ${currentOrder + 1}.`);
+        }
         document.getElementById('upload-modal-content')?.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err: any) { setError(err.message); }
@@ -177,13 +190,8 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       quizzes: s.quizzes?.map(q => q.id === qId ? { 
         ...q, 
         options: q.options.map(o => {
-          // If we are setting this option to correct, clear correctness on all other options in this question
-          if (upd.isCorrect && o.id !== oId) {
-             return { ...o, isCorrect: false };
-          }
-          if (o.id === oId) {
-             return { ...o, ...upd };
-          }
+          if (upd.isCorrect && o.id !== oId) return { ...o, isCorrect: false };
+          if (o.id === oId) return { ...o, ...upd };
           return o;
         }) 
       } : q) 
@@ -228,15 +236,18 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           )}
 
           {saveFeedback && (
-            <div className="bg-green-50 border border-green-200 text-green-700 p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4">
-               <CheckCircle className="shrink-0" size={24} />
-               <div><h4 className="font-bold">Entry Recorded</h4><p className="text-sm opacity-80">{saveFeedback}</p></div>
+            <div className={`border p-6 rounded-2xl mb-8 flex items-start gap-4 shadow-sm animate-in slide-in-from-top-4 ${moduleComplete ? 'bg-royal-50 border-royal-200 text-royal-800' : 'bg-green-50 border-green-200 text-green-700'}`}>
+               {moduleComplete ? <Flag className="shrink-0" size={24} /> : <CheckCircle className="shrink-0" size={24} />}
+               <div>
+                 <h4 className="font-bold">{moduleComplete ? 'Module Capacity Reached' : 'Entry Recorded'}</h4>
+                 <p className="text-sm opacity-80">{saveFeedback}</p>
+               </div>
             </div>
           )}
 
           {contentType === 'lesson' && (
              <div className="space-y-8">
-                {!initialData && (
+                {!initialData && !moduleComplete && (
                     <div className="flex justify-center">
                         <div className="bg-gray-100 p-1.5 rounded-2xl flex shadow-inner">
                             <button onClick={() => setMode('bulk')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mode === 'bulk' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500 hover:text-gray-700'}`}><FileIcon size={18}/> Excel Import (4 Sheets)</button>
@@ -245,17 +256,61 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     </div>
                 )}
                 
-                {mode === 'manual' ? (
+                {moduleComplete ? (
+                   <div className="max-w-2xl mx-auto py-12 text-center space-y-8 animate-in zoom-in-95">
+                      <div className="relative inline-block">
+                        <div className="absolute inset-0 bg-gold-400 blur-3xl opacity-20 rounded-full animate-pulse"></div>
+                        <div className="bg-white border-4 border-gold-500 w-32 h-32 rounded-full flex items-center justify-center mx-auto shadow-2xl relative z-10">
+                            <Check className="text-gold-600" size={64} strokeWidth={3} />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <h3 className="text-3xl font-serif font-bold text-gray-900">Termination Point Reached</h3>
+                        <p className="text-gray-600 text-lg max-w-md mx-auto">
+                            The specified capacity of <strong>{totalInModule} lessons</strong> for the <strong>{selectedModule?.title}</strong> module has been successfully fulfilled.
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 text-left space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-royal-100 text-royal-700 rounded-lg"><Layers size={20}/></div>
+                            <div>
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest leading-none">Module Complete</p>
+                                <p className="font-bold text-gray-800">{selectedModule?.title}</p>
+                            </div>
+                        </div>
+                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-gold-500" style={{ width: '100%' }}></div>
+                        </div>
+                        <p className="text-xs text-gray-500 text-center font-medium italic">Certification issuance for this module is now active for eligible students.</p>
+                      </div>
+                      <button onClick={onSuccess} className="px-12 py-4 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl transition-all transform hover:-translate-y-1">
+                        FINALIZE & EXIT BUILDER
+                      </button>
+                   </div>
+                ) : mode === 'manual' ? (
                    <div className="max-w-5xl mx-auto space-y-10 pb-20">
-                      <div className="bg-indigo-50/50 p-8 rounded-3xl border-2 border-indigo-100 shadow-sm">
+                      <div className="bg-indigo-50/50 p-8 rounded-3xl border-2 border-indigo-100 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 right-0 p-4">
+                            {selectedModule && (
+                                <div className={`px-4 py-2 rounded-xl border-2 font-bold text-sm flex items-center gap-2 ${isLimitExceeded ? 'bg-red-50 border-red-200 text-red-700' : isTerminationPoint ? 'bg-gold-50 border-gold-200 text-gold-700' : 'bg-white border-indigo-200 text-indigo-700 shadow-sm'}`}>
+                                    {isTerminationPoint ? <Flag size={16}/> : <ListChecks size={16}/>}
+                                    {isLimitExceeded ? "Capacity Exceeded" : isTerminationPoint ? "FINAL LESSON IN QUEUE" : `Lesson ${currentOrder} of ${totalInModule}`}
+                                </div>
+                            )}
+                         </div>
                          <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-indigo-900 text-lg flex items-center gap-3"><Layers className="text-indigo-600"/> 1. Define Module & Hierarchy</h3>
                             <button onClick={() => setShowModuleWizard(true)} className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:shadow-lg transition-all"><Plus size={16}/> New Module</button>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div><label className={labelClass}>Module Container</label><select className={inputClass} value={manualLesson.moduleId} onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}><option value="">-- Choose Module for Certification --</option>{modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></div>
-                            <div><label className={labelClass}>Sequence Order (1-200)</label><input type="number" className={inputClass} value={manualLesson.orderInModule} onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})} /></div>
+                            <div><label className={labelClass}>Sequence Order (Target: {totalInModule})</label><input type="number" className={`${inputClass} ${isLimitExceeded ? 'border-red-500 text-red-700 bg-red-50' : ''}`} value={manualLesson.orderInModule} onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})} /></div>
                          </div>
+                         {isLimitExceeded && (
+                             <div className="mt-4 flex items-center gap-2 text-red-600 text-xs font-bold animate-pulse">
+                                 <AlertTriangle size={14}/> ALERT: This sequence number exceeds the module's defined capacity of {totalInModule}.
+                             </div>
+                         )}
                       </div>
 
                       {showModuleWizard && (
@@ -304,7 +359,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                      <div key={q.id} className="bg-slate-50 p-6 rounded-3xl border border-slate-200 relative">
                                                          <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 size={20}/></button>
                                                          <div className="grid grid-cols-1 gap-6">
-                                                            {/* Reference Text Area (Bold, thick-bordered, 90% font size) */}
                                                             <div>
                                                                 <label className={labelClass}>Reference Text / Context</label>
                                                                 <textarea 
@@ -314,12 +368,10 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                                     onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} 
                                                                 />
                                                             </div>
-
                                                             <div>
                                                               <label className={labelClass}>Question Prompt</label>
                                                               <input className={inputClass} placeholder="Enter the question here..." value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} />
                                                             </div>
-
                                                             <div className="bg-white p-4 rounded-2xl border-2 border-gray-100">
                                                               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em] mb-4 text-center">Correct Option Selection Panel</p>
                                                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -339,7 +391,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                                         onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} 
                                                                       />
                                                                     </div>
-                                                                    
                                                                     <div className="flex flex-col gap-2">
                                                                       <textarea 
                                                                         className="w-full p-2 text-[10px] border border-dashed rounded-lg bg-white/50 h-16 outline-none focus:border-royal-300" 
@@ -403,19 +454,21 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end gap-4 shrink-0">
           <button onClick={onCancel} className="px-8 py-3 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors bg-white border border-gray-200">Cancel</button>
           
-          {contentType === 'lesson' && mode === 'manual' && (
+          {contentType === 'lesson' && mode === 'manual' && !moduleComplete && (
               <>
                  <button 
                    onClick={() => saveManualLesson(false)} 
-                   className="px-10 py-3 bg-white border-2 border-royal-800 text-royal-800 font-bold rounded-2xl hover:bg-royal-50 flex items-center gap-3 transition-all transform hover:-translate-y-1 shadow-sm"
+                   disabled={isLimitExceeded}
+                   className={`px-10 py-3 border-2 font-bold rounded-2xl flex items-center gap-3 transition-all transform hover:-translate-y-1 shadow-sm disabled:opacity-50 disabled:grayscale ${isTerminationPoint ? 'bg-amber-50 border-amber-500 text-amber-700' : 'bg-white border-royal-800 text-royal-800 hover:bg-royal-50'}`}
                  >
-                    <Plus size={20} /> SAVE & ADD NEW LESSON
+                    {isTerminationPoint ? <Flag size={20} /> : <Plus size={20} />} 
+                    {isTerminationPoint ? 'SAVE & FINISH MODULE' : 'SAVE & ADD NEXT LESSON'}
                  </button>
                  <button 
                    onClick={() => saveManualLesson(true)} 
                    className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 transition-all transform hover:-translate-y-1"
                  >
-                    <Save size={20} /> COMMIT TO LIBRARY
+                    <Save size={20} /> COMMIT & EXIT
                  </button>
               </>
           )}

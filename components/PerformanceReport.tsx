@@ -34,42 +34,20 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
     try {
       const allLessons = await lessonService.getLessons();
       const statsPromises = allLessons.map(async (lesson) => {
-        // 1. Get Time
         const timeSpent = await lessonService.getQuizTimer(currentUser.id, lesson.id);
-        
-        // 2. Get Attempts History
         const history = await lessonService.getAttempts(currentUser.id, lesson.id);
         
-        // 3. Process Answer Accuracy (Replicating LessonView Logic)
-        const attemptMap: Record<string, string> = {}; // quizId -> selectedOptionId
+        const attemptMap: Record<string, string> = {};
         let correctCount = 0;
         
-        // Get latest state per question
-        history.forEach(h => {
-           attemptMap[h.quizId] = h.selectedOptionId;
-        });
-
-        // Check correctness based on latest unique answers
+        history.forEach(h => { attemptMap[h.quizId] = h.selectedOptionId; });
         Object.keys(attemptMap).forEach(qId => {
-            // Find specific attempt for this question in history to check isCorrect
-            // (Simpler: check if the latest attempt for this Q was correct)
             const lastAttemptForQ = history.filter(h => h.quizId === qId).pop();
             if (lastAttemptForQ && lastAttemptForQ.isCorrect) correctCount++;
         });
 
         const totalQuestions = lesson.sections.reduce((acc, sec) => acc + (sec.quizzes?.length || 0), 0);
         const questionsAnswered = Object.keys(attemptMap).length;
-        
-        // Count total raw attempts (all clicks) vs "sessions" is hard, 
-        // but user asked for "how many attempts a user has made on a particular quiz".
-        // In LessonView, we show attempts PER QUESTION. 
-        // Here, usually "Attempts" on a lesson summary implies how many times they tried the lesson?
-        // OR the sum of attempts on questions? 
-        // The prompt said "an indicator that shows how many attempts a user has made on a particular quiz. eg. '2 attempts'".
-        // In the context of a Lesson Report, this likely means "Total Question Attempts" or "Sessions".
-        // Let's sum up total entries in history as "Total Interactions". 
-        // OR, if the user means "How many times did I take this lesson?", that's hard if we don't track sessions.
-        // Let's stick to the visual: "Attempts: X" where X is total interactions recorded.
         const attemptsCount = history.length;
 
         return {
@@ -86,8 +64,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
       });
 
       const results = await Promise.all(statsPromises);
-      // Filter out lessons with 0 interaction to reduce clutter, OR keep them to show what's Todo?
-      // "MY PERFORMANCE SCORES" implies active data. Let's show only started lessons.
       const startedLessons = results.filter(s => s.questionsAnswered > 0 || s.timeSpent > 0);
       setStats(startedLessons);
 
@@ -107,7 +83,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
   return (
     <div className="bg-white min-h-screen pb-20 animate-in fade-in duration-300">
       
-      {/* Header */}
       <div className="bg-royal-900 text-white p-8 rounded-b-3xl shadow-xl mb-8">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
            <div className="flex items-center gap-4">
@@ -154,7 +129,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
                {stats.map((stat) => (
                   <div key={stat.lessonId} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-xl transition-all duration-300 group hover:-translate-y-1">
                      
-                     {/* Card Header */}
                      <div className="flex justify-between items-start mb-6">
                         <div>
                            <span className="inline-block px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded mb-2 uppercase tracking-wide">{stat.lessonType}</span>
@@ -163,10 +137,8 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
                         {stat.isCompleted && <CheckCircle size={24} className="text-green-500 flex-shrink-0" />}
                      </div>
 
-                     {/* Metrics Row (Circular) */}
                      <div className="flex justify-around items-center mb-6 py-4 bg-gray-50 rounded-xl border border-gray-50 group-hover:border-gray-100 transition-colors">
                         
-                        {/* Circular Score */}
                         <div className="flex flex-col items-center">
                            <div className="relative w-20 h-20 mb-2">
                               <svg className="w-full h-full transform -rotate-90">
@@ -190,7 +162,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
 
                         <div className="w-px h-16 bg-gray-200"></div>
 
-                        {/* Circular Timer */}
                         <div className="flex flex-col items-center">
                            <div className="relative w-20 h-20 mb-2">
                               <svg className="w-full h-full transform -rotate-90">
@@ -214,7 +185,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
 
                      </div>
 
-                     {/* Progress Bar */}
                      <div className="mb-4">
                         <div className="flex justify-between text-xs font-bold mb-1">
                            <span className="text-gray-500">Progress</span>
@@ -228,7 +198,6 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ currentUser, onBa
                         </div>
                      </div>
 
-                     {/* Attempt Indicator */}
                      <div className="flex items-center justify-end">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold shadow-sm">
                            <History size={12} />

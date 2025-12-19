@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer } from 'lucide-react';
+// Added 'Book' to the lucide-react imports to fix "Cannot find name 'Book'" error
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer, Sparkles, Flag, Book } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -36,12 +37,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         timerRef.current = setInterval(() => {
            setElapsedTime(prev => {
                const newTime = prev + 1;
-               if (newTime % 5 === 0) lessonService.saveQuizTimer(currentUser.id, lesson.id, newTime);
+               // Save every 2 seconds for real-time persistence
+               if (newTime % 2 === 0) lessonService.saveQuizTimer(currentUser.id, lesson.id, newTime);
                return newTime;
            });
         }, 1000);
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); lessonService.saveQuizTimer(currentUser.id, lesson.id, elapsedTime); };
+    return () => { 
+        if (timerRef.current) clearInterval(timerRef.current); 
+        lessonService.saveQuizTimer(currentUser.id, lesson.id, elapsedTime); 
+    };
   }, [lesson.id]);
 
   useEffect(() => {
@@ -77,11 +82,17 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     setAttemptHistory(history);
     const attemptMap: Record<string, string> = {};
     let correctCount = 0;
-    history.forEach(h => { attemptMap[h.quizId] = h.selectedOptionId; });
-    Object.keys(attemptMap).forEach(qId => {
-        const attempt = history.filter(h => h.quizId === qId).pop();
-        if (attempt && attempt.isCorrect) correctCount++;
+    
+    // Get unique latest attempts for each question
+    const uniqueQuizzes = new Set(history.map(h => h.quizId));
+    uniqueQuizzes.forEach(qId => {
+        const lastAttempt = history.filter(h => h.quizId === qId).pop();
+        if (lastAttempt) {
+            attemptMap[qId] = lastAttempt.selectedOptionId;
+            if (lastAttempt.isCorrect) correctCount++;
+        }
     });
+
     setAttempts(attemptMap);
     setScore({ total: Object.keys(attemptMap).length, correct: correctCount });
     
@@ -91,69 +102,176 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
     if (attempts[quiz.id]) return;
+    
+    const isCorrect = option.isCorrect;
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
-    if (option.isCorrect) setScore(prev => ({ ...prev, total: prev.total + 1, correct: prev.correct + 1 }));
-    else setScore(prev => ({ ...prev, total: prev.total + 1 }));
-    await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, option.isCorrect);
-    setAttemptHistory(prev => [...prev, { id: crypto.randomUUID(), studentId: currentUser.id, lessonId: lesson.id, quizId: quiz.id, selectedOptionId: option.id, isCorrect: option.isCorrect, score: option.isCorrect ? 10 : 0, attempted_at: new Date().toISOString() }]);
+    setScore(prev => ({ 
+        total: prev.total + 1, 
+        correct: isCorrect ? prev.correct + 1 : prev.correct 
+    }));
+    
+    // Immediate persistence
+    await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, isCorrect);
+    
+    setAttemptHistory(prev => [...prev, { 
+        id: crypto.randomUUID(), 
+        studentId: currentUser.id, 
+        lessonId: lesson.id, 
+        quizId: quiz.id, 
+        selectedOptionId: option.id, 
+        isCorrect: isCorrect, 
+        score: isCorrect ? 10 : 0, 
+        attempted_at: new Date().toISOString() 
+    }]);
   };
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   return (
-    <div className="bg-gray-50 min-h-screen pb-20 font-sans">
-      <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 sticky top-0 z-40 shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-3">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                    <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 border border-gray-100"><ArrowLeft size={24} /></button>
-                    <div>
-                        <h1 className="text-lg font-bold text-gray-900 leading-none truncate max-w-[200px] md:max-w-xs">{lesson.title}</h1>
-                        <p className="text-xs text-indigo-500 mt-1 uppercase tracking-wide font-bold">{lesson.lesson_type}</p>
+    <div className="bg-gray-50 min-h-screen pb-24 font-sans">
+      {/* --- ENHANCED 3D INDICATOR HEADER --- */}
+      <div className="bg-white border-b-4 border-gray-100 sticky top-0 z-50 shadow-2xl">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                
+                {/* Back & Title */}
+                <div className="flex items-center gap-6 w-full lg:w-auto">
+                    <button onClick={onBack} className="p-4 bg-gray-100 hover:bg-gray-200 rounded-2xl text-gray-700 transition-all border-b-4 border-gray-300 active:border-b-0 active:translate-y-1">
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div className="min-w-0">
+                        <h1 className="text-2xl font-serif font-black text-royal-950 leading-tight truncate max-w-xs md:max-w-md">
+                            {lesson.title}
+                        </h1>
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className="px-2 py-0.5 bg-royal-100 text-royal-700 text-[10px] font-black uppercase tracking-widest rounded shadow-inner">
+                                {lesson.lesson_type}
+                            </span>
+                            <span className="text-gray-400 text-xs font-bold flex items-center gap-1">
+                                <BookOpen size={12}/> {lesson.book} {lesson.chapter}
+                            </span>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-3">
-                        <div className="relative w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center">
-                            <svg className="w-full h-full transform -rotate-90 p-1">
-                                <circle cx="24" cy="24" r="20" stroke="#f0f0f0" strokeWidth="4" fill="none" />
-                                <circle cx="24" cy="24" r="20" stroke="#f59e0b" strokeWidth="4" fill="none" strokeDasharray={126} strokeDashoffset={126 - (126 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} strokeLinecap="round" className="transition-all duration-1000" />
+
+                {/* 3D Circular Indicators */}
+                <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
+                    
+                    {/* Indicator A: Score (Gold Theme) */}
+                    <div className="flex flex-col items-center gap-2 group">
+                        <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(245,158,11,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
+                                <defs>
+                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor="#fbbf24" />
+                                        <stop offset="100%" stopColor="#d97706" />
+                                    </linearGradient>
+                                    <filter id="glow">
+                                        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                                        <feMerge>
+                                            <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+                                        </feMerge>
+                                    </filter>
+                                </defs>
+                                <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
+                                <circle 
+                                    cx="48" cy="48" r="42" 
+                                    stroke="url(#scoreGradient)" 
+                                    strokeWidth="8" 
+                                    fill="none" 
+                                    strokeDasharray={264} 
+                                    strokeDashoffset={264 - (264 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
+                                    strokeLinecap="round" 
+                                    filter="url(#glow)"
+                                    className="transition-all duration-1000 ease-out" 
+                                />
                             </svg>
-                            <span className="absolute text-[10px] font-bold">{Math.round((score.correct / (totalQuestions || 1)) * 100)}%</span>
+                            <div className="relative z-10 text-center">
+                                <span className="block text-xl font-black text-gray-900 leading-none">{score.correct}</span>
+                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">OF {totalQuestions}</span>
+                            </div>
                         </div>
-                        <div className="hidden md:block">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Score</p>
-                            <p className="text-sm font-bold text-gray-800">{score.correct} / {totalQuestions}</p>
-                        </div>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accuracy Score</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                         <div className="relative w-14 h-14 rounded-full bg-white shadow-md flex items-center justify-center">
-                            <Clock size={18} className={isCompleted ? 'text-green-500' : 'text-indigo-500'} />
+
+                    {/* Indicator B: Timer (Indigo Theme) */}
+                    <div className="flex flex-col items-center gap-2 group">
+                        <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(79,70,229,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
+                                <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" stopColor="#6366f1" />
+                                    <stop offset="100%" stopColor="#4338ca" />
+                                </linearGradient>
+                                <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
+                                <circle 
+                                    cx="48" cy="48" r="42" 
+                                    stroke="url(#timerGradient)" 
+                                    strokeWidth="8" 
+                                    fill="none" 
+                                    strokeDasharray={264} 
+                                    strokeDashoffset={264 - (264 * ((elapsedTime % 60) / 60))} 
+                                    strokeLinecap="round" 
+                                    className="transition-all duration-1000 ease-linear" 
+                                />
+                            </svg>
+                            <div className="relative z-10 text-center">
+                                <span className="block text-lg font-black text-indigo-700 font-mono leading-none tracking-tighter">
+                                    {formatTime(elapsedTime)}
+                                </span>
+                                <Clock size={12} className="mx-auto mt-1 text-indigo-400 animate-pulse" />
+                            </div>
                         </div>
-                        <div className="hidden md:block">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Time</p>
-                            <p className="text-sm font-bold font-mono">{formatTime(elapsedTime)}</p>
-                        </div>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Elapsed Time</span>
                     </div>
+
                 </div>
             </div>
-            <div className="mt-4 relative w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-indigo-600 transition-all duration-700" style={{ width: `${progressPercent}%` }}></div>
+
+            {/* Indicator C: Progress Bar (Horizontal) */}
+            <div className="mt-8 relative group">
+                <div className="flex justify-between items-end mb-2">
+                    <span className="text-xs font-black text-royal-800 uppercase tracking-widest flex items-center gap-2">
+                        <ActivityIcon size={14}/> Lesson Progress
+                    </span>
+                    <div className="bg-royal-950 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-bounce">
+                        {Math.round(progressPercent)}% COMPLETE
+                    </div>
+                </div>
+                <div className="h-6 w-full bg-gray-200 rounded-full border-2 border-white shadow-[inset_0_4px_10px_rgba(0,0,0,0.1)] overflow-hidden p-1 relative">
+                    <div 
+                        className="h-full bg-gradient-to-r from-royal-600 via-royal-400 to-royal-600 rounded-full transition-all duration-700 relative overflow-hidden"
+                        style={{ width: `${progressPercent}%` }}
+                    >
+                        {/* 3D Gloss Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
+                        <div className="absolute top-0 bottom-0 left-0 right-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+                    </div>
+                </div>
             </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-12">
+      <div className="max-w-3xl mx-auto px-6 py-12 space-y-12">
         {lesson.sections.map((section) => (
           <div key={section.id}>
             {section.type === 'note' ? (
-              <div className="prose prose-lg max-w-none text-gray-800 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-                <h2 className="text-2xl font-serif font-bold text-gray-900 border-b pb-4 mb-6">{section.title}</h2>
-                <div dangerouslySetInnerHTML={{ __html: section.body || '' }} />
+              <div className="prose prose-lg max-w-none text-gray-800 bg-white p-10 rounded-[2.5rem] shadow-xl border border-gray-100 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
+                <h2 className="text-3xl font-serif font-black text-gray-950 border-b-4 border-blue-50 mb-8 pb-4 flex items-center gap-3">
+                   <BookOpen className="text-blue-500"/> {section.title}
+                </h2>
+                <div className="font-medium leading-relaxed text-gray-700" dangerouslySetInnerHTML={{ __html: section.body || '' }} />
               </div>
             ) : (
-              <div className="space-y-8 mt-12">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2"><HelpCircle className="text-royal-500" /> {section.title}</h2>
+              <div className="space-y-10 mt-12">
+                <div className="flex items-center gap-4">
+                    <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-purple-100"></div>
+                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 uppercase tracking-tighter">
+                        <HelpCircle className="text-purple-500" /> {section.title}
+                    </h2>
+                    <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-purple-100"></div>
+                </div>
+                
                 {section.quizzes?.map((quiz, qIdx) => (
                   <QuizCard key={quiz.id} quiz={quiz} index={qIdx + 1} selectedOptionId={attempts[quiz.id]} onSelect={(opt) => handleOptionSelect(quiz, opt)} attemptHistory={attemptHistory} />
                 ))}
@@ -162,59 +280,77 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         ))}
 
-        {/* --- CONGRATULATORY SECTION --- */}
-        <div className="text-center pt-12 border-t border-gray-100">
+        {/* --- CONGRATULATORY & CERTIFICATE SECTION --- */}
+        <div className="text-center pt-16 border-t-4 border-dashed border-gray-200">
            {isCompleted && (
-               <div className="space-y-6 animate-in pop-in duration-700">
-                   <div className="inline-block p-6 bg-green-50 rounded-full text-green-600 mb-2 animate-bounce shadow-xl border border-green-100">
-                        <CheckCircle size={64} />
+               <div className="space-y-8 animate-in pop-in duration-700">
+                   <div className="relative inline-block">
+                        <div className="absolute inset-0 bg-green-400 blur-3xl opacity-20 rounded-full animate-pulse"></div>
+                        <div className="bg-white border-4 border-green-500 w-32 h-32 rounded-full flex items-center justify-center mx-auto shadow-2xl relative z-10">
+                            <CheckCircle className="text-green-500" size={64} />
+                        </div>
                    </div>
-                   <h2 className="text-4xl font-serif font-bold text-gray-900 leading-tight">Excellent Work! <br/> Lesson Completed</h2>
-                   <p className="text-gray-500 max-w-md mx-auto text-lg italic">"I have hidden your word in my heart that I might not sin against you." — Psalm 119:11</p>
+                   <div className="space-y-2">
+                       <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Excellent!</h2>
+                       <p className="text-xl text-gray-500 font-medium max-w-md mx-auto italic">"His master replied, 'Well done, good and faithful servant!'" — Matthew 25:21</p>
+                   </div>
                    
-                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+                   <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
                         {moduleProgress && (
                              <button 
                                 onClick={() => setShowTracker(true)}
-                                className="px-8 py-3 bg-indigo-50 text-indigo-700 font-bold rounded-full hover:bg-indigo-100 transition-all flex items-center gap-2 border border-indigo-200"
+                                className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl"
                              >
-                                <ListChecks size={20} /> MODULE TRACKER ({moduleProgress.completed}/{moduleProgress.total})
+                                <ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})
                              </button>
                         )}
-                        <button onClick={onBack} className="px-8 py-3 bg-gray-900 text-white font-bold rounded-full hover:bg-black transition-colors">Return to Library</button>
+                        <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl hover:-translate-y-1">
+                            EXIT TO LIBRARY
+                        </button>
                    </div>
                </div>
            )}
 
            {/* --- MODULE MASTERY BANNER --- */}
            {completedModule && (
-               <div className="mt-16 p-10 bg-gradient-to-br from-gold-500 via-orange-500 to-gold-600 text-white rounded-[3rem] shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-1000">
-                   <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Trophy size={200} /></div>
-                   <div className="relative z-10">
-                       <BadgeCheck size={80} className="mx-auto mb-6 text-white drop-shadow-lg" />
-                       <h3 className="text-sm font-bold tracking-[0.3em] uppercase mb-2">Milestone Unlocked</h3>
-                       <h2 className="text-4xl font-serif font-bold mb-4 leading-tight">Module Mastery: <br/> {completedModule.title}</h2>
-                       <p className="text-gold-50 mb-8 max-w-sm mx-auto font-medium opacity-90">You have successfully met all completion requirements for this Biblical Leadership module.</p>
+               <div className="mt-20 p-12 bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white rounded-[3.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border-b-8 border-gold-600 relative overflow-hidden animate-in zoom-in-95 duration-1000">
+                   <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 -translate-y-20"><Trophy size={400} /></div>
+                   <div className="absolute bottom-0 left-0 p-8 opacity-5 -translate-x-10 translate-y-10"><Sparkles size={200} /></div>
+                   
+                   <div className="relative z-10 text-center">
+                       <div className="mb-8 relative inline-block">
+                            <div className="absolute inset-0 bg-gold-400 blur-[80px] opacity-30 animate-pulse"></div>
+                            <div className="w-24 h-24 bg-gradient-to-br from-gold-400 to-gold-600 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-12 mx-auto ring-4 ring-white/10">
+                                <BadgeCheck size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} />
+                            </div>
+                       </div>
+                       <h3 className="text-gold-400 text-sm font-black tracking-[0.4em] uppercase mb-4">Milestone Unlocked</h3>
+                       <h2 className="text-4xl md:text-5xl font-serif font-black mb-6 leading-tight">Module Mastered: <br/> <span className="text-white">{completedModule.title}</span></h2>
+                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">
+                           Glory to God! You have successfully fulfilled all requirements for this biblical leadership block. Your credential is ready for issuance.
+                       </p>
                        
                        {issuedCert ? (
-                           <div className="flex flex-col items-center gap-4">
-                                <div className="p-4 bg-white/20 rounded-2xl border border-white/30 text-white font-bold flex items-center gap-3">
-                                    <CheckCircle size={24} /> Certification Issued!
+                           <div className="flex flex-col items-center gap-6">
+                                <div className="px-8 py-4 bg-white/10 rounded-2xl border-2 border-white/20 text-green-400 font-black flex items-center gap-3 text-xl">
+                                    <CheckCircle size={28} /> CERTIFICATE ISSUED!
                                 </div>
                                 <button 
                                     onClick={() => setViewingCert(issuedCert)}
-                                    className="px-10 py-4 bg-white text-orange-600 font-bold rounded-full shadow-2xl hover:scale-105 transform transition-all flex items-center gap-3"
+                                    className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transform transition-all hover:-translate-y-1 flex items-center gap-4 text-xl border-b-4 border-gold-800"
                                 >
-                                    <Printer size={20} /> PRINT CERTIFICATE
+                                    <Printer size={28} /> PRINT OFFICIAL COPY
                                 </button>
                            </div>
                        ) : (
                            <button 
                                 onClick={handleClaimCertificate} 
                                 disabled={isIssuingCert} 
-                                className="px-10 py-4 bg-white text-orange-600 font-bold rounded-full shadow-2xl hover:scale-105 transform transition-all flex items-center gap-3 mx-auto"
+                                className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transform transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700 active:border-b-0 active:translate-y-2 overflow-hidden"
                            >
-                                {isIssuingCert ? <Loader2 className="animate-spin" /> : <Trophy />} CLAIM YOUR CERTIFICATION
+                                <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 -skew-x-12"></div>
+                                {isIssuingCert ? <Loader2 className="animate-spin" size={32} /> : <Trophy size={32} />} 
+                                RECEIVE CERTIFICATE
                            </button>
                        )}
                    </div>
@@ -223,45 +359,53 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         </div>
       </div>
 
-      {/* --- MODULE TRACKER MODAL --- */}
+      {/* --- TRACKER MODAL --- */}
       {showTracker && moduleProgress && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95">
-                  <div className="bg-royal-900 p-8 text-white relative">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-xl animate-in fade-in">
+              <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95">
+                  <div className="bg-royal-950 p-10 text-white relative">
                       <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                       <div className="relative z-10 flex justify-between items-center">
-                          <h3 className="text-2xl font-serif font-bold flex items-center gap-3">
-                             <ListChecks className="text-gold-500" /> Module Progress
-                          </h3>
-                          <button onClick={() => setShowTracker(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20} /></button>
+                          <div className="flex items-center gap-4">
+                             <div className="p-3 bg-royal-800 rounded-2xl"><ListChecks className="text-gold-500" size={28} /></div>
+                             <h3 className="text-3xl font-serif font-black uppercase tracking-tighter">Progress</h3>
+                          </div>
+                          <button onClick={() => setShowTracker(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X size={24} /></button>
                       </div>
                   </div>
-                  <div className="p-8">
-                      <div className="flex justify-between items-end mb-6">
+                  <div className="p-10">
+                      <div className="flex justify-between items-end mb-8">
                           <div>
-                              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Status</p>
-                              <p className="text-2xl font-bold text-gray-900">{moduleProgress.completed} of {moduleProgress.total} Lessons Done</p>
+                              <p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-1">Module Standing</p>
+                              <p className="text-3xl font-black text-gray-900">{moduleProgress.completed} / {moduleProgress.total}</p>
+                              <p className="text-sm font-bold text-gray-400 mt-1 uppercase">Lessons Finished</p>
                           </div>
                           <div className="text-right">
-                              <p className="text-3xl font-bold text-royal-600">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
+                              <p className="text-5xl font-black text-royal-600 leading-none">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
                           </div>
                       </div>
                       
-                      <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-8">
-                          <div className="h-full bg-royal-500 transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
+                      <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden mb-10 p-1 border border-gray-200">
+                          <div className="h-full bg-royal-600 rounded-full shadow-lg transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
                       </div>
 
-                      <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
                           {moduleProgress.lessons.map((l, i) => (
-                              <div key={i} className={`flex items-center gap-4 p-4 rounded-2xl border ${l.done ? 'bg-green-50 border-green-100' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-                                  {l.done ? <CheckCircle size={20} className="text-green-500 shrink-0" /> : <Circle size={20} className="text-gray-300 shrink-0" />}
-                                  <span className={`font-bold flex-1 truncate ${l.done ? 'text-green-900' : 'text-gray-600'}`}>{l.title}</span>
-                                  {!l.done && <ChevronRight size={16} className="text-gray-400" />}
+                              <div key={i} className={`flex items-center gap-5 p-5 rounded-2xl border-2 transition-all ${l.done ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
+                                  {l.done ? (
+                                      <div className="bg-green-500 text-white p-1 rounded-full"><Check size={18} strokeWidth={4}/></div>
+                                  ) : (
+                                      <div className="w-6 h-6 border-4 border-gray-300 rounded-full"></div>
+                                  )}
+                                  <span className={`text-lg font-black flex-1 truncate ${l.done ? 'text-green-950' : 'text-gray-500'}`}>{l.title}</span>
+                                  {!l.done && <ChevronRight size={20} className="text-gray-300" />}
                               </div>
                           ))}
                       </div>
 
-                      <button onClick={() => setShowTracker(false)} className="w-full mt-8 py-4 bg-gray-900 text-white font-bold rounded-2xl shadow-lg">Close Tracker</button>
+                      <button onClick={() => setShowTracker(false)} className="w-full mt-10 py-5 bg-royal-950 text-white font-black rounded-3xl text-xl shadow-2xl hover:bg-black transition-colors border-b-4 border-gray-700">
+                        CLOSE DASHBOARD
+                      </button>
                   </div>
               </div>
           </div>
@@ -278,9 +422,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   );
 };
 
-const Circle: React.FC<{ size: number, className?: string }> = ({ size, className }) => (
+const ActivityIcon: React.FC<{ size: number, className?: string }> = ({ size, className }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <circle cx="12" cy="12" r="10" />
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
     </svg>
 );
 
@@ -289,51 +433,51 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
   const attemptsForThisQuiz = attemptHistory.filter(h => h.quizId === quiz.id).length;
 
   return (
-    <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-8 relative transition-shadow hover:shadow-xl">
+    <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-50 p-10 relative transition-all hover:shadow-royal-900/5 hover:-translate-y-1">
       {attemptsForThisQuiz > 0 && (
-          <div className="absolute -top-3 right-8 bg-white border border-gray-200 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-sm">
-              <History size={12} /> {attemptsForThisQuiz} {attemptsForThisQuiz === 1 ? 'Attempt' : 'Attempts'}
+          <div className="absolute -top-4 right-10 bg-royal-950 text-white text-[10px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-xl uppercase tracking-widest border-2 border-white/20">
+              <History size={14} /> Attempt #{attemptsForThisQuiz}
           </div>
       )}
-      <div className="flex gap-6 mb-8 items-start">
-        <span className="shrink-0 w-10 h-10 rounded-xl bg-royal-800 text-white font-bold flex items-center justify-center text-lg">{index}</span>
-        <div className="flex-1 w-full">
+      <div className="flex flex-col md:flex-row gap-8 mb-10 items-start">
+        <span className="shrink-0 w-14 h-14 rounded-2xl bg-royal-950 text-white font-black flex items-center justify-center text-2xl shadow-xl ring-4 ring-royal-50">{index}</span>
+        <div className="flex-1 w-full space-y-6">
             {quiz.reference && (
-                <div className="mb-4 p-5 bg-slate-50 border-4 border-slate-200 rounded-2xl text-slate-700 font-serif font-bold italic relative text-lg leading-relaxed">
-                    <div className="absolute top-1 right-3 text-3xl opacity-10 text-slate-900">”</div>
+                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-xl leading-relaxed shadow-inner">
+                    <div className="absolute -top-3 -left-3 p-2 bg-gray-200 rounded-xl"><Book size={16} className="text-gray-500" /></div>
                     {quiz.reference}
                 </div>
             )}
-            <h3 className="font-bold text-xl text-gray-900 leading-snug">{quiz.text}</h3>
+            <h3 className="font-black text-2xl text-gray-900 leading-snug tracking-tight">{quiz.text}</h3>
         </div>
       </div>
 
-      <div className="space-y-4 pl-0 md:pl-16">
+      <div className="space-y-4 pl-0 md:pl-20">
         {quiz.options.map((option) => {
             const isSelected = selectedOptionId === option.id;
             const isCorrect = option.isCorrect;
             
-            let btnClass = "w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 flex flex-col group overflow-hidden ";
-            let feedbackClass = "flex items-center gap-4 w-full ";
-            let circleClass = "w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold text-sm shrink-0 ";
-            let textClass = "flex-1 transition-all duration-300 font-bold ";
+            let btnClass = "w-full text-left p-6 rounded-[2rem] border-4 transition-all duration-300 flex flex-col group overflow-hidden ";
+            let feedbackClass = "flex items-center gap-5 w-full ";
+            let circleClass = "w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 transition-all ";
+            let textClass = "flex-1 transition-all duration-300 font-black text-lg ";
 
             if (!isAnswered) {
-                btnClass += "bg-white border-gray-100 hover:border-royal-200 hover:bg-royal-50 cursor-pointer";
-                circleClass += "border-gray-200 text-gray-400 group-hover:border-royal-500 group-hover:text-royal-600";
+                btnClass += "bg-white border-gray-100 hover:border-royal-400 hover:bg-royal-50 cursor-pointer hover:shadow-xl hover:scale-[1.01]";
+                circleClass += "border-gray-200 text-gray-300 group-hover:border-royal-500 group-hover:text-royal-600 bg-white";
                 textClass += "text-gray-800";
             } else {
                 if (isCorrect) {
-                    btnClass += "bg-green-50 border-green-500 ring-4 ring-green-100 scale-[1.02] shadow-md z-10";
-                    circleClass += "bg-green-500 border-green-500 text-white";
-                    textClass += "text-green-700 font-black";
+                    btnClass += "bg-green-50 border-green-500 ring-8 ring-green-100/50 shadow-2xl z-10 scale-[1.03]";
+                    circleClass += "bg-green-500 border-green-500 text-white scale-110";
+                    textClass += "text-green-800";
                 } else if (isSelected) {
                     btnClass += "bg-red-50 border-red-500 opacity-90";
                     circleClass += "bg-red-500 border-red-500 text-white";
-                    textClass += "text-red-700";
+                    textClass += "text-red-800";
                 } else {
-                    btnClass += "bg-gray-50 border-gray-100 opacity-50";
-                    circleClass += "border-gray-200 text-gray-400";
+                    btnClass += "bg-gray-50 border-gray-100 opacity-40 grayscale-[0.5]";
+                    circleClass += "border-gray-200 text-gray-400 bg-white";
                     textClass += "text-gray-400";
                 }
             }
@@ -344,18 +488,20 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                         <div className={feedbackClass}>
                             <span className={circleClass}>{option.label}</span>
                             <span className={textClass}>{option.text}</span>
-                            {isAnswered && isCorrect && <CheckCircle size={24} className="text-green-600 animate-in zoom-in" />}
-                            {isAnswered && isSelected && !isCorrect && <X size={24} className="text-red-600 animate-in zoom-in" />}
+                            {isAnswered && isCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
+                            {isAnswered && isSelected && !isCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
                         </div>
                         
-                        <div className={`transition-all duration-500 ease-out overflow-hidden ${isAnswered ? 'max-h-96 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-                            <div className={`p-4 rounded-xl border-t-2 ${isCorrect ? 'bg-green-100/50 border-green-200' : 'bg-red-100/50 border-red-200'}`}>
-                                <p className="text-sm text-gray-700 leading-relaxed">
-                                    <strong className="uppercase tracking-wider text-[10px] block mb-1">Explanation:</strong>
-                                    {option.explanation || "No explanation provided for this choice."}
-                                </p>
+                        {isAnswered && (
+                            <div className="animate-in slide-in-from-top-4 duration-500 mt-6 pt-6 border-t-2 border-gray-200/50 w-full">
+                                <div className={`p-5 rounded-2xl ${isCorrect ? 'bg-green-100/40 text-green-950' : 'bg-red-100/40 text-red-950'}`}>
+                                    <p className="text-xs font-black uppercase tracking-[0.2em] mb-2 opacity-60">Exegesis & Insight:</p>
+                                    <p className="text-sm font-bold leading-relaxed">
+                                        {option.explanation || "No specific guidance provided for this selection."}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </button>
                 </div>
             );

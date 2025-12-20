@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-// Added 'Book' to the lucide-react imports to fix "Cannot find name 'Book'" error
 import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer, Sparkles, Flag, Book } from 'lucide-react';
 
 interface LessonViewProps {
@@ -37,7 +36,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         timerRef.current = setInterval(() => {
            setElapsedTime(prev => {
                const newTime = prev + 1;
-               // Save every 2 seconds for real-time persistence
                if (newTime % 2 === 0) lessonService.saveQuizTimer(currentUser.id, lesson.id, newTime);
                return newTime;
            });
@@ -83,7 +81,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     const attemptMap: Record<string, string> = {};
     let correctCount = 0;
     
-    // Get unique latest attempts for each question
     const uniqueQuizzes = new Set(history.map(h => h.quizId));
     uniqueQuizzes.forEach(qId => {
         const lastAttempt = history.filter(h => h.quizId === qId).pop();
@@ -110,7 +107,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         correct: isCorrect ? prev.correct + 1 : prev.correct 
     }));
     
-    // Immediate persistence
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, isCorrect);
     
     setAttemptHistory(prev => [...prev, { 
@@ -129,12 +125,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-      {/* --- ENHANCED 3D INDICATOR HEADER --- */}
       <div className="bg-white border-b-4 border-gray-100 sticky top-0 z-50 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-                
-                {/* Back & Title */}
                 <div className="flex items-center gap-6 w-full lg:w-auto">
                     <button onClick={onBack} className="p-4 bg-gray-100 hover:bg-gray-200 rounded-2xl text-gray-700 transition-all border-b-4 border-gray-300 active:border-b-0 active:translate-y-1">
                         <ArrowLeft size={24} />
@@ -154,10 +147,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                     </div>
                 </div>
 
-                {/* 3D Circular Indicators */}
                 <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
-                    
-                    {/* Indicator A: Score (Gold Theme) */}
                     <div className="flex flex-col items-center gap-2 group">
                         <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(245,158,11,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
                             <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
@@ -168,21 +158,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                                     </linearGradient>
                                     <filter id="glow">
                                         <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                                        <feMerge>
-                                            <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
-                                        </feMerge>
+                                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
                                     </filter>
                                 </defs>
                                 <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
                                 <circle 
                                     cx="48" cy="48" r="42" 
-                                    stroke="url(#scoreGradient)" 
-                                    strokeWidth="8" 
-                                    fill="none" 
+                                    stroke="url(#scoreGradient)" strokeWidth="8" fill="none" 
                                     strokeDasharray={264} 
                                     strokeDashoffset={264 - (264 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
-                                    strokeLinecap="round" 
-                                    filter="url(#glow)"
+                                    strokeLinecap="round" filter="url(#glow)"
                                     className="transition-all duration-1000 ease-out" 
                                 />
                             </svg>
@@ -191,10 +176,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                                 <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">OF {totalQuestions}</span>
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Accuracy Score</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Live Score</span>
                     </div>
 
-                    {/* Indicator B: Timer (Indigo Theme) */}
                     <div className="flex flex-col items-center gap-2 group">
                         <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(79,70,229,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
                             <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
@@ -205,9 +189,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                                 <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
                                 <circle 
                                     cx="48" cy="48" r="42" 
-                                    stroke="url(#timerGradient)" 
-                                    strokeWidth="8" 
-                                    fill="none" 
+                                    stroke="url(#timerGradient)" strokeWidth="8" fill="none" 
                                     strokeDasharray={264} 
                                     strokeDashoffset={264 - (264 * ((elapsedTime % 60) / 60))} 
                                     strokeLinecap="round" 
@@ -215,26 +197,22 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                                 />
                             </svg>
                             <div className="relative z-10 text-center">
-                                <span className="block text-lg font-black text-indigo-700 font-mono leading-none tracking-tighter">
-                                    {formatTime(elapsedTime)}
-                                </span>
+                                <span className="block text-lg font-black text-indigo-700 font-mono leading-none tracking-tighter">{formatTime(elapsedTime)}</span>
                                 <Clock size={12} className="mx-auto mt-1 text-indigo-400 animate-pulse" />
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Elapsed Time</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Real-Time Clock</span>
                     </div>
-
                 </div>
             </div>
 
-            {/* Indicator C: Progress Bar (Horizontal) */}
             <div className="mt-8 relative group">
                 <div className="flex justify-between items-end mb-2">
                     <span className="text-xs font-black text-royal-800 uppercase tracking-widest flex items-center gap-2">
-                        <ActivityIcon size={14}/> Lesson Progress
+                         Lesson Progression
                     </span>
                     <div className="bg-royal-950 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-bounce">
-                        {Math.round(progressPercent)}% COMPLETE
+                        {Math.round(progressPercent)}% CALIBRATED
                     </div>
                 </div>
                 <div className="h-6 w-full bg-gray-200 rounded-full border-2 border-white shadow-[inset_0_4px_10px_rgba(0,0,0,0.1)] overflow-hidden p-1 relative">
@@ -242,9 +220,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                         className="h-full bg-gradient-to-r from-royal-600 via-royal-400 to-royal-600 rounded-full transition-all duration-700 relative overflow-hidden"
                         style={{ width: `${progressPercent}%` }}
                     >
-                        {/* 3D Gloss Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
-                        <div className="absolute top-0 bottom-0 left-0 right-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                     </div>
                 </div>
             </div>
@@ -271,7 +247,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                     </h2>
                     <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-purple-100"></div>
                 </div>
-                
                 {section.quizzes?.map((quiz, qIdx) => (
                   <QuizCard key={quiz.id} quiz={quiz} index={qIdx + 1} selectedOptionId={attempts[quiz.id]} onSelect={(opt) => handleOptionSelect(quiz, opt)} attemptHistory={attemptHistory} />
                 ))}
@@ -280,7 +255,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         ))}
 
-        {/* --- CONGRATULATORY & CERTIFICATE SECTION --- */}
         <div className="text-center pt-16 border-t-4 border-dashed border-gray-200">
            {isCompleted && (
                <div className="space-y-8 animate-in pop-in duration-700">
@@ -291,32 +265,23 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                         </div>
                    </div>
                    <div className="space-y-2">
-                       <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Excellent!</h2>
-                       <p className="text-xl text-gray-500 font-medium max-w-md mx-auto italic">"His master replied, 'Well done, good and faithful servant!'" — Matthew 25:21</p>
+                       <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Well Done!</h2>
+                       <p className="text-xl text-gray-500 font-medium max-w-md mx-auto italic">Keep hiding the Word in your heart.</p>
                    </div>
-                   
                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
                         {moduleProgress && (
-                             <button 
-                                onClick={() => setShowTracker(true)}
-                                className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl"
-                             >
+                             <button onClick={() => setShowTracker(true)} className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl">
                                 <ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})
                              </button>
                         )}
-                        <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl hover:-translate-y-1">
-                            EXIT TO LIBRARY
-                        </button>
+                        <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl">EXIT TO LIBRARY</button>
                    </div>
                </div>
            )}
 
-           {/* --- MODULE MASTERY BANNER --- */}
            {completedModule && (
                <div className="mt-20 p-12 bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white rounded-[3.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border-b-8 border-gold-600 relative overflow-hidden animate-in zoom-in-95 duration-1000">
                    <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 -translate-y-20"><Trophy size={400} /></div>
-                   <div className="absolute bottom-0 left-0 p-8 opacity-5 -translate-x-10 translate-y-10"><Sparkles size={200} /></div>
-                   
                    <div className="relative z-10 text-center">
                        <div className="mb-8 relative inline-block">
                             <div className="absolute inset-0 bg-gold-400 blur-[80px] opacity-30 animate-pulse"></div>
@@ -326,29 +291,13 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                        </div>
                        <h3 className="text-gold-400 text-sm font-black tracking-[0.4em] uppercase mb-4">Milestone Unlocked</h3>
                        <h2 className="text-4xl md:text-5xl font-serif font-black mb-6 leading-tight">Module Mastered: <br/> <span className="text-white">{completedModule.title}</span></h2>
-                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">
-                           Glory to God! You have successfully fulfilled all requirements for this biblical leadership block. Your credential is ready for issuance.
-                       </p>
-                       
+                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">Credential Issued for Biblical Leadership Mastery.</p>
                        {issuedCert ? (
-                           <div className="flex flex-col items-center gap-6">
-                                <div className="px-8 py-4 bg-white/10 rounded-2xl border-2 border-white/20 text-green-400 font-black flex items-center gap-3 text-xl">
-                                    <CheckCircle size={28} /> CERTIFICATE ISSUED!
-                                </div>
-                                <button 
-                                    onClick={() => setViewingCert(issuedCert)}
-                                    className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transform transition-all hover:-translate-y-1 flex items-center gap-4 text-xl border-b-4 border-gold-800"
-                                >
-                                    <Printer size={28} /> PRINT OFFICIAL COPY
-                                </button>
-                           </div>
+                           <button onClick={() => setViewingCert(issuedCert)} className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transition-all flex items-center gap-4 text-xl border-b-4 border-gold-800">
+                                <Printer size={28} /> PRINT OFFICIAL COPY
+                           </button>
                        ) : (
-                           <button 
-                                onClick={handleClaimCertificate} 
-                                disabled={isIssuingCert} 
-                                className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transform transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700 active:border-b-0 active:translate-y-2 overflow-hidden"
-                           >
-                                <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-700 -skew-x-12"></div>
+                           <button onClick={handleClaimCertificate} disabled={isIssuingCert} className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700">
                                 {isIssuingCert ? <Loader2 className="animate-spin" size={32} /> : <Trophy size={32} />} 
                                 RECEIVE CERTIFICATE
                            </button>
@@ -359,12 +308,10 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         </div>
       </div>
 
-      {/* --- TRACKER MODAL --- */}
       {showTracker && moduleProgress && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-xl animate-in fade-in">
               <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95">
                   <div className="bg-royal-950 p-10 text-white relative">
-                      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                       <div className="relative z-10 flex justify-between items-center">
                           <div className="flex items-center gap-4">
                              <div className="p-3 bg-royal-800 rounded-2xl"><ListChecks className="text-gold-500" size={28} /></div>
@@ -378,72 +325,42 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                           <div>
                               <p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-1">Module Standing</p>
                               <p className="text-3xl font-black text-gray-900">{moduleProgress.completed} / {moduleProgress.total}</p>
-                              <p className="text-sm font-bold text-gray-400 mt-1 uppercase">Lessons Finished</p>
                           </div>
-                          <div className="text-right">
-                              <p className="text-5xl font-black text-royal-600 leading-none">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
-                          </div>
+                          <p className="text-5xl font-black text-royal-600 leading-none">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
                       </div>
-                      
                       <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden mb-10 p-1 border border-gray-200">
-                          <div className="h-full bg-royal-600 rounded-full shadow-lg transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
+                          <div className="h-full bg-royal-600 rounded-full transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
                       </div>
-
                       <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
                           {moduleProgress.lessons.map((l, i) => (
                               <div key={i} className={`flex items-center gap-5 p-5 rounded-2xl border-2 transition-all ${l.done ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
-                                  {l.done ? (
-                                      <div className="bg-green-500 text-white p-1 rounded-full"><Check size={18} strokeWidth={4}/></div>
-                                  ) : (
-                                      <div className="w-6 h-6 border-4 border-gray-300 rounded-full"></div>
-                                  )}
+                                  {l.done ? <div className="bg-green-500 text-white p-1 rounded-full"><Check size={18} strokeWidth={4}/></div> : <div className="w-6 h-6 border-4 border-gray-300 rounded-full"></div>}
                                   <span className={`text-lg font-black flex-1 truncate ${l.done ? 'text-green-950' : 'text-gray-500'}`}>{l.title}</span>
-                                  {!l.done && <ChevronRight size={20} className="text-gray-300" />}
                               </div>
                           ))}
                       </div>
-
-                      <button onClick={() => setShowTracker(false)} className="w-full mt-10 py-5 bg-royal-950 text-white font-black rounded-3xl text-xl shadow-2xl hover:bg-black transition-colors border-b-4 border-gray-700">
-                        CLOSE DASHBOARD
-                      </button>
+                      <button onClick={() => setShowTracker(false)} className="w-full mt-10 py-5 bg-royal-950 text-white font-black rounded-3xl text-xl shadow-2xl">CLOSE DASHBOARD</button>
                   </div>
               </div>
           </div>
       )}
-
-      {/* --- CERTIFICATE VIEWER --- */}
-      {viewingCert && (
-          <CertificateGenerator 
-             certificate={viewingCert} 
-             onClose={() => setViewingCert(null)} 
-          />
-      )}
+      {viewingCert && <CertificateGenerator certificate={viewingCert} onClose={() => setViewingCert(null)} />}
     </div>
   );
 };
 
-const ActivityIcon: React.FC<{ size: number, className?: string }> = ({ size, className }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-    </svg>
-);
-
 const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?: string, attemptHistory: StudentAttempt[], onSelect: (opt: QuizOption) => void }> = ({ quiz, index, selectedOptionId, attemptHistory, onSelect }) => {
   const isAnswered = !!selectedOptionId;
-  const attemptsForThisQuiz = attemptHistory.filter(h => h.quizId === quiz.id).length;
+  const selectedOption = quiz.options.find(o => o.id === selectedOptionId);
+  const isSelectedCorrect = selectedOption?.isCorrect;
 
   return (
-    <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-50 p-10 relative transition-all hover:shadow-royal-900/5 hover:-translate-y-1">
-      {attemptsForThisQuiz > 0 && (
-          <div className="absolute -top-4 right-10 bg-royal-950 text-white text-[10px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-xl uppercase tracking-widest border-2 border-white/20">
-              <History size={14} /> Attempt #{attemptsForThisQuiz}
-          </div>
-      )}
+    <div className="bg-white rounded-[3rem] shadow-2xl border-2 border-gray-50 p-10 relative transition-all hover:shadow-royal-900/5">
       <div className="flex flex-col md:flex-row gap-8 mb-10 items-start">
-        <span className="shrink-0 w-14 h-14 rounded-2xl bg-royal-950 text-white font-black flex items-center justify-center text-2xl shadow-xl ring-4 ring-royal-50">{index}</span>
+        <span className="shrink-0 w-14 h-14 rounded-2xl bg-royal-950 text-white font-black flex items-center justify-center text-2xl shadow-xl">{index}</span>
         <div className="flex-1 w-full space-y-6">
             {quiz.reference && (
-                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-xl leading-relaxed shadow-inner">
+                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-sm leading-relaxed shadow-inner">
                     <div className="absolute -top-3 -left-3 p-2 bg-gray-200 rounded-xl"><Book size={16} className="text-gray-500" /></div>
                     {quiz.reference}
                 </div>
@@ -454,56 +371,50 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
 
       <div className="space-y-4 pl-0 md:pl-20">
         {quiz.options.map((option) => {
-            const isSelected = selectedOptionId === option.id;
-            const isCorrect = option.isCorrect;
+            const isOptionSelected = selectedOptionId === option.id;
+            const isOptionCorrect = option.isCorrect;
             
             let btnClass = "w-full text-left p-6 rounded-[2rem] border-4 transition-all duration-300 flex flex-col group overflow-hidden ";
-            let feedbackClass = "flex items-center gap-5 w-full ";
-            let circleClass = "w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 transition-all ";
-            let textClass = "flex-1 transition-all duration-300 font-black text-lg ";
+            let textClass = "flex-1 font-black text-lg transition-all duration-500 ";
 
             if (!isAnswered) {
-                btnClass += "bg-white border-gray-100 hover:border-royal-400 hover:bg-royal-50 cursor-pointer hover:shadow-xl hover:scale-[1.01]";
-                circleClass += "border-gray-200 text-gray-300 group-hover:border-royal-500 group-hover:text-royal-600 bg-white";
+                btnClass += "bg-white border-gray-100 hover:border-royal-400 hover:bg-royal-50 cursor-pointer";
                 textClass += "text-gray-800";
             } else {
-                if (isCorrect) {
-                    btnClass += "bg-green-50 border-green-500 ring-8 ring-green-100/50 shadow-2xl z-10 scale-[1.03]";
-                    circleClass += "bg-green-500 border-green-500 text-white scale-110";
-                    textClass += "text-green-800";
-                } else if (isSelected) {
-                    btnClass += "bg-red-50 border-red-500 opacity-90";
-                    circleClass += "bg-red-500 border-red-500 text-white";
-                    textClass += "text-red-800";
+                // FEEDBACK LOGIC
+                if (isSelectedCorrect) {
+                    // USER WAS RIGHT
+                    if (isOptionCorrect) {
+                        btnClass += "bg-green-50 border-green-500 shadow-xl scale-[1.03] z-10";
+                        textClass += "text-green-600 animate-bounce";
+                    } else {
+                        btnClass += "bg-white border-gray-100 opacity-50";
+                        textClass += "text-red-600 animate-pulse";
+                    }
                 } else {
-                    btnClass += "bg-gray-50 border-gray-100 opacity-40 grayscale-[0.5]";
-                    circleClass += "border-gray-200 text-gray-400 bg-white";
-                    textClass += "text-gray-400";
+                    // USER WAS WRONG
+                    if (isOptionSelected) {
+                        btnClass += "bg-red-50 border-red-500 shadow-xl scale-[1.03] z-10";
+                        textClass += "text-red-600 animate-bounce";
+                    } else if (isOptionCorrect) {
+                        btnClass += "bg-green-50 border-green-500";
+                        textClass += "text-green-600 animate-pulse delay-200";
+                    } else {
+                        btnClass += "bg-orange-50 border-orange-200 opacity-80";
+                        textClass += "text-orange-500 animate-pulse delay-100";
+                    }
                 }
             }
 
             return (
-                <div key={option.id}>
-                    <button disabled={isAnswered} onClick={() => onSelect(option)} className={btnClass}>
-                        <div className={feedbackClass}>
-                            <span className={circleClass}>{option.label}</span>
-                            <span className={textClass}>{option.text}</span>
-                            {isAnswered && isCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
-                            {isAnswered && isSelected && !isCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
-                        </div>
-                        
-                        {isAnswered && (
-                            <div className="animate-in slide-in-from-top-4 duration-500 mt-6 pt-6 border-t-2 border-gray-200/50 w-full">
-                                <div className={`p-5 rounded-2xl ${isCorrect ? 'bg-green-100/40 text-green-950' : 'bg-red-100/40 text-red-950'}`}>
-                                    <p className="text-xs font-black uppercase tracking-[0.2em] mb-2 opacity-60">Exegesis & Insight:</p>
-                                    <p className="text-sm font-bold leading-relaxed">
-                                        {option.explanation || "No specific guidance provided for this selection."}
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-                    </button>
-                </div>
+                <button key={option.id} disabled={isAnswered} onClick={() => onSelect(option)} className={btnClass}>
+                    <div className="flex items-center gap-5 w-full">
+                        <span className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 ${isAnswered && isOptionCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200 text-gray-400 bg-white'}`}>{option.label}</span>
+                        <span className={textClass}>{option.text}</span>
+                        {isAnswered && isOptionCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
+                        {isAnswered && isOptionSelected && !isOptionCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
+                    </div>
+                </button>
             );
         })}
       </div>

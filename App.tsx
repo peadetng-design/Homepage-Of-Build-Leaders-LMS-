@@ -12,21 +12,18 @@ import { authService } from './services/authService';
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activePath, setActivePath] = useState('dashboard'); // Default to Dashboard if logged in
+  const [activePath, setActivePath] = useState('dashboard'); 
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [createGroupModalOpen, setCreateGroupModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'signin' | 'register' | 'forgot-password' | 'change-password' | 'accept-invite'>('register');
   const [inviteToken, setInviteToken] = useState<string | undefined>(undefined);
   const [verificationNotification, setVerificationNotification] = useState<string | null>(null);
   
-  // Key to force re-render of Dashboard when clicking the same sidebar item
   const [dashboardResetKey, setDashboardResetKey] = useState(0);
 
-  // Initial Session Check, Invite Check & Verification Check
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     
-    // 1. Handle Verification Link
     const verifyToken = queryParams.get('verify_token');
     if (verifyToken) {
       handleEmailVerification(verifyToken);
@@ -34,7 +31,6 @@ const App: React.FC = () => {
       return; 
     }
 
-    // 2. Handle Invite Link
     const token = queryParams.get('invite');
     if (token) {
       setInviteToken(token);
@@ -43,12 +39,11 @@ const App: React.FC = () => {
       window.history.replaceState({}, document.title, "/");
     }
 
-    // 3. Check for existing session
     const checkSession = async () => {
       const sessionUser = await authService.getSession();
       if (sessionUser) {
         setUser(sessionUser);
-        setActivePath('dashboard'); // Ensure dashboard is active on load
+        setActivePath('dashboard'); 
       }
     };
     checkSession();
@@ -71,14 +66,14 @@ const App: React.FC = () => {
   const handleAuth = (authenticatedUser: User) => {
     setUser(authenticatedUser);
     setAuthModalOpen(false);
-    setActivePath('dashboard'); // Redirect to dashboard after login
+    setActivePath('dashboard'); 
   };
 
   const handleSignOut = async () => {
     await authService.logout();
     setUser(null);
     setSidebarOpen(true);
-    setActivePath('home'); // Go to Home (Hero) on logout
+    setActivePath('home'); 
   };
 
   const openRegister = () => {
@@ -99,8 +94,6 @@ const App: React.FC = () => {
   const handleRoleSwitch = (newRole: UserRole) => {
     if (user) {
       const originalRole = user.originalRole || user.role;
-      // When switching roles, we force the active path back to dashboard to prevent 
-      // rendering views that might not exist for the new role
       setUser({ ...user, role: newRole, originalRole });
       setActivePath('dashboard');
     }
@@ -119,6 +112,44 @@ const App: React.FC = () => {
     }
   };
   
+  // RENDER LOGIC
+  const renderContent = () => {
+    if (!user || activePath === 'home') {
+       return (
+         <Hero 
+           onRegister={openRegister} 
+           onSignIn={openSignIn} 
+           currentUser={user} 
+           onNavigateToDashboard={() => setActivePath('dashboard')}
+         />
+       );
+    }
+
+    return (
+      <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+        <Sidebar 
+          isOpen={sidebarOpen} 
+          toggle={toggleSidebar} 
+          currentRole={user.role}
+          activePath={activePath}
+          setActivePath={handleNavigation}
+          onSignOut={handleSignOut}
+        />
+        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
+          <div className="p-4 md:p-8">
+            <DashboardWrapper 
+                user={user} 
+                onUpdateUser={handleUpdateUser}
+                activePath={activePath}
+                resetKey={dashboardResetKey}
+                onChangePasswordClick={openChangePassword}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-royal-100 selection:text-royal-900">
       
@@ -133,7 +164,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Header exists in both states */}
       <Header 
         user={user} 
         toggleSidebar={toggleSidebar} 
@@ -143,41 +173,7 @@ const App: React.FC = () => {
       />
 
       <div className="pt-16"> 
-        {user ? (
-          <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-            <Sidebar 
-              isOpen={sidebarOpen} 
-              toggle={toggleSidebar} 
-              currentRole={user.role}
-              activePath={activePath}
-              setActivePath={handleNavigation}
-              onSignOut={handleSignOut}
-            />
-            <main className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-              {/* If 'home' is active, render Hero inside wrapper. Else render Dashboard. */}
-              {activePath === 'home' ? (
-                 <Hero 
-                    onRegister={() => {}} 
-                    onSignIn={() => {}} 
-                    currentUser={user} 
-                    onNavigateToDashboard={() => setActivePath('dashboard')}
-                 />
-              ) : (
-                 <div className="p-4 md:p-8">
-                    <DashboardWrapper 
-                       user={user} 
-                       onUpdateUser={handleUpdateUser}
-                       activePath={activePath}
-                       resetKey={dashboardResetKey}
-                       onChangePasswordClick={openChangePassword}
-                    />
-                 </div>
-              )}
-            </main>
-          </div>
-        ) : (
-          <Hero onRegister={openRegister} onSignIn={openSignIn} />
-        )}
+        {renderContent()}
       </div>
 
       <AuthModal 
@@ -205,8 +201,6 @@ const App: React.FC = () => {
 };
 
 const DashboardWrapper: React.FC<{user: User, onUpdateUser: (u: User) => void, activePath: string, resetKey: number, onChangePasswordClick: () => void}> = ({user, onUpdateUser, activePath, resetKey, onChangePasswordClick}) => {
-   // FIX: Adding user.role to the key ensures the Dashboard completely resets when switching roles.
-   // This solves the issue where users were "stuck" on specific role views like Parent Onboarding.
    return <Dashboard user={user} onUpdateUser={onUpdateUser} onChangePasswordClick={onChangePasswordClick} key={`${activePath}-${user.role}-${resetKey}`} initialView={activePath as any} />;
 }
 

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -37,7 +38,11 @@
               'float-delayed': 'float 6s ease-in-out 3s infinite',
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'pop-in': 'pop-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'text-reveal': 'text-reveal 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+              'text-reveal': 'text-reveal 4s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+              'bounce-pulse': 'bounce-pulse 1s ease-in-out infinite',
+              'orange-pulse': 'orange-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'green-pulse': 'green-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'red-pulse': 'red-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             },
             keyframes: {
               float: {
@@ -50,9 +55,25 @@
               },
               'text-reveal': {
                 '0%': { opacity: '0', transform: 'translateY(10px) scale(0.95)', filter: 'blur(4px)' },
-                '15%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
-                '85%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+                '20%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
+                '80%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
                 '100%': { opacity: '0', transform: 'translateY(-10px) scale(1.05)', filter: 'blur(4px)' },
+              },
+              'bounce-pulse': {
+                '0%, 100%': { transform: 'scale(1) translateY(0)' },
+                '50%': { transform: 'scale(1.1) translateY(-5px)' },
+              },
+              'orange-pulse': {
+                '0%, 100%': { color: '#f97316', textShadow: '0 0 0px rgba(249, 115, 22, 0)' },
+                '50%': { color: '#fb923c', textShadow: '0 0 10px rgba(249, 115, 22, 0.4)' },
+              },
+              'green-pulse': {
+                '0%, 100%': { color: '#16a34a', textShadow: '0 0 0px rgba(22, 163, 74, 0)' },
+                '50%': { color: '#22c55e', textShadow: '0 0 10px rgba(22, 163, 74, 0.4)' },
+              },
+              'red-pulse': {
+                '0%, 100%': { color: '#dc2626', textShadow: '0 0 0px rgba(220, 38, 38, 0)' },
+                '50%': { color: '#ef4444', textShadow: '0 0 10px rgba(220, 38, 38, 0.4)' },
               }
             }
           }
@@ -72,6 +93,19 @@
       }
       .cinzel {
         font-family: 'Cinzel', serif;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #cbd5e1;
       }
     </style>
   <script type="importmap">

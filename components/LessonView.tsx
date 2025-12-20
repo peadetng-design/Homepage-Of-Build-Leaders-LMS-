@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, AlertCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, ChevronRight, Printer, Sparkles, Flag, Book } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, Printer, Sparkles, Book } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -125,6 +126,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
+      {/* --- ENHANCED 3D INDICATOR HEADER --- */}
       <div className="bg-white border-b-4 border-gray-100 sticky top-0 z-50 shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
@@ -133,94 +135,77 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                         <ArrowLeft size={24} />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="text-2xl font-serif font-black text-royal-950 leading-tight truncate max-w-xs md:max-w-md">
-                            {lesson.title}
-                        </h1>
+                        <h1 className="text-2xl font-serif font-black text-royal-950 leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="px-2 py-0.5 bg-royal-100 text-royal-700 text-[10px] font-black uppercase tracking-widest rounded shadow-inner">
-                                {lesson.lesson_type}
-                            </span>
-                            <span className="text-gray-400 text-xs font-bold flex items-center gap-1">
-                                <BookOpen size={12}/> {lesson.book} {lesson.chapter}
-                            </span>
+                            <span className="px-2 py-0.5 bg-royal-100 text-royal-700 text-[10px] font-black uppercase tracking-widest rounded shadow-inner">{lesson.lesson_type}</span>
+                            <span className="text-gray-400 text-xs font-bold flex items-center gap-1"><BookOpen size={12}/> {lesson.book} {lesson.chapter}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
+                    {/* Circular Score */}
                     <div className="flex flex-col items-center gap-2 group">
-                        <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(245,158,11,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
+                        <div className="relative w-28 h-28 flex items-center justify-center bg-white rounded-full shadow-[0_15px_30px_rgba(245,158,11,0.2),inset_0_-6px_12px_rgba(0,0,0,0.1)] border-4 border-amber-50 transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full p-2 transform -rotate-90">
                                 <defs>
-                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                        <stop offset="0%" stopColor="#fbbf24" />
-                                        <stop offset="100%" stopColor="#d97706" />
-                                    </linearGradient>
-                                    <filter id="glow">
-                                        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                                        <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                                    </filter>
+                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient>
+                                    <filter id="scoreGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                                 </defs>
-                                <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
+                                <circle cx="56" cy="56" r="48" stroke="#f1f5f9" strokeWidth="8" fill="none" />
                                 <circle 
-                                    cx="48" cy="48" r="42" 
-                                    stroke="url(#scoreGradient)" strokeWidth="8" fill="none" 
-                                    strokeDasharray={264} 
-                                    strokeDashoffset={264 - (264 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
-                                    strokeLinecap="round" filter="url(#glow)"
-                                    className="transition-all duration-1000 ease-out" 
+                                    cx="56" cy="56" r="48" stroke="url(#scoreGradient)" strokeWidth="10" fill="none" 
+                                    strokeDasharray={301.6} strokeDashoffset={301.6 - (301.6 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
+                                    strokeLinecap="round" filter="url(#scoreGlow)" className="transition-all duration-1000 ease-out" 
                                 />
                             </svg>
                             <div className="relative z-10 text-center">
-                                <span className="block text-xl font-black text-gray-900 leading-none">{score.correct}</span>
-                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">OF {totalQuestions}</span>
+                                <span className="block text-2xl font-black text-gray-900 leading-none">{score.correct}</span>
+                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">SCORE</span>
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Live Score</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Real-Time Score</span>
                     </div>
 
+                    {/* Circular Timer */}
                     <div className="flex flex-col items-center gap-2 group">
-                        <div className="relative w-24 h-24 flex items-center justify-center bg-white rounded-full shadow-[0_10px_20px_rgba(79,70,229,0.2),inset_0_-4px_8px_rgba(0,0,0,0.05)] border-4 border-gray-50 transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full p-1.5 transform -rotate-90">
-                                <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" stopColor="#6366f1" />
-                                    <stop offset="100%" stopColor="#4338ca" />
-                                </linearGradient>
-                                <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="6" fill="none" />
+                        <div className="relative w-28 h-28 flex items-center justify-center bg-white rounded-full shadow-[0_15px_30px_rgba(79,70,229,0.2),inset_0_-6px_12px_rgba(0,0,0,0.1)] border-4 border-indigo-50 transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full p-2 transform -rotate-90">
+                                <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#4338ca" /></linearGradient>
+                                <circle cx="56" cy="56" r="48" stroke="#f1f5f9" strokeWidth="8" fill="none" />
                                 <circle 
-                                    cx="48" cy="48" r="42" 
-                                    stroke="url(#timerGradient)" strokeWidth="8" fill="none" 
-                                    strokeDasharray={264} 
-                                    strokeDashoffset={264 - (264 * ((elapsedTime % 60) / 60))} 
-                                    strokeLinecap="round" 
-                                    className="transition-all duration-1000 ease-linear" 
+                                    cx="56" cy="56" r="48" stroke="url(#timerGradient)" strokeWidth="10" fill="none" 
+                                    strokeDasharray={301.6} strokeDashoffset={301.6 - (301.6 * ((elapsedTime % 60) / 60))} 
+                                    strokeLinecap="round" className="transition-all duration-1000 ease-linear" 
                                 />
                             </svg>
                             <div className="relative z-10 text-center">
-                                <span className="block text-lg font-black text-indigo-700 font-mono leading-none tracking-tighter">{formatTime(elapsedTime)}</span>
-                                <Clock size={12} className="mx-auto mt-1 text-indigo-400 animate-pulse" />
+                                <span className="block text-xl font-black text-indigo-700 font-mono leading-none tracking-tighter">{formatTime(elapsedTime)}</span>
+                                <Clock size={14} className="mx-auto mt-1 text-indigo-400 animate-pulse" />
                             </div>
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Real-Time Clock</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Timer</span>
                     </div>
                 </div>
             </div>
 
+            {/* Horizontal Progress Bar */}
             <div className="mt-8 relative group">
                 <div className="flex justify-between items-end mb-2">
                     <span className="text-xs font-black text-royal-800 uppercase tracking-widest flex items-center gap-2">
-                         Lesson Progression
+                         Lesson Progress Calibrated
                     </span>
                     <div className="bg-royal-950 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-bounce">
-                        {Math.round(progressPercent)}% CALIBRATED
+                        {Math.round(progressPercent)}% COMPLETE
                     </div>
                 </div>
-                <div className="h-6 w-full bg-gray-200 rounded-full border-2 border-white shadow-[inset_0_4px_10px_rgba(0,0,0,0.1)] overflow-hidden p-1 relative">
+                <div className="h-8 w-full bg-gray-200 rounded-full border-4 border-white shadow-[inset_0_4px_12px_rgba(0,0,0,0.15)] overflow-hidden p-1.5 relative">
                     <div 
-                        className="h-full bg-gradient-to-r from-royal-600 via-royal-400 to-royal-600 rounded-full transition-all duration-700 relative overflow-hidden"
+                        className="h-full bg-gradient-to-r from-royal-700 via-royal-400 to-royal-700 rounded-full transition-all duration-1000 relative overflow-hidden" 
                         style={{ width: `${progressPercent}%` }}
                     >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent"></div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent"></div>
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 animate-pulse"></div>
                     </div>
                 </div>
             </div>
@@ -233,18 +218,14 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             {section.type === 'note' ? (
               <div className="prose prose-lg max-w-none text-gray-800 bg-white p-10 rounded-[2.5rem] shadow-xl border border-gray-100 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
-                <h2 className="text-3xl font-serif font-black text-gray-950 border-b-4 border-blue-50 mb-8 pb-4 flex items-center gap-3">
-                   <BookOpen className="text-blue-500"/> {section.title}
-                </h2>
+                <h2 className="text-3xl font-serif font-black text-gray-950 border-b-4 border-blue-50 mb-8 pb-4 flex items-center gap-3"><BookOpen className="text-blue-500"/> {section.title}</h2>
                 <div className="font-medium leading-relaxed text-gray-700" dangerouslySetInnerHTML={{ __html: section.body || '' }} />
               </div>
             ) : (
               <div className="space-y-10 mt-12">
                 <div className="flex items-center gap-4">
                     <div className="h-1 flex-1 bg-gradient-to-r from-transparent to-purple-100"></div>
-                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 uppercase tracking-tighter">
-                        <HelpCircle className="text-purple-500" /> {section.title}
-                    </h2>
+                    <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 uppercase tracking-tighter"><HelpCircle className="text-purple-500" /> {section.title}</h2>
                     <div className="h-1 flex-1 bg-gradient-to-l from-transparent to-purple-100"></div>
                 </div>
                 {section.quizzes?.map((quiz, qIdx) => (
@@ -260,19 +241,12 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                <div className="space-y-8 animate-in pop-in duration-700">
                    <div className="relative inline-block">
                         <div className="absolute inset-0 bg-green-400 blur-3xl opacity-20 rounded-full animate-pulse"></div>
-                        <div className="bg-white border-4 border-green-500 w-32 h-32 rounded-full flex items-center justify-center mx-auto shadow-2xl relative z-10">
-                            <CheckCircle className="text-green-500" size={64} />
-                        </div>
+                        <div className="bg-white border-4 border-green-500 w-32 h-32 rounded-full flex items-center justify-center mx-auto shadow-2xl relative z-10"><CheckCircle className="text-green-500" size={64} /></div>
                    </div>
-                   <div className="space-y-2">
-                       <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Well Done!</h2>
-                       <p className="text-xl text-gray-500 font-medium max-w-md mx-auto italic">Keep hiding the Word in your heart.</p>
-                   </div>
+                   <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Excellent Standing!</h2>
                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
                         {moduleProgress && (
-                             <button onClick={() => setShowTracker(true)} className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl">
-                                <ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})
-                             </button>
+                             <button onClick={() => setShowTracker(true)} className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl"><ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})</button>
                         )}
                         <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl">EXIT TO LIBRARY</button>
                    </div>
@@ -280,24 +254,20 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
            )}
 
            {completedModule && (
-               <div className="mt-20 p-12 bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white rounded-[3.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] border-b-8 border-gold-600 relative overflow-hidden animate-in zoom-in-95 duration-1000">
+               <div className="mt-20 p-12 bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white rounded-[3.5rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)] border-b-8 border-gold-600 relative overflow-hidden animate-in zoom-in-95 duration-1000">
                    <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 -translate-y-20"><Trophy size={400} /></div>
                    <div className="relative z-10 text-center">
                        <div className="mb-8 relative inline-block">
                             <div className="absolute inset-0 bg-gold-400 blur-[80px] opacity-30 animate-pulse"></div>
-                            <div className="w-24 h-24 bg-gradient-to-br from-gold-400 to-gold-600 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-12 mx-auto ring-4 ring-white/10">
-                                <BadgeCheck size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} />
-                            </div>
+                            <div className="w-24 h-24 bg-gradient-to-br from-gold-400 to-gold-600 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-12 mx-auto ring-4 ring-white/10"><BadgeCheck size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} /></div>
                        </div>
                        <h3 className="text-gold-400 text-sm font-black tracking-[0.4em] uppercase mb-4">Milestone Unlocked</h3>
                        <h2 className="text-4xl md:text-5xl font-serif font-black mb-6 leading-tight">Module Mastered: <br/> <span className="text-white">{completedModule.title}</span></h2>
-                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">Credential Issued for Biblical Leadership Mastery.</p>
+                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">Glory to God! Your credentials for this leadership block are now verified and ready.</p>
                        {issuedCert ? (
-                           <button onClick={() => setViewingCert(issuedCert)} className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transition-all flex items-center gap-4 text-xl border-b-4 border-gold-800">
-                                <Printer size={28} /> PRINT OFFICIAL COPY
-                           </button>
+                           <button onClick={() => setViewingCert(issuedCert)} className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transition-all flex items-center gap-4 text-xl border-b-4 border-gold-800"><Printer size={28} /> PRINT OFFICIAL COPY</button>
                        ) : (
-                           <button onClick={handleClaimCertificate} disabled={isIssuingCert} className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700">
+                           <button onClick={handleClaimCertificate} disabled={isIssuingCert} className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transform transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700">
                                 {isIssuingCert ? <Loader2 className="animate-spin" size={32} /> : <Trophy size={32} />} 
                                 RECEIVE CERTIFICATE
                            </button>
@@ -313,24 +283,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
               <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95">
                   <div className="bg-royal-950 p-10 text-white relative">
                       <div className="relative z-10 flex justify-between items-center">
-                          <div className="flex items-center gap-4">
-                             <div className="p-3 bg-royal-800 rounded-2xl"><ListChecks className="text-gold-500" size={28} /></div>
-                             <h3 className="text-3xl font-serif font-black uppercase tracking-tighter">Progress</h3>
-                          </div>
+                          <div className="flex items-center gap-4"><div className="p-3 bg-royal-800 rounded-2xl"><ListChecks className="text-gold-500" size={28} /></div><h3 className="text-3xl font-serif font-black uppercase tracking-tighter">Progress</h3></div>
                           <button onClick={() => setShowTracker(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-colors"><X size={24} /></button>
                       </div>
                   </div>
                   <div className="p-10">
                       <div className="flex justify-between items-end mb-8">
-                          <div>
-                              <p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-1">Module Standing</p>
-                              <p className="text-3xl font-black text-gray-900">{moduleProgress.completed} / {moduleProgress.total}</p>
-                          </div>
+                          <div><p className="text-gray-400 text-xs font-black uppercase tracking-widest mb-1">Module Standing</p><p className="text-3xl font-black text-gray-900">{moduleProgress.completed} / {moduleProgress.total}</p></div>
                           <p className="text-5xl font-black text-royal-600 leading-none">{Math.round((moduleProgress.completed/moduleProgress.total)*100)}%</p>
                       </div>
-                      <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden mb-10 p-1 border border-gray-200">
-                          <div className="h-full bg-royal-600 rounded-full transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div>
-                      </div>
+                      <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden mb-10 p-1 border border-gray-200"><div className="h-full bg-royal-600 rounded-full transition-all duration-1000" style={{ width: `${(moduleProgress.completed/moduleProgress.total)*100}%` }}></div></div>
                       <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-4 custom-scrollbar">
                           {moduleProgress.lessons.map((l, i) => (
                               <div key={i} className={`flex items-center gap-5 p-5 rounded-2xl border-2 transition-all ${l.done ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-100 opacity-60'}`}>
@@ -360,8 +322,8 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
         <span className="shrink-0 w-14 h-14 rounded-2xl bg-royal-950 text-white font-black flex items-center justify-center text-2xl shadow-xl">{index}</span>
         <div className="flex-1 w-full space-y-6">
             {quiz.reference && (
-                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-sm leading-relaxed shadow-inner">
-                    <div className="absolute -top-3 -left-3 p-2 bg-gray-200 rounded-xl"><Book size={16} className="text-gray-500" /></div>
+                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-sm leading-relaxed shadow-inner" style={{ fontSize: '0.6em' }}>
+                    <div className="absolute -top-3 -left-3 p-2 bg-gray-200 rounded-xl"><Book size={14} className="text-gray-500" /></div>
                     {quiz.reference}
                 </div>
             )}
@@ -381,27 +343,30 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                 btnClass += "bg-white border-gray-100 hover:border-royal-400 hover:bg-royal-50 cursor-pointer";
                 textClass += "text-gray-800";
             } else {
-                // FEEDBACK LOGIC
+                // --- MULTI-COLOR REVEAL ANIMATION LOGIC ---
                 if (isSelectedCorrect) {
-                    // USER WAS RIGHT
+                    // Scenario B: User was correct
                     if (isOptionCorrect) {
                         btnClass += "bg-green-50 border-green-500 shadow-xl scale-[1.03] z-10";
-                        textClass += "text-green-600 animate-bounce";
+                        textClass += "text-green-600 animate-bounce-pulse font-black";
                     } else {
                         btnClass += "bg-white border-gray-100 opacity-50";
-                        textClass += "text-red-600 animate-pulse";
+                        textClass += "text-red-600 animate-red-pulse font-bold";
                     }
                 } else {
-                    // USER WAS WRONG
+                    // Scenario A: User was wrong
                     if (isOptionSelected) {
+                        // Reveal that wrong option in ANIMATED BOLD RED FONTS
                         btnClass += "bg-red-50 border-red-500 shadow-xl scale-[1.03] z-10";
-                        textClass += "text-red-600 animate-bounce";
+                        textClass += "text-red-600 animate-bounce-pulse font-black";
                     } else if (isOptionCorrect) {
+                        // CORRECT answer in GREEN fonts
                         btnClass += "bg-green-50 border-green-500";
-                        textClass += "text-green-600 animate-pulse delay-200";
+                        textClass += "text-green-600 animate-green-pulse delay-200 font-bold";
                     } else {
+                        // OTHER 2 wrong options in ANIMATED BOLD ORANGE
                         btnClass += "bg-orange-50 border-orange-200 opacity-80";
-                        textClass += "text-orange-500 animate-pulse delay-100";
+                        textClass += "text-orange-500 animate-orange-pulse delay-100 font-bold";
                     }
                 }
             }
@@ -414,6 +379,11 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                         {isAnswered && isOptionCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
                         {isAnswered && isOptionSelected && !isOptionCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
                     </div>
+                    {isAnswered && (isOptionSelected || isOptionCorrect) && option.explanation && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-500 animate-in slide-in-from-top-2">
+                           {option.explanation}
+                        </div>
+                    )}
                 </button>
             );
         })}

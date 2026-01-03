@@ -1,4 +1,3 @@
-
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
@@ -14,23 +13,38 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTagline: "The #1 Bible Quiz Platform",
   heroTitle: "Build Biblical Leaders",
   heroSubtitle: "Empowering the next generation through interactive study, community competition, and spiritual growth.",
+  
   aboutMission: "Our Mission",
   aboutHeading: "Raising Up the Next Generation",
   aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God. We believe that hiding God's word in young hearts creates a foundation for lifelong leadership.",
-  resourcesHeading: "Study Materials",
-  resourcesTitle: "Equipping the Saints",
-  resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  
+  knowledgeTitle: "Knowledge",
+  knowledgeDesc: "Deep biblical literacy & understanding",
+  communityTitle: "Community",
+  communityDesc: "Faith-based connection & growth",
+
   whyBblHeading: "Why BBL?",
   whyBblItem1: "Structured memorization plans",
   whyBblItem2: "Real-time competition & leaderboards",
   whyBblItem3: "Role-based tools for Mentors & Parents",
   whyBblItem4: "District & Regional tournament support",
+
+  resourcesHeading: "Study Materials",
+  resourcesTitle: "Equipping the Saints",
+  resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  
   feature1Title: "Study Guides",
   feature1Desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.",
+  feature1Button: "Access Now",
+  
   feature2Title: "Flashcards",
   feature2Desc: "Digital and printable sets optimized for spaced repetition.",
+  feature2Button: "Access Now",
+  
   feature3Title: "Quiz Generator",
   feature3Desc: "AI-powered custom quizzes to target your weak areas.",
+  feature3Button: "Access Now",
+
   newsTagline: "Latest Updates",
   newsHeading: "News & Announcements",
   news1Tag: "Tournament",
@@ -41,12 +55,18 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   news2Date: "Sep 28, 2023",
   news2Title: "AI-Powered Study Buddy Launched",
   news2Content: "We've integrated Gemini AI to generate infinite practice questions tailored to your specific study material. Try it out in the Student Dashboard!",
-  footerYear: "2024",
+
+  footerTagline: "Empowering the next generation of faith-filled leaders through the rigorous study of the Word of God.",
   footerSocials: "Facebook, Twitter, Instagram",
-  footerPhone: "+1 (555) 123-4567",
+  footerContactHeading: "Contact Us",
   footerEmail: "contact@buildbiblicalleaders.com",
+  footerPhone: "+1 (555) 123-4567",
   footerAddress: "123 Faith Lane, Grace City, GC 77777",
-  footerCopyright: "© 2024 Build Biblical Leaders. All rights reserved."
+  footerQuickInfoHeading: "Quick Info",
+  footerQuickInfoItems: "Tournament Schedule, Discipleship Resources, Mentor Guidelines, Safety Policy",
+  footerCopyright: "© 2024 Build Biblical Leaders. All rights reserved.",
+  footerPrivacyText: "Privacy Policy",
+  footerTermsText: "Terms of Service"
 };
 
 class LessonService {
@@ -106,7 +126,12 @@ class LessonService {
     if (storedCerts) this.certificates = JSON.parse(storedCerts);
 
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
-    if (storedHomepage) this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
+    if (storedHomepage) {
+      // Merge keys to avoid issues with older versions
+      this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
+    } else {
+      this.homepage = DEFAULT_HOMEPAGE;
+    }
   }
 
   private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }

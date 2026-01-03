@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -186,7 +185,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        <div className="bg-gray-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
               <div className="bg-royal-800 text-white p-3 rounded-2xl shadow-lg">{initialData ? <Edit3 size={24} /> : <Upload size={24} />}</div>
-              <div><h2 className="font-bold text-gray-900 text-xl">{initialData ? 'Edit Content' : 'Mass Content Ingestion'}</h2><p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">LMS Console</p></div>
+              <div><h2 className="font-bold text-gray-800 text-xl">{initialData ? 'Edit Content' : 'Mass Content Ingestion'}</h2><p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">LMS Console</p></div>
           </div>
           <div className="flex gap-2">
             {isAdmin && !initialData && (
@@ -335,13 +334,113 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
 
           {contentType === 'homepage' && homepageContent && (
              <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in pb-20">
-                <div className="bg-amber-50 p-6 rounded-3xl border-4 border-amber-100 flex items-center gap-4 shadow-sm"><Home size={32} className="text-amber-600" /><p className="text-sm font-bold text-amber-900">Direct Branding Engine: Changes applied here modify the public face of the platform.</p></div>
+                <div className="bg-amber-50 p-6 rounded-3xl border-4 border-amber-100 flex items-center gap-4 shadow-sm"><Home size={32} className="text-amber-600" /><p className="text-sm font-bold text-amber-900">Branding & CMS Engine: Customize every text element on the landing page.</p></div>
+                
+                {/* 1. Hero */}
                 <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
-                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">Landing Page Header Settings</h3>
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">1. Hero Section</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div><label className={labelClass}>Top Tagline (Promo)</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div>
+                        <div><label className={labelClass}>Promo Tagline</label><input className={inputClass} value={homepageContent.heroTagline} onChange={e => setHomepageContent({...homepageContent, heroTagline: e.target.value})} /></div>
                         <div><label className={labelClass}>Main Hero Title</label><input className={inputClass} value={homepageContent.heroTitle} onChange={e => setHomepageContent({...homepageContent, heroTitle: e.target.value})} /></div>
                         <div className="md:col-span-2"><label className={labelClass}>Animated Hero Subtitle</label><textarea className={`${inputClass} h-32 border-4`} value={homepageContent.heroSubtitle} onChange={e => setHomepageContent({...homepageContent, heroSubtitle: e.target.value})} /></div>
+                    </div>
+                </div>
+
+                {/* 2. Mission & Cards */}
+                <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">2. Mission & About Us</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label className={labelClass}>Mission Small Tag</label><input className={inputClass} value={homepageContent.aboutMission} onChange={e => setHomepageContent({...homepageContent, aboutMission: e.target.value})} /></div>
+                        <div><label className={labelClass}>Main About Heading</label><input className={inputClass} value={homepageContent.aboutHeading} onChange={e => setHomepageContent({...homepageContent, aboutHeading: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>About Body Text</label><textarea className={`${inputClass} h-40 border-4`} value={homepageContent.aboutBody} onChange={e => setHomepageContent({...homepageContent, aboutBody: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Knowledge Card Title</label><input className={inputClass} value={homepageContent.knowledgeTitle} onChange={e => setHomepageContent({...homepageContent, knowledgeTitle: e.target.value})} /></div>
+                        <div><label className={labelClass}>Knowledge Card Desc</label><input className={inputClass} value={homepageContent.knowledgeDesc} onChange={e => setHomepageContent({...homepageContent, knowledgeDesc: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Community Card Title</label><input className={inputClass} value={homepageContent.communityTitle} onChange={e => setHomepageContent({...homepageContent, communityTitle: e.target.value})} /></div>
+                        <div><label className={labelClass}>Community Card Desc</label><input className={inputClass} value={homepageContent.communityDesc} onChange={e => setHomepageContent({...homepageContent, communityDesc: e.target.value})} /></div>
+                    </div>
+                </div>
+
+                {/* 3. Why BBL */}
+                <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">3. "Why BBL?" Checklist</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2"><label className={labelClass}>Section Heading</label><input className={inputClass} value={homepageContent.whyBblHeading} onChange={e => setHomepageContent({...homepageContent, whyBblHeading: e.target.value})} /></div>
+                        <div><label className={labelClass}>Item 1</label><input className={inputClass} value={homepageContent.whyBblItem1} onChange={e => setHomepageContent({...homepageContent, whyBblItem1: e.target.value})} /></div>
+                        <div><label className={labelClass}>Item 2</label><input className={inputClass} value={homepageContent.whyBblItem2} onChange={e => setHomepageContent({...homepageContent, whyBblItem2: e.target.value})} /></div>
+                        <div><label className={labelClass}>Item 3</label><input className={inputClass} value={homepageContent.whyBblItem3} onChange={e => setHomepageContent({...homepageContent, whyBblItem3: e.target.value})} /></div>
+                        <div><label className={labelClass}>Item 4</label><input className={inputClass} value={homepageContent.whyBblItem4} onChange={e => setHomepageContent({...homepageContent, whyBblItem4: e.target.value})} /></div>
+                    </div>
+                </div>
+
+                {/* 4. Features */}
+                <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">4. Study Materials & Features</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label className={labelClass}>Main Heading</label><input className={inputClass} value={homepageContent.resourcesHeading} onChange={e => setHomepageContent({...homepageContent, resourcesHeading: e.target.value})} /></div>
+                        <div><label className={labelClass}>Resources Title</label><input className={inputClass} value={homepageContent.resourcesTitle} onChange={e => setHomepageContent({...homepageContent, resourcesTitle: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Resources Subtitle</label><textarea className={`${inputClass} h-24 border-4`} value={homepageContent.resourcesSubtitle} onChange={e => setHomepageContent({...homepageContent, resourcesSubtitle: e.target.value})} /></div>
+                        
+                        <div className="md:col-span-2 border-t-2 pt-6 mt-4"><h4 className="font-bold text-sm text-gray-400 uppercase">Feature 1: Study Guides</h4></div>
+                        <div><label className={labelClass}>Title</label><input className={inputClass} value={homepageContent.feature1Title} onChange={e => setHomepageContent({...homepageContent, feature1Title: e.target.value})} /></div>
+                        <div><label className={labelClass}>Button Text</label><input className={inputClass} value={homepageContent.feature1Button} onChange={e => setHomepageContent({...homepageContent, feature1Button: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} h-20`} value={homepageContent.feature1Desc} onChange={e => setHomepageContent({...homepageContent, feature1Desc: e.target.value})} /></div>
+
+                        <div className="md:col-span-2 border-t-2 pt-6 mt-4"><h4 className="font-bold text-sm text-gray-400 uppercase">Feature 2: Flashcards</h4></div>
+                        <div><label className={labelClass}>Title</label><input className={inputClass} value={homepageContent.feature2Title} onChange={e => setHomepageContent({...homepageContent, feature2Title: e.target.value})} /></div>
+                        <div><label className={labelClass}>Button Text</label><input className={inputClass} value={homepageContent.feature2Button} onChange={e => setHomepageContent({...homepageContent, feature2Button: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} h-20`} value={homepageContent.feature2Desc} onChange={e => setHomepageContent({...homepageContent, feature2Desc: e.target.value})} /></div>
+
+                        <div className="md:col-span-2 border-t-2 pt-6 mt-4"><h4 className="font-bold text-sm text-gray-400 uppercase">Feature 3: Quiz Generator</h4></div>
+                        <div><label className={labelClass}>Title</label><input className={inputClass} value={homepageContent.feature3Title} onChange={e => setHomepageContent({...homepageContent, feature3Title: e.target.value})} /></div>
+                        <div><label className={labelClass}>Button Text</label><input className={inputClass} value={homepageContent.feature3Button} onChange={e => setHomepageContent({...homepageContent, feature3Button: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} h-20`} value={homepageContent.feature3Desc} onChange={e => setHomepageContent({...homepageContent, feature3Desc: e.target.value})} /></div>
+                    </div>
+                </div>
+
+                {/* 5. News */}
+                <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">5. News & Announcements</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div><label className={labelClass}>Section Tagline</label><input className={inputClass} value={homepageContent.newsTagline} onChange={e => setHomepageContent({...homepageContent, newsTagline: e.target.value})} /></div>
+                        <div><label className={labelClass}>Section Heading</label><input className={inputClass} value={homepageContent.newsHeading} onChange={e => setHomepageContent({...homepageContent, newsHeading: e.target.value})} /></div>
+                        
+                        <div className="md:col-span-2 border-t-2 pt-6 mt-4"><h4 className="font-bold text-sm text-gray-400 uppercase">Latest Article 1</h4></div>
+                        <div><label className={labelClass}>Tag (e.g. Tournament)</label><input className={inputClass} value={homepageContent.news1Tag} onChange={e => setHomepageContent({...homepageContent, news1Tag: e.target.value})} /></div>
+                        <div><label className={labelClass}>Date</label><input className={inputClass} value={homepageContent.news1Date} onChange={e => setHomepageContent({...homepageContent, news1Date: e.target.value})} /></div>
+                        <div><label className={labelClass}>Title</label><input className={inputClass} value={homepageContent.news1Title} onChange={e => setHomepageContent({...homepageContent, news1Title: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news1Content} onChange={e => setHomepageContent({...homepageContent, news1Content: e.target.value})} /></div>
+
+                        <div className="md:col-span-2 border-t-2 pt-6 mt-4"><h4 className="font-bold text-sm text-gray-400 uppercase">Latest Article 2</h4></div>
+                        <div><label className={labelClass}>Tag (e.g. Update)</label><input className={inputClass} value={homepageContent.news2Tag} onChange={e => setHomepageContent({...homepageContent, news2Tag: e.target.value})} /></div>
+                        <div><label className={labelClass}>Date</label><input className={inputClass} value={homepageContent.news2Date} onChange={e => setHomepageContent({...homepageContent, news2Date: e.target.value})} /></div>
+                        <div><label className={labelClass}>Title</label><input className={inputClass} value={homepageContent.news2Title} onChange={e => setHomepageContent({...homepageContent, news2Title: e.target.value})} /></div>
+                        <div className="md:col-span-2"><label className={labelClass}>Content</label><textarea className={`${inputClass} h-24`} value={homepageContent.news2Content} onChange={e => setHomepageContent({...homepageContent, news2Content: e.target.value})} /></div>
+                    </div>
+                </div>
+
+                {/* 6. Footer */}
+                <div className="space-y-6 bg-white p-8 rounded-3xl border-4 border-gray-100 shadow-sm">
+                    <h3 className="font-bold text-gray-900 text-lg border-b-2 pb-4">6. Footer Configuration</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="md:col-span-2"><label className={labelClass}>Footer Tagline</label><textarea className={`${inputClass} h-20`} value={homepageContent.footerTagline} onChange={e => setHomepageContent({...homepageContent, footerTagline: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Social Links (Comma separated)</label><input className={inputClass} value={homepageContent.footerSocials} onChange={e => setHomepageContent({...homepageContent, footerSocials: e.target.value})} /></div>
+                        <div><label className={labelClass}>Contact Heading</label><input className={inputClass} value={homepageContent.footerContactHeading} onChange={e => setHomepageContent({...homepageContent, footerContactHeading: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Email Address</label><input className={inputClass} value={homepageContent.footerEmail} onChange={e => setHomepageContent({...homepageContent, footerEmail: e.target.value})} /></div>
+                        <div><label className={labelClass}>Phone Number</label><input className={inputClass} value={homepageContent.footerPhone} onChange={e => setHomepageContent({...homepageContent, footerPhone: e.target.value})} /></div>
+                        
+                        <div className="md:col-span-2"><label className={labelClass}>Physical Address</label><input className={inputClass} value={homepageContent.footerAddress} onChange={e => setHomepageContent({...homepageContent, footerAddress: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Quick Info Heading</label><input className={inputClass} value={homepageContent.footerQuickInfoHeading} onChange={e => setHomepageContent({...homepageContent, footerQuickInfoHeading: e.target.value})} /></div>
+                        <div><label className={labelClass}>Quick Info Items (Comma separated)</label><input className={inputClass} value={homepageContent.footerQuickInfoItems} onChange={e => setHomepageContent({...homepageContent, footerQuickInfoItems: e.target.value})} /></div>
+                        
+                        <div className="md:col-span-2"><label className={labelClass}>Copyright Text</label><input className={inputClass} value={homepageContent.footerCopyright} onChange={e => setHomepageContent({...homepageContent, footerCopyright: e.target.value})} /></div>
+                        
+                        <div><label className={labelClass}>Privacy Policy Label</label><input className={inputClass} value={homepageContent.footerPrivacyText} onChange={e => setHomepageContent({...homepageContent, footerPrivacyText: e.target.value})} /></div>
+                        <div><label className={labelClass}>Terms of Service Label</label><input className={inputClass} value={homepageContent.footerTermsText} onChange={e => setHomepageContent({...homepageContent, footerTermsText: e.target.value})} /></div>
                     </div>
                 </div>
              </div>

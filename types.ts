@@ -32,26 +32,42 @@ export interface User {
 }
 
 export interface HomepageContent {
+  // Hero
   heroTagline: string;
   heroTitle: string;
   heroSubtitle: string;
+  
+  // Mission / About
   aboutMission: string;
   aboutHeading: string;
   aboutBody: string;
-  resourcesHeading: string;
-  resourcesTitle: string;
-  resourcesSubtitle: string;
+  knowledgeTitle: string;
+  knowledgeDesc: string;
+  communityTitle: string;
+  communityDesc: string;
+
+  // Why BBL
   whyBblHeading: string;
   whyBblItem1: string;
   whyBblItem2: string;
   whyBblItem3: string;
   whyBblItem4: string;
+
+  // Resources / Features
+  resourcesHeading: string;
+  resourcesTitle: string;
+  resourcesSubtitle: string;
   feature1Title: string;
   feature1Desc: string;
+  feature1Button: string;
   feature2Title: string;
   feature2Desc: string;
+  feature2Button: string;
   feature3Title: string;
   feature3Desc: string;
+  feature3Button: string;
+
+  // News
   newsTagline: string;
   newsHeading: string;
   news1Tag: string;
@@ -62,12 +78,19 @@ export interface HomepageContent {
   news2Date: string;
   news2Title: string;
   news2Content: string;
-  footerYear: string;
+
+  // Footer
+  footerTagline: string;
   footerSocials: string;
-  footerPhone: string;
+  footerContactHeading: string;
   footerEmail: string;
+  footerPhone: string;
   footerAddress: string;
+  footerQuickInfoHeading: string;
+  footerQuickInfoItems: string; // Comma separated
   footerCopyright: string;
+  footerPrivacyText: string;
+  footerTermsText: string;
 }
 
 export interface Module {
@@ -75,7 +98,7 @@ export interface Module {
   title: string;
   description: string;
   lessonIds: string[]; 
-  totalLessonsRequired: number; // New: Manually specified count
+  totalLessonsRequired: number; 
   completionRule: {
     minimumCompletionPercentage: number;
   };

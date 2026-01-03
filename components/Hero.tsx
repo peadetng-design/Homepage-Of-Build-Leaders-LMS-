@@ -173,14 +173,14 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                     <div className="grid grid-cols-2 gap-6">
                        {/* Knowledge Card */}
                        <div className="p-6 bg-royal-500 rounded-2xl shadow-lg border-b-8 border-r-4 border-royal-800 hover:shadow-xl hover:-translate-y-1 transition-all group">
-                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">Knowledge</h4>
-                          <p className="text-sm text-royal-100">Deep biblical literacy & understanding</p>
+                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">{content.knowledgeTitle}</h4>
+                          <p className="text-sm text-royal-100">{content.knowledgeDesc}</p>
                        </div>
                        
                        {/* Community Card */}
                        <div className="p-6 bg-gold-500 rounded-2xl shadow-lg border-b-8 border-r-4 border-gold-600 hover:shadow-xl hover:-translate-y-1 transition-all group">
-                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">Community</h4>
-                          <p className="text-sm text-white/90">Faith-based connection & growth</p>
+                          <h4 className="font-bold text-white text-lg mb-1 group-hover:scale-105 transition-transform origin-left">{content.communityTitle}</h4>
+                          <p className="text-sm text-white/90">{content.communityDesc}</p>
                        </div>
                     </div>
                  </div>
@@ -218,9 +218,9 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                </div>
                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {[
-                    { title: content.feature1Title, icon: BookOpen, desc: content.feature1Desc, theme: "royal" },
-                    { title: content.feature2Title, icon: Library, desc: content.feature2Desc, theme: "gold" },
-                    { title: content.feature3Title, icon: Flame, desc: content.feature3Desc, theme: "royal" },
+                    { title: content.feature1Title, icon: BookOpen, desc: content.feature1Desc, buttonText: content.feature1Button, theme: "royal" },
+                    { title: content.feature2Title, icon: Library, desc: content.feature2Desc, buttonText: content.feature2Button, theme: "gold" },
+                    { title: content.feature3Title, icon: Flame, desc: content.feature3Desc, buttonText: content.feature3Button, theme: "royal" },
                   ].map((resource, idx) => {
                     const isRoyal = resource.theme === 'royal';
                     return (
@@ -241,7 +241,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                            {resource.desc}
                          </p>
                          <span className={`font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer flex items-center gap-2 text-white`}>
-                           Access Now <ArrowRight size={16} />
+                           {resource.buttonText} <ArrowRight size={16} />
                          </span>
                       </div>
                     );
@@ -319,7 +319,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                     <span className="cinzel font-bold text-xl text-royal-900 tracking-wide">Build Biblical Leaders</span>
                   </div>
                   <p className="text-gray-500 max-w-sm mb-6 leading-relaxed">
-                    Empowering the next generation of faith-filled leaders through the rigorous study of the Word of God.
+                    {content.footerTagline}
                   </p>
                   <div className="flex items-center gap-4">
                      <span className="text-gray-400 font-bold uppercase text-xs tracking-widest">Connect:</span>
@@ -334,7 +334,7 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                </div>
                
                <div>
-                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">Contact Us</h4>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">{content.footerContactHeading}</h4>
                   <ul className="space-y-4">
                      <li className="flex items-center gap-3 text-gray-600 hover:text-royal-600 transition-colors">
                         <Mail size={16} className="text-indigo-400" />
@@ -352,12 +352,11 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
                </div>
 
                <div>
-                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">Quick Info</h4>
+                  <h4 className="font-bold text-gray-900 uppercase text-xs tracking-widest mb-6">{content.footerQuickInfoHeading}</h4>
                   <ul className="space-y-3">
-                     <li className="text-gray-500 text-sm font-medium">Tournament Schedule</li>
-                     <li className="text-gray-500 text-sm font-medium">Discipleship Resources</li>
-                     <li className="text-gray-500 text-sm font-medium">Mentor Guidelines</li>
-                     <li className="text-gray-500 text-sm font-medium">Safety Policy</li>
+                     {content.footerQuickInfoItems.split(',').map((item, idx) => (
+                        <li key={idx} className="text-gray-500 text-sm font-medium hover:text-royal-600 cursor-pointer transition-colors">{item.trim()}</li>
+                     ))}
                   </ul>
                </div>
             </div>
@@ -365,8 +364,8 @@ const Hero: React.FC<HeroProps> = ({ onRegister, onSignIn, currentUser, onNaviga
             <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-gray-400 text-xs font-bold">
                <p>{content.footerCopyright}</p>
                <div className="flex gap-8">
-                  <span className="hover:text-royal-600 cursor-pointer">Privacy Policy</span>
-                  <span className="hover:text-royal-600 cursor-pointer">Terms of Service</span>
+                  <span className="hover:text-royal-600 cursor-pointer">{content.footerPrivacyText}</span>
+                  <span className="hover:text-royal-600 cursor-pointer">{content.footerTermsText}</span>
                </div>
             </div>
          </div>

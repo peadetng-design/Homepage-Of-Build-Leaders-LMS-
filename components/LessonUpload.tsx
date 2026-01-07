@@ -117,6 +117,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
         book: manualLesson.book,
         chapter: manualLesson.chapter,
         author: initialData?.author || currentUser.name,
+        authorId: initialData?.authorId || currentUser.id,
         created_at: initialData?.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
         status: 'published',

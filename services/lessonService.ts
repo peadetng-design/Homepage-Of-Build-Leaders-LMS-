@@ -162,6 +162,17 @@ class LessonService {
     }
   }
 
+  async deleteLesson(id: string): Promise<void> {
+    this.lessons = this.lessons.filter(l => l.id !== id);
+    this.saveLessons();
+    
+    // Also remove from modules
+    this.modules.forEach(m => {
+      m.lessonIds = m.lessonIds.filter(lId => lId !== id);
+    });
+    this.saveModules();
+  }
+
   async getHomepageContent(): Promise<HomepageContent> { return this.homepage; }
   async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.saveHomepage(); }
 
@@ -352,7 +363,7 @@ class LessonService {
                 }))
             });
         }
-        const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
+        const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, authorId: author.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
         await this.publishLesson(lesson);
     }
   }

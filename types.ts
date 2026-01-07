@@ -174,6 +174,7 @@ export interface Lesson {
   book?: string;
   chapter?: number;
   author: string;
+  authorId: string;
   created_at: string;
   updated_at: string;
   status: 'draft' | 'published';

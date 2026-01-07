@@ -275,6 +275,7 @@ class AuthService {
     user.isVerified = true;
     user.verificationToken = undefined;
     this.saveUsers();
+    this.logAction(user, 'VERIFY_EMAIL', 'Email verification successful');
   }
 
   async login(email: string, password: string): Promise<User> {
@@ -345,11 +346,20 @@ class AuthService {
           this.saveUsers();
       }
       
+      this.logAction(user, 'LOGIN_SOCIAL', `Logged in via ${provider}`);
       localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, exp: Date.now() + 3600000 }));
       return user;
   }
 
-  async logout(): Promise<void> { localStorage.removeItem(SESSION_KEY); }
+  async logout(): Promise<void> { 
+    const sessionStr = localStorage.getItem(SESSION_KEY);
+    if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        const user = this.users.find(u => u.id === session.userId);
+        if (user) this.logAction(user, 'LOGOUT', 'User signed out');
+    }
+    localStorage.removeItem(SESSION_KEY); 
+  }
 
   async getSession(): Promise<User | null> {
     const sessionStr = localStorage.getItem(SESSION_KEY);
@@ -369,6 +379,7 @@ class AuthService {
       
       Object.assign(user, updates);
       this.saveUsers();
+      this.logAction(user, 'UPDATE_PROFILE', `Profile updated: ${Object.keys(updates).join(', ')}`);
       return { ...user };
   }
 
@@ -387,6 +398,7 @@ class AuthService {
       };
       this.messages.push(msg);
       this.saveMessages();
+      this.logAction(sender, 'SEND_MESSAGE', `Message sent to channel ${channelId}`);
   }
 
   async getChannelMessages(channelId: string): Promise<ChatMessage[]> {
@@ -420,6 +432,7 @@ class AuthService {
       };
       this.channels.push(newChannel);
       this.saveChannels();
+      this.logAction(creator, 'CREATE_CHANNEL', `Chat channel "${name}" created`);
   }
 
   async updateChannelName(actor: User, channelId: string, newName: string): Promise<void> {
@@ -434,6 +447,7 @@ class AuthService {
 
       channel.name = newName;
       this.saveChannels();
+      this.logAction(actor, 'UPDATE_CHANNEL', `Channel ${channelId} renamed to "${newName}"`);
   }
 
   async getUserChannels(user: User): Promise<ChatChannel[]> {
@@ -483,6 +497,7 @@ class AuthService {
           added = true;
       }
       this.saveUsers();
+      this.logAction(actor, added ? 'CURATE_LESSON' : 'RECURATE_LESSON', `Lesson ${lessonId} ${added ? 'added to' : 'removed from'} library`);
       return added;
   }
 
@@ -517,12 +532,14 @@ class AuthService {
       };
       this.users.push(newMentor);
       this.saveUsers();
+      this.logAction(orgAdmin, 'CREATE_MENTOR', `Mentor ${name} created directly`);
   }
 
   async deleteUser(actor: User, targetId: string): Promise<void> {
       if (this.users.find(u => u.id === targetId)?.email === DEFAULT_ADMIN_EMAIL) throw new Error("Protected");
       this.users = this.users.filter(u => u.id !== targetId);
       this.saveUsers();
+      this.logAction(actor, 'DELETE_USER', `User ID ${targetId} deleted`);
   }
 
   async getAllUsers(actor: User): Promise<User[]> {
@@ -533,26 +550,52 @@ class AuthService {
     throw new Error("Unauthorized");
   }
   
-  async getLogs(adminUser: User): Promise<AuditLog[]> { return this.logs; }
+  async getLogs(user: User): Promise<AuditLog[]> { 
+    const isAdminType = user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
+    if (isAdminType) return this.logs;
+
+    // Filter logs based on user relations
+    if (user.role === UserRole.ORGANIZATION) {
+        return this.logs.filter(log => {
+            const actor = this.users.find(u => u.id === log.actorId);
+            return log.actorId === user.id || actor?.organizationId === user.id;
+        });
+    }
+
+    if (user.role === UserRole.MENTOR) {
+        return this.logs.filter(log => {
+            const actor = this.users.find(u => u.id === log.actorId);
+            return log.actorId === user.id || actor?.mentorId === user.id;
+        });
+    }
+
+    // Students and Parents see their personal logs
+    return this.logs.filter(log => log.actorId === user.id);
+  }
 
   async updateUserRole(actor: User, targetId: string, role: UserRole): Promise<void> {
       const u = this.users.find(u => u.id === targetId);
       if(u && u.email !== DEFAULT_ADMIN_EMAIL) {
           u.role = role;
           this.saveUsers();
+          this.logAction(actor, 'UPDATE_ROLE', `Role for ${u.name} changed to ${role}`);
       }
   }
 
   async changePassword(user: User, oldP: string, newP: string): Promise<void> {
       const u = this.users.find(u => u.id === user.id);
-      if(u && u.passwordHash === oldP) { u.passwordHash = newP; this.saveUsers(); }
+      if(u && u.passwordHash === oldP) { 
+        u.passwordHash = newP; 
+        this.saveUsers(); 
+        this.logAction(user, 'CHANGE_PASSWORD', 'Password updated');
+      }
   }
 
   async createInvite(actor: User, email: string, role: UserRole): Promise<string> {
       const token = crypto.randomUUID();
-      const isAdminType = actor.role === UserRole.ADMIN || actor.role === UserRole.CO_ADMIN;
       this.invites.push({ id: crypto.randomUUID(), token, email, role, invitedBy: actor.name, inviterId: actor.id, organizationId: actor.role === UserRole.ORGANIZATION ? actor.id : undefined, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 72*3600000).toISOString(), status: 'pending' });
       this.saveInvites();
+      this.logAction(actor, 'CREATE_INVITE', `Invite created for ${email} as ${role}`);
       return token;
   }
 
@@ -564,6 +607,7 @@ class AuthService {
   async deleteInvite(actor: User, inviteId: string): Promise<void> {
       this.invites = this.invites.filter(i => i.id !== inviteId);
       this.saveInvites();
+      this.logAction(actor, 'DELETE_INVITE', `Invite ID ${inviteId} revoked`);
   }
   
   async validateInvite(token: string) { return this.invites.find(i => i.token === token && i.status === 'pending'); }
@@ -579,6 +623,7 @@ class AuthService {
       this.users.push(user);
       inv.status = 'accepted';
       this.saveInvites(); this.saveUsers();
+      this.logAction(user, 'ACCEPT_INVITE', 'Joined platform via invitation');
       localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id, exp: Date.now() + 3600000 }));
       return user;
   }
@@ -587,7 +632,12 @@ class AuthService {
       const mentor = this.users.find(u => u.classCode === code.toUpperCase() && (u.role === UserRole.MENTOR || u.role === UserRole.CO_ADMIN));
       if (!mentor) throw new Error("Invalid");
       const s = this.users.find(u => u.id === student.id);
-      if (s) { s.mentorId = mentor.id; if (mentor.organizationId) s.organizationId = mentor.organizationId; this.saveUsers(); }
+      if (s) { 
+        s.mentorId = mentor.id; 
+        if (mentor.organizationId) s.organizationId = mentor.organizationId; 
+        this.saveUsers(); 
+        this.logAction(student, 'JOIN_CLASS', `Joined class code ${code}`);
+      }
   }
 
   async getAllMentors(): Promise<User[]> { return this.users.filter(u => u.role === UserRole.MENTOR || u.role === UserRole.CO_ADMIN); }
@@ -596,17 +646,34 @@ class AuthService {
       if (this.requests.find(r => r.studentId === s.id && r.mentorId === mId && r.status === 'pending')) throw new Error("Pending");
       this.requests.push({ id: crypto.randomUUID(), studentId: s.id, studentName: s.name, mentorId: mId, status: 'pending', timestamp: new Date().toISOString() });
       this.saveRequests();
+      this.logAction(s, 'REQUEST_JOIN', `Requested to join mentor group ${mId}`);
   }
   async respondToRequest(rid: string, status: 'accepted'|'rejected', mentor: User): Promise<void> {
       const r = this.requests.find(x => x.id === rid);
-      if(r) { r.status = status; if(status === 'accepted') { const s = this.users.find(u => u.id === r.studentId); if(s) { s.mentorId = mentor.id; if(mentor.organizationId) s.organizationId = mentor.organizationId; } } this.saveRequests(); this.saveUsers(); }
+      if(r) { 
+        r.status = status; 
+        if(status === 'accepted') { 
+            const s = this.users.find(u => u.id === r.studentId); 
+            if(s) { 
+                s.mentorId = mentor.id; 
+                if(mentor.organizationId) s.organizationId = mentor.organizationId; 
+            } 
+        } 
+        this.saveRequests(); 
+        this.saveUsers(); 
+        this.logAction(mentor, 'RESPOND_REQUEST', `Request for ${r.studentName} ${status}`);
+      }
   }
 
   async linkParentToStudent(parent: User, studentEmail: string): Promise<void> {
       const student = this.users.find(u => u.email === studentEmail && u.role === UserRole.STUDENT);
       if (!student) throw new Error("Student not found");
       const p = this.users.find(u => u.id === parent.id);
-      if(p) { p.linkedStudentId = student.id; this.saveUsers(); }
+      if(p) { 
+        p.linkedStudentId = student.id; 
+        this.saveUsers(); 
+        this.logAction(parent, 'LINK_STUDENT', `Linked to student ${studentEmail}`);
+      }
   }
 
   async createGroup(user: User, groupName: string): Promise<User> {
@@ -616,10 +683,16 @@ class AuthService {
     if (!targetUser.classCode) targetUser.classCode = this.generateCode();
     targetUser.groupName = groupName;
     this.saveUsers();
+    this.logAction(user, 'CREATE_GROUP', `Created group "${groupName}"`);
     return targetUser;
   }
 
   async getLessons() { return this.lessons; }
+
+  // Expose logAction for internal use by LessonService
+  public recordExternalAction(user: User, action: string, details: string, severity: 'info' | 'warning' | 'critical' = 'info') {
+      this.logAction(user, action, details, severity);
+  }
 }
 
 export const authService = new AuthService();

@@ -20,7 +20,7 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe
+  ArrowLeft, Settings, Globe, ClipboardList
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -221,7 +221,7 @@ const RecentChatsWidget = ({ messages, onGoToChat }: { messages: ChatMessage[], 
 );
 
 // VIEW STATE ENUM
-type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news' | 'performance-report' | 'chat' | 'certificates' | 'settings';
+type DashboardView = 'dashboard' | 'lesson-browser' | 'lesson-view' | 'upload' | 'parent-onboarding' | 'manage-lessons' | 'manage-users' | 'resources' | 'news' | 'performance-report' | 'chat' | 'certificates' | 'settings' | 'view-logs';
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePasswordClick, initialView }) => {
   const [currentView, setCurrentView] = useState<DashboardView>(
@@ -242,13 +242,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
   // View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
-  const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests' | 'curated'>('lessons');
+  const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('lessons');
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
   const [orgSubTab, setOrgSubTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null); 
   const [editingLesson, setEditingLesson] = useState<Lesson | null>(null);
 
-  const isAdminView = user.role === UserRole.ADMIN;
+  const isAdminView = user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
   const isMentorView = user.role === UserRole.MENTOR;
   const isStudentView = user.role === UserRole.STUDENT;
   const isParentView = user.role === UserRole.PARENT;
@@ -350,6 +350,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
       if (isMentorView) setMentorActiveTab('users');
   };
 
+  const handleViewLogs = () => {
+      setCurrentView('view-logs');
+      if (isAdminView) setAdminActiveTab('logs');
+      if (isMentorView) setMentorActiveTab('logs');
+      if (isOrgView) setOrgSubTab('logs');
+  };
+
   if (currentView === 'settings') {
       return (
         <div className="max-w-4xl mx-auto py-12 px-6 animate-in fade-in duration-500">
@@ -423,7 +430,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                                     onClick={onChangePasswordClick}
                                     className="px-6 py-4 bg-gray-100 text-gray-600 font-bold rounded-2xl hover:bg-gray-200 transition-colors"
                                 >
-                                    Security & Security
+                                    Security Settings
                                 </button>
                             )}
                         </div>
@@ -616,6 +623,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
              </button>
            </Tooltip>
 
+           <Tooltip content="View your activity trail and system events.">
+             <button 
+               onClick={handleViewLogs}
+               className={`flex items-center gap-2 px-5 py-3 bg-slate-700 text-white rounded-xl font-bold hover:bg-slate-800 shadow-lg shadow-slate-700/30 transition-all transform hover:-translate-y-0.5 ${currentView === 'view-logs' ? 'ring-2 ring-slate-400' : ''}`}
+             >
+                <ClipboardList size={18} /> 
+                <span>VIEW LOGS</span>
+             </button>
+           </Tooltip>
+
            <Tooltip content="Update your profile and account settings.">
              <button onClick={() => setCurrentView('settings')} className="p-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors">
                <Settings size={20} />
@@ -653,23 +670,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                )}
 
                {/* Panels */}
-               {currentView === 'manage-lessons' && (
-                   <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => { if (tab !== 'lessons' && tab !== 'upload') setCurrentView('dashboard'); }} />
+               {currentView === 'view-logs' && (
+                   <AdminPanel currentUser={user} activeTab="logs" onTabChange={(tab: any) => { if (tab !== 'logs') setCurrentView('dashboard'); }} />
                )}
-               {isAdminView && currentView !== 'manage-lessons' && (
+               {currentView === 'manage-lessons' && (
+                   <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => { if (tab !== 'lessons' && tab !== 'upload' && tab !== 'logs') setCurrentView('dashboard'); }} />
+               )}
+               {isAdminView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                    <AdminPanel currentUser={user} activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
                )}
-               {isMentorView && currentView !== 'manage-lessons' && (
+               {isMentorView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                    <AdminPanel currentUser={user} activeTab={mentorActiveTab} onTabChange={(tab: any) => setMentorActiveTab(tab)} />
                )}
-               {isOrgView && currentView !== 'manage-lessons' && (
+               {isOrgView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                    currentView === 'manage-users' ? (
-                        <AdminPanel currentUser={user} activeTab={orgSubTab} onTabChange={(tab) => { if (tab === 'users' || tab === 'invites') setOrgSubTab(tab); else setCurrentView('dashboard'); }} />
+                        <AdminPanel currentUser={user} activeTab={orgSubTab} onTabChange={(tab) => { if (tab === 'users' || tab === 'invites' || tab === 'logs') setOrgSubTab(tab); else setCurrentView('dashboard'); }} />
                    ) : (
                         <OrganizationPanel currentUser={user} />
                    )
                )}
-               {isStudentView && currentView !== 'manage-lessons' && (
+               {isStudentView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                        <div className="flex border-b border-gray-100">
                           <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-800 border-b-2 border-royal-800' : 'text-gray-500 hover:bg-gray-50'}`}>VIEW LESSONS</button>
@@ -679,7 +699,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                        <StudentPanel currentUser={user} activeTab={studentActiveTab} onTakeLesson={startLesson} />
                    </div>
                )}
-               {isParentView && currentView !== 'manage-lessons' && (
+               {isParentView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                     <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center">
                         <h3 className="font-bold text-gray-800 text-lg mb-2">Child Progress Report</h3>
                         <p className="text-gray-500">Detailed analytics for your linked student will appear here.</p>

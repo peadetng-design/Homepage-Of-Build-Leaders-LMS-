@@ -9,7 +9,7 @@ import {
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
   BookOpen, Edit2, Eye, Plus, Upload, ListPlus, Trash2,
   Download, List, Send, Loader2, Book, Star, Settings, Globe,
-  Clock, FileText, CheckCircle
+  Clock, FileText, CheckCircle, Activity
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -64,7 +64,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       } else if (activeTab === 'invites' && canManageUsers) {
         const invites = await authService.getInvites(currentUser);
         setPendingInvites(invites);
-      } else if (activeTab === 'logs' && isAdmin) {
+      } else if (activeTab === 'logs') {
         const data = await authService.getLogs(currentUser);
         setLogs(data);
       } else if (activeTab === 'lessons') {
@@ -203,9 +203,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
              <Shield className={isMentor ? "text-blue-400" : isOrg ? "text-slate-400" : "text-gold-500"} /> 
-             {isAdmin ? (currentUser.role === UserRole.CO_ADMIN ? "Co-Admin Console" : "Admin Console") : isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Personal Library Manager"}
+             {isAdmin ? (currentUser.role === UserRole.CO_ADMIN ? "Co-Admin Console" : "Admin Console") : isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Personal Manager"}
            </h2>
-           <p className="text-royal-200 text-sm mt-1">Manage users, content, and system oversight.</p>
+           <p className="text-royal-200 text-sm mt-1">Manage users, content, and audit records.</p>
         </div>
         <div className="flex flex-wrap gap-2">
            {canManageUsers && (
@@ -216,7 +216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            )}
            <button onClick={() => setActiveTab('lessons')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>MANAGE LESSONS</button>
            {isMentor && <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Requests</button>}
-           {isAdmin && <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Logs</button>}
+           <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Logs</button>
         </div>
       </div>
 
@@ -339,7 +339,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         )}
 
         {/* LOGS TAB */}
-        {activeTab === 'logs' && isAdmin && (
+        {activeTab === 'logs' && (
           <div className="space-y-6">
              <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
                 <div className="relative flex-1 w-full max-w-md">
@@ -371,6 +371,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             <td className="p-4 opacity-70">{log.details}</td>
                          </tr>
                       ))}
+                      {getFilteredLogs().length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="p-20 text-center text-gray-600 font-bold uppercase tracking-widest italic opacity-40">No records found in this scope</td>
+                          </tr>
+                      )}
                    </tbody>
                 </table>
              </div>

@@ -1,4 +1,5 @@
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
+import { authService } from './authService';
 
 const DB_LESSONS_KEY = 'bbl_db_lessons';
 const DB_ATTEMPTS_KEY = 'bbl_db_attempts';
@@ -160,9 +161,13 @@ class LessonService {
             this.saveModules();
         }
     }
+    // Audit Log call (relying on author info in lesson)
+    const author = { id: lesson.authorId, name: lesson.author } as User;
+    authService.recordExternalAction(author, 'PUBLISH_LESSON', `Published lesson: ${lesson.title}`);
   }
 
   async deleteLesson(id: string): Promise<void> {
+    const lesson = this.lessons.find(l => l.id === id);
     this.lessons = this.lessons.filter(l => l.id !== id);
     this.saveLessons();
     
@@ -171,6 +176,11 @@ class LessonService {
       m.lessonIds = m.lessonIds.filter(lId => lId !== id);
     });
     this.saveModules();
+    
+    if (lesson) {
+        const author = { id: lesson.authorId, name: lesson.author } as User;
+        authService.recordExternalAction(author, 'DELETE_LESSON', `Deleted lesson: ${lesson.title}`);
+    }
   }
 
   async getHomepageContent(): Promise<HomepageContent> { return this.homepage; }
@@ -268,6 +278,10 @@ class LessonService {
       };
       this.certificates.unshift(cert);
       this.saveCertificates();
+      
+      const user = { id: userId, name: userName } as User;
+      authService.recordExternalAction(user, 'EARN_CERTIFICATE', `Earned certificate for module: ${mod.title}`);
+      
       return cert;
   }
 
@@ -366,12 +380,16 @@ class LessonService {
         const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, authorId: author.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
         await this.publishLesson(lesson);
     }
+    authService.recordExternalAction(author, 'COMMIT_DRAFT', `Mass import committed for module: ${draft.moduleMetadata.title}`);
   }
 
   async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
     const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
     this.attempts.push(attempt);
     this.saveAttempts();
+    
+    const user = { id: studentId, name: 'Student' } as User; // Minimal representation
+    authService.recordExternalAction(user, 'SUBMIT_QUIZ', `Answered quiz ${quizId} in lesson ${lessonId} (${isCorrect ? 'Correct' : 'Incorrect'})`);
   }
 
   async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }

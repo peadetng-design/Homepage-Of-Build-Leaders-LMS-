@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { UserRole, User, Lesson, ChatMessage } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
@@ -21,7 +20,7 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings
+  ArrowLeft, Settings, Globe
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -241,7 +240,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
 
-  // Admin View State
+  // View State
   const [adminActiveTab, setAdminActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated'>('users');
   const [mentorActiveTab, setMentorActiveTab] = useState<'users' | 'invites' | 'lessons' | 'upload' | 'requests' | 'curated'>('lessons');
   const [studentActiveTab, setStudentActiveTab] = useState<'join' | 'browse' | 'lessons'>('lessons');
@@ -323,6 +322,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     if (isOrgView) {
         setOrgSubTab('lessons');
         setCurrentView('manage-lessons');
+    } else if (isStudentView) {
+        setCurrentView('manage-lessons');
+        setAdminActiveTab('lessons'); // Reuses AdminPanel for curation
     } else {
         setCurrentView('dashboard');
         if (isAdminView) setAdminActiveTab('lessons');
@@ -562,8 +564,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
               </Tooltip>
            )}
 
-           {(isAdminView || isMentorView || isOrgView) && (
-              <Tooltip content="Edit, delete, or organize existing lessons in your library.">
+           <Tooltip content="Edit, delete, or curate existing lessons in your library.">
                 <button 
                   onClick={handleManageLessons}
                   className={`flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-0.5 ${currentView === 'manage-lessons' && (isOrgView ? orgSubTab === 'lessons' : true) ? 'ring-2 ring-indigo-400' : ''}`}
@@ -571,8 +572,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                   <Edit3 size={18} /> 
                   <span>MANAGE LESSONS</span>
                 </button>
-              </Tooltip>
-           )}
+           </Tooltip>
 
            {(isMentorView || isOrgView) && (
               <Tooltip content="Manage the specific list of lessons visible to your group.">
@@ -653,22 +653,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                )}
 
                {/* Panels */}
-               {isAdminView && (
+               {currentView === 'manage-lessons' && (
+                   <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => { if (tab !== 'lessons' && tab !== 'upload') setCurrentView('dashboard'); }} />
+               )}
+               {isAdminView && currentView !== 'manage-lessons' && (
                    <AdminPanel currentUser={user} activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
                )}
-               {isMentorView && (
+               {isMentorView && currentView !== 'manage-lessons' && (
                    <AdminPanel currentUser={user} activeTab={mentorActiveTab} onTabChange={(tab: any) => setMentorActiveTab(tab)} />
                )}
-               {isOrgView && (
-                   currentView === 'manage-lessons' ? (
-                        <AdminPanel currentUser={user} activeTab={orgSubTab} onTabChange={(tab) => { if (tab === 'lessons' || tab === 'upload' || tab === 'curated') setOrgSubTab(tab); else setCurrentView('dashboard'); }} />
-                   ) : currentView === 'manage-users' ? (
+               {isOrgView && currentView !== 'manage-lessons' && (
+                   currentView === 'manage-users' ? (
                         <AdminPanel currentUser={user} activeTab={orgSubTab} onTabChange={(tab) => { if (tab === 'users' || tab === 'invites') setOrgSubTab(tab); else setCurrentView('dashboard'); }} />
                    ) : (
                         <OrganizationPanel currentUser={user} />
                    )
                )}
-               {isStudentView && (
+               {isStudentView && currentView !== 'manage-lessons' && (
                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                        <div className="flex border-b border-gray-100">
                           <button onClick={() => setStudentActiveTab('lessons')} className={`flex-1 py-4 font-bold text-sm ${studentActiveTab === 'lessons' ? 'bg-royal-50 text-royal-800 border-b-2 border-royal-800' : 'text-gray-500 hover:bg-gray-50'}`}>VIEW LESSONS</button>
@@ -678,7 +679,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                        <StudentPanel currentUser={user} activeTab={studentActiveTab} onTakeLesson={startLesson} />
                    </div>
                )}
-               {isParentView && (
+               {isParentView && currentView !== 'manage-lessons' && (
                     <div className="bg-white p-8 rounded-2xl border border-gray-100 text-center">
                         <h3 className="font-bold text-gray-800 text-lg mb-2">Child Progress Report</h3>
                         <p className="text-gray-500">Detailed analytics for your linked student will appear here.</p>

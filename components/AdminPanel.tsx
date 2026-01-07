@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest } from '../types';
 import { authService } from '../services/authService';
 import { lessonService } from '../services/lessonService';
 import LessonUpload from './LessonUpload';
 import Tooltip from './Tooltip'; 
-// Added missing Globe import
 import { 
   Users, UserPlus, Shield, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
@@ -31,9 +29,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [users, setUsers] = useState<User[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [curatedLessons, setCuratedLessons] = useState<Lesson[]>([]);
-  const [requests, setRequests] = useState<JoinRequest[]>([]);
-  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   
@@ -72,10 +67,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       } else if (activeTab === 'lessons') {
         const data = await lessonService.getLessons(); 
         setLessons(data);
-      } else if (activeTab === 'curated' && (isMentor || isOrg)) {
-        const ids = currentUser.curatedLessonIds || [];
-        const data = await lessonService.getLessonsByIds(ids);
-        setCuratedLessons(data);
       } else if (activeTab === 'requests' && isMentor) {
         const data = await authService.getJoinRequests(currentUser);
         setRequests(data);
@@ -87,15 +78,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
     }
   };
 
-  const handleRoleChange = async (targetId: string, newRole: UserRole) => {
-    try {
-      await authService.updateUserRole(currentUser, targetId, newRole);
-      setNotification({ msg: 'User role updated successfully', type: 'success' });
-      fetchData();
-    } catch (err: any) {
-      setNotification({ msg: err.message, type: 'error' });
-    }
-  };
+  const [pendingInvites, setPendingInvites] = useState<Invite[]>([]);
+  const [requests, setRequests] = useState<JoinRequest[]>([]);
 
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm("Delete this user?")) return;
@@ -109,95 +93,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   };
 
   const handleDeleteLesson = async (lessonId: string) => {
-    if (!window.confirm("Permantently delete this lesson?")) return;
+    if (!window.confirm("Permanently delete this lesson from the system? This action cannot be undone.")) return;
     try {
       await lessonService.deleteLesson(lessonId);
-      setNotification({ msg: 'Lesson deleted successfully', type: 'success' });
+      setNotification({ msg: 'Lesson permanently deleted from library', type: 'success' });
       fetchData();
     } catch (err: any) {
       setNotification({ msg: err.message, type: 'error' });
     }
   };
 
-  const handleCreateInvite = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    try {
-      const token = await authService.createInvite(currentUser, inviteEmail, inviteRole);
-      const link = `${window.location.origin}?invite=${token}`;
-      setGeneratedLink(link);
-      setNotification({ msg: 'Invite created!', type: 'success' });
-      fetchData(); 
-      return link;
-    } catch (err: any) {
-      setNotification({ msg: err.message, type: 'error' });
-      return null;
-    }
-  };
-
-  const handleSendMailInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSendingMail(true);
-    try {
-        const link = await handleCreateInvite();
-        if (link) {
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            setNotification({ msg: `Invitation email sent to ${inviteEmail}!`, type: 'success' });
-            setInviteEmail('');
-            setGeneratedLink('');
-        }
-    } finally {
-        setIsSendingMail(false);
-    }
-  };
-
-  const handleDeleteInvite = async (inviteId: string) => {
+  const toggleCurated = async (lessonId: string) => {
       try {
-          await authService.deleteInvite(currentUser, inviteId);
-          setNotification({ msg: 'Invite revoked successfully', type: 'success' });
+          const added = await authService.toggleCuratedLesson(currentUser, lessonId);
+          setNotification({ 
+              msg: added ? "Lesson added to your personal list!" : "Lesson removed from your personal list.", 
+              type: 'success' 
+          });
+          // Note: Curation doesn't delete the lesson, just toggles user association
           fetchData();
       } catch (err: any) {
           setNotification({ msg: err.message, type: 'error' });
       }
   };
 
-  const handleRequestResponse = async (reqId: string, status: 'accepted' | 'rejected') => {
-      try {
-          await authService.respondToRequest(reqId, status, currentUser);
-          setNotification({ msg: `Request ${status}`, type: 'success' });
-          fetchData(); 
-      } catch (err: any) {
-          setNotification({ msg: err.message, type: 'error' });
-      }
-  };
-
-  const toggleCurated = async (lessonId: string) => {
-      try {
-          const added = await authService.toggleCuratedLesson(currentUser, lessonId);
-          setNotification({ 
-              msg: added ? "Lesson added to curated list!" : "Lesson removed from curated list.", 
-              type: 'success' 
-          });
-          if (activeTab === 'curated') fetchData();
-      } catch (err: any) {
-          setNotification({ msg: err.message, type: 'error' });
-      }
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    setNotification({ msg: 'Link copied to clipboard', type: 'success' });
-  };
-
-  const getFilteredLogs = () => {
-    return logs.filter(log => {
-        const matchesSearch = log.actorName.toLowerCase().includes(logSearch.toLowerCase()) || log.action.toLowerCase().includes(logSearch.toLowerCase());
-        const matchesSeverity = logSeverity === 'all' || log.severity === logSeverity;
-        return matchesSearch && matchesSeverity;
-    });
-  };
-
   const displayedLessons = lessons.filter(l => {
-      if (isAdmin) return true; // Admin manages all
+      if (isAdmin) return true; // Admin sees all management options
       if (lessonSubMode === 'personal') return l.authorId === currentUser.id;
       return l.authorId !== currentUser.id;
   });
@@ -207,8 +128,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       <div className="bg-royal-900 px-8 pt-16 pb-10 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
-             <Shield className={isMentor ? "text-blue-400" : "text-gold-500"} /> 
-             {isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Admin Console"}
+             <Shield className={isMentor ? "text-blue-400" : isOrg ? "text-slate-400" : "text-gold-500"} /> 
+             {isAdmin ? "Admin Console" : isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Personal Library Manager"}
            </h2>
            <p className="text-royal-200 text-sm mt-1">Manage users, content, and system oversight.</p>
         </div>
@@ -220,7 +141,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
              </>
            )}
            <button onClick={() => setActiveTab('lessons')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>MANAGE LESSONS</button>
-           {(isMentor || isOrg) && <button onClick={() => setActiveTab('curated')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'curated' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Curated List</button>}
            {isMentor && <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Requests</button>}
            {isAdmin && <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Logs</button>}
         </div>
@@ -269,88 +189,106 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         {activeTab === 'lessons' && (
            <div className="space-y-6">
               {!isAdmin && (
-                  <div className="flex p-1 bg-gray-100 rounded-xl w-full max-w-md">
+                  <div className="flex p-1 bg-gray-100 rounded-xl w-full max-w-2xl border-2 border-gray-200 shadow-sm">
                       <button 
                         onClick={() => setLessonSubMode('main')}
-                        className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${lessonSubMode === 'main' ? 'bg-white shadow text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-4 px-6 rounded-lg text-sm font-black flex items-center justify-center gap-3 transition-all ${lessonSubMode === 'main' ? 'bg-royal-800 shadow-xl text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
                       >
-                         <Globe size={16} /> MAIN LIBRARY LESSONS
+                         <Globe size={18} /> MAIN LIBRARY LESSONS
                       </button>
                       <button 
                         onClick={() => setLessonSubMode('personal')}
-                        className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${lessonSubMode === 'personal' ? 'bg-white shadow text-royal-800' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`flex-1 py-4 px-6 rounded-lg text-sm font-black flex items-center justify-center gap-3 transition-all ${lessonSubMode === 'personal' ? 'bg-royal-800 shadow-xl text-white' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200'}`}
                       >
-                         <Book size={16} /> MY UPLOADED LESSONS
+                         <Book size={18} /> MY UPLOADED LESSONS
                       </button>
                   </div>
               )}
 
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-900 uppercase text-xs tracking-widest text-gray-400">
-                    {isAdmin ? "MASTER SYSTEM LIBRARY" : lessonSubMode === 'main' ? "GLOBAL CURRICULUM (READ ONLY)" : "YOUR PERSONAL REPOSITORY"}
-                </h3>
+              <div className="flex justify-between items-center mb-4 pt-4">
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${lessonSubMode === 'main' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {lessonSubMode === 'main' ? <Globe size={20}/> : <Book size={20}/>}
+                    </div>
+                    <h3 className="font-black text-gray-900 uppercase text-sm tracking-widest">
+                        {isAdmin ? "MASTER SYSTEM LIBRARY" : lessonSubMode === 'main' ? "GLOBAL CURRICULUM (CURATE ONLY)" : "YOUR PERSONAL REPOSITORY"}
+                    </h3>
+                </div>
                 { (isAdmin || lessonSubMode === 'personal') && (
-                    <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-md hover:bg-indigo-700">
-                        <Plus size={16} /> Upload New
+                    <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-indigo-700 transform hover:-translate-y-0.5 transition-all">
+                        <Plus size={18} /> Upload New
                     </button>
                 )}
               </div>
 
-              <div className="border rounded-xl overflow-hidden bg-white shadow-sm">
+              <div className="border-2 border-gray-100 rounded-2xl overflow-hidden bg-white shadow-xl">
                 <table className="w-full text-left">
                   <thead>
-                     <tr className="bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase">
-                        <th className="p-4">Title</th>
-                        <th className="p-4">Author</th>
-                        <th className="p-4">Curated</th>
-                        <th className="p-4 text-right">Actions</th>
+                     <tr className="bg-gray-50 border-b-2 border-gray-100 text-xs font-black text-gray-400 uppercase tracking-widest">
+                        <th className="p-6">Title & Context</th>
+                        <th className="p-6">Authorship</th>
+                        <th className="p-6">Personal Standing</th>
+                        <th className="p-6 text-right">Actions</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-50 font-medium">
                      {displayedLessons.map((l) => {
                        const isMyLesson = l.authorId === currentUser.id;
                        const canManage = isAdmin || isMyLesson;
                        const isCurated = currentUser.curatedLessonIds?.includes(l.id);
 
                        return (
-                       <tr key={l.id} className="hover:bg-gray-50">
-                          <td className="p-4">
-                              <div className="font-bold text-gray-900">{l.title}</div>
-                              <div className="text-[10px] text-gray-400 font-bold uppercase">{l.lesson_type} • {l.targetAudience}</div>
+                       <tr key={l.id} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="p-6">
+                              <div className="font-black text-gray-900 text-lg">{l.title}</div>
+                              <div className="flex gap-2 mt-2">
+                                  <span className="text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-500 font-black uppercase tracking-tighter">{l.lesson_type}</span>
+                                  <span className="text-[10px] px-2 py-0.5 bg-royal-50 rounded text-royal-600 font-black uppercase tracking-tighter">{l.targetAudience}</span>
+                              </div>
                           </td>
-                          <td className="p-4 text-xs text-gray-600 font-medium">
-                              {isMyLesson ? <span className="text-indigo-600 font-bold">YOU</span> : l.author}
-                          </td>
-                          <td className="p-4">
-                              {isCurated ? (
-                                  <span className="text-xs font-bold text-green-600 flex items-center gap-1"><Check size={14}/> In My List</span>
+                          <td className="p-6 text-sm text-gray-600">
+                              {isMyLesson ? (
+                                  <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full font-black text-xs border border-emerald-100">SELF-UPLOADED</span>
                               ) : (
-                                  <span className="text-xs text-gray-300">Not Curated</span>
+                                  <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-[10px] font-bold text-gray-500">{l.author.charAt(0)}</div>
+                                      <span className="font-bold text-gray-800">{l.author}</span>
+                                  </div>
                               )}
                           </td>
-                          <td className="p-4 text-right">
-                             <div className="flex justify-end items-center gap-2">
-                                <Tooltip content={isCurated ? "Remove from my list" : "Add to my list"}>
+                          <td className="p-6">
+                              {isCurated ? (
+                                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gold-50 text-gold-700 rounded-full text-xs font-black border border-gold-100">
+                                      <Star size={12} fill="currentColor"/> IN MY LIBRARY
+                                  </div>
+                              ) : (
+                                  <span className="text-xs text-gray-300 font-black uppercase tracking-widest italic">Not Curated</span>
+                              )}
+                          </td>
+                          <td className="p-6 text-right">
+                             <div className="flex justify-end items-center gap-3">
+                                <Tooltip content={isCurated ? "Remove from my personal list" : "Add to my personal list"}>
                                     <button 
                                         onClick={() => toggleCurated(l.id)} 
-                                        className={`p-2 rounded-lg transition-colors ${isCurated ? 'bg-royal-100 text-royal-800' : 'bg-gray-50 text-gray-400 hover:bg-royal-50 hover:text-royal-600'}`}
+                                        className={`p-3 rounded-xl transition-all shadow-sm ${isCurated ? 'bg-gold-500 text-white ring-4 ring-gold-100 scale-110' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-royal-600'}`}
                                     >
-                                        {isCurated ? <Star size={18} fill="currentColor" /> : <Star size={18} />}
+                                        {isCurated ? <X size={20} /> : <Plus size={20} />}
                                     </button>
                                 </Tooltip>
                                 
                                 {canManage ? (
                                     <>
-                                        <Tooltip content="Edit Lesson Content">
-                                            <button onClick={() => { setEditingLesson(l); setActiveTab('upload'); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg"><Edit2 size={18} /></button>
+                                        <div className="w-px h-8 bg-gray-100 mx-1"></div>
+                                        <Tooltip content="Edit Personal Content">
+                                            <button onClick={() => { setEditingLesson(l); setActiveTab('upload'); }} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-transparent hover:border-blue-200"><Edit2 size={20} /></button>
                                         </Tooltip>
-                                        <Tooltip content="Permanently Delete">
-                                            <button onClick={() => handleDeleteLesson(l.id)} className="p-2 text-red-400 hover:bg-red-50 rounded-lg hover:text-red-600"><Trash2 size={18} /></button>
+                                        <Tooltip content="PERMANENT System Delete">
+                                            <button onClick={() => handleDeleteLesson(l.id)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-200"><Trash2 size={20} /></button>
                                         </Tooltip>
                                     </>
                                 ) : (
-                                    <Tooltip content="Read Only (Admin Content)">
-                                        <div className="p-2 text-gray-300"><Shield size={18} /></div>
+                                    <Tooltip content="Main Library Content (Read Only)">
+                                        <div className="p-3 text-gray-200 bg-gray-50 rounded-xl"><Shield size={20} /></div>
                                     </Tooltip>
                                 )}
                              </div>
@@ -358,7 +296,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                        </tr>
                      )})}
                      {displayedLessons.length === 0 && (
-                         <tr><td colSpan={4} className="p-20 text-center text-gray-400 italic">No lessons found in this section.</td></tr>
+                         <tr><td colSpan={4} className="p-24 text-center">
+                            <div className="max-w-xs mx-auto text-gray-400">
+                                <BookOpen size={48} className="mx-auto mb-4 opacity-20" />
+                                <p className="font-black text-sm uppercase tracking-widest">No lessons identified</p>
+                                <p className="text-xs mt-1 italic">Start by curating lessons from the global curriculum or upload your own.</p>
+                            </div>
+                         </td></tr>
                      )}
                   </tbody>
                 </table>
@@ -374,8 +318,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
              onCancel={() => { setEditingLesson(null); setActiveTab('lessons'); }}
            />
         )}
-
-        {/* ... User Management & Logs ... */}
       </div>
     </div>
   );

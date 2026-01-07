@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, Menu, Plus, X, ChevronDown, User as UserIcon } from 'lucide-react';
 import { UserRole, User } from '../types';
@@ -42,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
      if (!user) return [];
      
      const SYSTEM_ADMIN_EMAIL = 'peadetng@gmail.com';
-     const isSystemAdmin = user.email === SYSTEM_ADMIN_EMAIL || user.originalRole === UserRole.ADMIN;
+     const isSystemAdmin = user.email === SYSTEM_ADMIN_EMAIL || user.originalRole === UserRole.ADMIN || user.originalRole === UserRole.CO_ADMIN;
 
      if (isSystemAdmin) {
         // System Admin can see and switch to ANY role
@@ -109,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
               onClick={() => setRoleMenuOpen(!roleMenuOpen)}
               className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold tracking-wider text-royal-800 bg-royal-50 border border-royal-100 rounded-full uppercase hover:bg-royal-100 transition-colors"
             >
-              {user.role} View <ChevronDown size={12} />
+              {user.role.replace('_', '-')} View <ChevronDown size={12} />
             </button>
             
             {/* Dropdown Menu */}
@@ -126,7 +125,7 @@ const Header: React.FC<HeaderProps> = ({ user, toggleSidebar, sidebarOpen, onRol
                       }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${user.role === role ? 'bg-royal-50 text-royal-800 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}
                     >
-                      {role}
+                      {role.replace('_', '-')}
                       {user.role === role && <UserIcon size={14} />}
                     </button>
                   ))}

@@ -46,7 +46,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [logSearch, setLogSearch] = useState('');
   const [logSeverity, setLogSeverity] = useState<'all' | 'info' | 'warning' | 'critical'>('all');
 
-  const isAdmin = currentUser.role === UserRole.ADMIN;
+  const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CO_ADMIN;
   const isMentor = currentUser.role === UserRole.MENTOR;
   const isOrg = currentUser.role === UserRole.ORGANIZATION;
   const canManageUsers = isAdmin || isOrg || isMentor;
@@ -203,7 +203,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         <div>
            <h2 className="text-2xl font-serif font-bold flex items-center gap-3">
              <Shield className={isMentor ? "text-blue-400" : isOrg ? "text-slate-400" : "text-gold-500"} /> 
-             {isAdmin ? "Admin Console" : isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Personal Library Manager"}
+             {isAdmin ? (currentUser.role === UserRole.CO_ADMIN ? "Co-Admin Console" : "Admin Console") : isOrg ? "Organization Console" : isMentor ? "Mentor Console" : "Personal Library Manager"}
            </h2>
            <p className="text-royal-200 text-sm mt-1">Manage users, content, and system oversight.</p>
         </div>
@@ -298,6 +298,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             <option value={UserRole.STUDENT}>STUDENT</option>
                             <option value={UserRole.MENTOR}>MENTOR</option>
                             <option value={UserRole.PARENT}>PARENT</option>
+                            {/* Conditional Admin options */}
+                            {currentUser.role === UserRole.ADMIN && (
+                                <>
+                                    <option value={UserRole.ORGANIZATION}>ORGANIZATION</option>
+                                    <option value={UserRole.CO_ADMIN}>CO-ADMIN</option>
+                                </>
+                            )}
                         </select>
                     </div>
                     <div className="flex items-end">

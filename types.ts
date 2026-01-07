@@ -3,6 +3,7 @@ export enum UserRole {
   STUDENT = 'STUDENT',
   MENTOR = 'MENTOR',
   ADMIN = 'ADMIN',
+  CO_ADMIN = 'CO_ADMIN',
   PARENT = 'PARENT',
   ORGANIZATION = 'ORGANIZATION'
 }

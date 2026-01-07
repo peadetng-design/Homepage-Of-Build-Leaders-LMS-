@@ -1,4 +1,3 @@
-
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, ChatChannel, ChatMessage, ChatAttachment } from '../types';
 
 // STORAGE KEYS
@@ -23,7 +22,7 @@ const DEFAULT_ADMIN = {
   avatarUrl: '',
   lastLogin: new Date().toISOString(),
   authProvider: 'email' as const,
-  allowedRoles: [UserRole.ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT],
+  allowedRoles: [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT],
   curatedLessonIds: []
 };
 
@@ -116,11 +115,11 @@ class AuthService {
       // MIGRATION: Ensure allowedRoles and curatedLessonIds exist for all existing users
       let usersUpdated = false;
       this.users.forEach(u => {
-          const isSystemAdmin = u.email === DEFAULT_ADMIN_EMAIL;
+          const isSystemAdmin = u.email === DEFAULT_ADMIN_EMAIL || u.role === UserRole.ADMIN || u.role === UserRole.CO_ADMIN;
           
           if (!u.allowedRoles || u.allowedRoles.length <= 1) {
               u.allowedRoles = isSystemAdmin 
-                ? [UserRole.ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
+                ? [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
                 : [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT];
               usersUpdated = true;
           }
@@ -147,7 +146,7 @@ class AuthService {
       const adminIndex = this.users.findIndex(u => u.email === DEFAULT_ADMIN_EMAIL);
       if (adminIndex !== -1) {
           this.users[adminIndex].role = UserRole.ADMIN;
-          this.users[adminIndex].allowedRoles = [UserRole.ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT];
+          this.users[adminIndex].allowedRoles = [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT];
           if (!this.users[adminIndex].passwordHash) this.users[adminIndex].passwordHash = DEFAULT_ADMIN.passwordHash;
       } else {
           this.users.unshift(DEFAULT_ADMIN);
@@ -249,11 +248,13 @@ class AuthService {
         verificationToken,
         lastLogin: undefined,
         authProvider: 'email',
-        classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
+        classCode: (role === UserRole.MENTOR || role === UserRole.CO_ADMIN) ? this.generateCode() : undefined,
         organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
         organizationId: organizationId,
-        // All non-admin users get standard role set
-        allowedRoles: [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT],
+        // Admin types get broader access
+        allowedRoles: (role === UserRole.ADMIN || role === UserRole.CO_ADMIN)
+          ? [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
+          : [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT],
         curatedLessonIds: [],
         avatarUrl: ''
     };
@@ -286,10 +287,10 @@ class AuthService {
 
     user.lastLogin = new Date().toISOString();
     
-    const isSystemAdmin = user.email === DEFAULT_ADMIN_EMAIL;
+    const isSystemAdmin = user.email === DEFAULT_ADMIN_EMAIL || user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
     if (!user.allowedRoles || user.allowedRoles.length <= 1) {
         user.allowedRoles = isSystemAdmin 
-          ? [UserRole.ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
+          ? [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
           : [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT];
     }
     
@@ -312,6 +313,7 @@ class AuthService {
                user = { ...DEFAULT_ADMIN };
                this.users.unshift(user);
           } else {
+              const isAdminType = (role === UserRole.ADMIN || role === UserRole.CO_ADMIN);
               user = {
                   id: crypto.randomUUID(),
                   name: provider === 'google' ? 'Google User' : 'Apple User',
@@ -320,9 +322,11 @@ class AuthService {
                   authProvider: provider,
                   isVerified: true,
                   lastLogin: new Date().toISOString(),
-                  classCode: role === UserRole.MENTOR ? this.generateCode() : undefined,
+                  classCode: (role === UserRole.MENTOR || role === UserRole.CO_ADMIN) ? this.generateCode() : undefined,
                   organizationCode: role === UserRole.ORGANIZATION ? this.generateCode() : undefined,
-                  allowedRoles: [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT],
+                  allowedRoles: isAdminType
+                    ? [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
+                    : [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT],
                   curatedLessonIds: [],
                   avatarUrl: ''
               };
@@ -330,9 +334,9 @@ class AuthService {
           }
           this.saveUsers();
       } else {
-          if (user.email === DEFAULT_ADMIN_EMAIL) {
-             user.role = UserRole.ADMIN;
-             user.allowedRoles = [UserRole.ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT];
+          const isSystemAdmin = user.email === DEFAULT_ADMIN_EMAIL || user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
+          if (isSystemAdmin) {
+             user.allowedRoles = [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT];
           } else if (!user.allowedRoles || user.allowedRoles.length <= 1) {
              user.allowedRoles = [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT];
           }
@@ -403,10 +407,11 @@ class AuthService {
 
   async createChatChannel(creator: User, name: string, description: string, config: Partial<ChatChannel>): Promise<void> {
       if (creator.role === UserRole.STUDENT || creator.role === UserRole.PARENT) throw new Error("Unauthorized");
+      const isAdminType = creator.role === UserRole.ADMIN || creator.role === UserRole.CO_ADMIN;
       const newChannel: ChatChannel = {
           id: crypto.randomUUID(),
           name, description, creatorId: creator.id,
-          scope: creator.role === UserRole.ADMIN ? 'global' : creator.role === UserRole.ORGANIZATION ? 'org' : 'class',
+          scope: isAdminType ? 'global' : creator.role === UserRole.ORGANIZATION ? 'org' : 'class',
           orgId: creator.role === UserRole.ORGANIZATION ? creator.id : undefined,
           mentorId: creator.role === UserRole.MENTOR ? creator.id : undefined,
           includeRoles: config.includeRoles || [],
@@ -422,7 +427,8 @@ class AuthService {
       if (!channel) throw new Error("Channel not found");
       
       // Permission: Creator or Admin
-      if (channel.creatorId !== actor.id && actor.role !== UserRole.ADMIN) {
+      const isAdminType = actor.role === UserRole.ADMIN || actor.role === UserRole.CO_ADMIN;
+      if (channel.creatorId !== actor.id && !isAdminType) {
           throw new Error("Unauthorized to edit this channel");
       }
 
@@ -457,7 +463,7 @@ class AuthService {
               description: 'Public channel for all users',
               creatorId: 'usr_main_admin',
               scope: 'global',
-              includeRoles: [UserRole.ADMIN, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.STUDENT, UserRole.PARENT],
+              includeRoles: [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.STUDENT, UserRole.PARENT],
               createdAt: new Date(2023, 0, 1).toISOString()
           });
       }
@@ -520,7 +526,8 @@ class AuthService {
   }
 
   async getAllUsers(actor: User): Promise<User[]> {
-    if (actor.role === UserRole.ADMIN) return this.users;
+    const isAdminType = actor.role === UserRole.ADMIN || actor.role === UserRole.CO_ADMIN;
+    if (isAdminType) return this.users;
     if (actor.role === UserRole.ORGANIZATION) return this.users.filter(u => u.organizationId === actor.id || u.createdBy === actor.id);
     if (actor.role === UserRole.MENTOR) return this.users.filter(u => u.mentorId === actor.id || u.createdBy === actor.id);
     throw new Error("Unauthorized");
@@ -543,13 +550,15 @@ class AuthService {
 
   async createInvite(actor: User, email: string, role: UserRole): Promise<string> {
       const token = crypto.randomUUID();
+      const isAdminType = actor.role === UserRole.ADMIN || actor.role === UserRole.CO_ADMIN;
       this.invites.push({ id: crypto.randomUUID(), token, email, role, invitedBy: actor.name, inviterId: actor.id, organizationId: actor.role === UserRole.ORGANIZATION ? actor.id : undefined, createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 72*3600000).toISOString(), status: 'pending' });
       this.saveInvites();
       return token;
   }
 
   async getInvites(actor: User): Promise<Invite[]> {
-      return actor.role === UserRole.ADMIN ? this.invites.filter(i => i.status === 'pending') : this.invites.filter(i => i.status === 'pending' && i.inviterId === actor.id);
+      const isAdminType = actor.role === UserRole.ADMIN || actor.role === UserRole.CO_ADMIN;
+      return isAdminType ? this.invites.filter(i => i.status === 'pending') : this.invites.filter(i => i.status === 'pending' && i.inviterId === actor.id);
   }
 
   async deleteInvite(actor: User, inviteId: string): Promise<void> {
@@ -562,7 +571,11 @@ class AuthService {
   async acceptInvite(token: string, name: string, pass: string): Promise<User> {
       const inv = await this.validateInvite(token);
       if(!inv) throw new Error("Invalid");
-      const user: User = { id: crypto.randomUUID(), name, email: inv.email, role: inv.role, passwordHash: pass, isVerified: true, authProvider: 'email', organizationId: inv.organizationId, classCode: inv.role === UserRole.MENTOR ? this.generateCode() : undefined, lastLogin: new Date().toISOString(), createdBy: inv.inviterId, allowedRoles: [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT], curatedLessonIds: [], avatarUrl: '' };
+      const isAdminType = (inv.role === UserRole.ADMIN || inv.role === UserRole.CO_ADMIN);
+      const user: User = { id: crypto.randomUUID(), name, email: inv.email, role: inv.role, passwordHash: pass, isVerified: true, authProvider: 'email', organizationId: inv.organizationId, classCode: (inv.role === UserRole.MENTOR || inv.role === UserRole.CO_ADMIN) ? this.generateCode() : undefined, lastLogin: new Date().toISOString(), createdBy: inv.inviterId, 
+          allowedRoles: isAdminType 
+            ? [UserRole.ADMIN, UserRole.CO_ADMIN, UserRole.MENTOR, UserRole.STUDENT, UserRole.ORGANIZATION, UserRole.PARENT]
+            : [UserRole.STUDENT, UserRole.MENTOR, UserRole.ORGANIZATION, UserRole.PARENT], curatedLessonIds: [], avatarUrl: '' };
       this.users.push(user);
       inv.status = 'accepted';
       this.saveInvites(); this.saveUsers();
@@ -571,13 +584,13 @@ class AuthService {
   }
 
   async joinClass(student: User, code: string): Promise<void> {
-      const mentor = this.users.find(u => u.classCode === code.toUpperCase() && u.role === UserRole.MENTOR);
+      const mentor = this.users.find(u => u.classCode === code.toUpperCase() && (u.role === UserRole.MENTOR || u.role === UserRole.CO_ADMIN));
       if (!mentor) throw new Error("Invalid");
       const s = this.users.find(u => u.id === student.id);
       if (s) { s.mentorId = mentor.id; if (mentor.organizationId) s.organizationId = mentor.organizationId; this.saveUsers(); }
   }
 
-  async getAllMentors(): Promise<User[]> { return this.users.filter(u => u.role === UserRole.MENTOR); }
+  async getAllMentors(): Promise<User[]> { return this.users.filter(u => u.role === UserRole.MENTOR || u.role === UserRole.CO_ADMIN); }
   async getJoinRequests(m: User): Promise<JoinRequest[]> { return this.requests.filter(r => r.mentorId === m.id && r.status === 'pending'); }
   async requestJoinMentor(s: User, mId: string): Promise<void> {
       if (this.requests.find(r => r.studentId === s.id && r.mentorId === mId && r.status === 'pending')) throw new Error("Pending");

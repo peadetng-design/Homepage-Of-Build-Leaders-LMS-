@@ -96,6 +96,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (!manualLesson.title) throw new Error("Lesson Title is required");
       if (!manualLesson.moduleId) throw new Error("A module assignment is required for certification tracking.");
       
+      // Proactive Check: If user clicks "Save & Add Another" but they are already on the last expected lesson
+      if (!shouldClose && isTerminationPoint) {
+          throw new Error("THE MODULE HAS ALREADY REACHED ITS SPECIFIED NUMBER OF LESSONS");
+      }
+
       for (const section of manualLesson.sections || []) {
         if (section.type === 'quiz_group') {
           for (const [idx, quiz] of (section.quizzes || []).entries()) {
@@ -512,11 +517,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
           )}
 
           {contentType === 'lesson' && metricMode === 'bulk' && (
-             <button onClick={commitImport} disabled={!draft?.isValid} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 border-4 border-royal-900 transition-all transform hover:-translate-y-1"><Save size={20} /> SYNCHRONIZE DATA</button>
+             <button onClick={commitImport} disabled={!draft?.isValid} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center justify-center gap-3 border-4 border-royal-900 transition-all transform hover:-translate-y-1"><Save size={20} /> SYNCHRONIZE DATA</button>
           )}
 
           {contentType === 'homepage' && (
-             <button onClick={async () => { if (!homepageContent) return; try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); } }} className="px-10 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl flex items-center gap-3 border-4 border-indigo-800 transition-all transform hover:-translate-y-1"><Save size={20} /> Push Updates Live</button>
+             <button onClick={async () => { if (!homepageContent) return; try { await lessonService.updateHomepageContent(homepageContent); onSuccess(); } catch (e: any) { setError(e.message); } }} className="px-10 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 shadow-xl flex items-center justify-center gap-3 border-4 border-indigo-800 transition-all transform hover:-translate-y-1"><Save size={20} /> Push Updates Live</button>
           )}
        </div>
     </div>

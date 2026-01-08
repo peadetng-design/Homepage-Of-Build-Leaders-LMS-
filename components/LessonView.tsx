@@ -59,7 +59,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const checkModuleStatus = async () => {
       const module = await lessonService.checkModuleCompletion(currentUser.id, lesson.id);
       if (module) setCompletedModule(module);
-      
       const progress = await lessonService.getModuleProgress(currentUser.id, lesson.moduleId);
       setModuleProgress(progress);
   };
@@ -80,7 +79,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     setAttemptHistory(history);
     const attemptMap: Record<string, string> = {};
     let correctCount = 0;
-    
     const uniqueQuizzes = new Set(history.map(h => h.quizId));
     uniqueQuizzes.forEach(qId => {
         const lastAttempt = history.filter(h => h.quizId === qId).pop();
@@ -89,112 +87,78 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             if (lastAttempt.isCorrect) correctCount++;
         }
     });
-
     setAttempts(attemptMap);
     setScore({ total: Object.keys(attemptMap).length, correct: correctCount });
-    
     const progress = await lessonService.getModuleProgress(currentUser.id, lesson.moduleId);
     setModuleProgress(progress);
   };
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
     if (attempts[quiz.id]) return;
-    
     const isCorrect = option.isCorrect;
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
-    setScore(prev => ({ 
-        total: prev.total + 1, 
-        correct: isCorrect ? prev.correct + 1 : prev.correct 
-    }));
-    
+    setScore(prev => ({ total: prev.total + 1, correct: isCorrect ? prev.correct + 1 : prev.correct }));
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, isCorrect);
-    
-    setAttemptHistory(prev => [...prev, { 
-        id: crypto.randomUUID(), 
-        studentId: currentUser.id, 
-        lessonId: lesson.id, 
-        quizId: quiz.id, 
-        selectedOptionId: option.id, 
-        isCorrect: isCorrect, 
-        score: isCorrect ? 10 : 0, 
-        attempted_at: new Date().toISOString() 
-    }]);
+    setAttemptHistory(prev => [...prev, { id: crypto.randomUUID(), studentId: currentUser.id, lessonId: lesson.id, quizId: quiz.id, selectedOptionId: option.id, isCorrect: isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() }]);
   };
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-      {/* --- REDESIGNED COMPACT NON-STICKY ROYAL PANEL (HIGH VISIBILITY) --- */}
-      <div className="bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white relative shadow-2xl rounded-b-[3.5rem] overflow-hidden">
+      {/* --- RESTORED STICKY PERFORMANCE PANEL (HIGH VISIBILITY CONTRAST) --- */}
+      <div className="sticky top-0 z-30 bg-royal-900 shadow-2xl rounded-b-[2rem] md:rounded-b-[3.5rem] overflow-hidden border-b border-royal-700/50 animate-in slide-in-from-top-4 duration-500">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto px-8 py-8 md:py-10">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-                {/* Back Button & Title */}
-                <div className="flex items-center gap-6 w-full lg:w-auto">
-                    <button onClick={onBack} className="p-3.5 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all backdrop-blur-md border border-white/10 shadow-lg active:scale-95">
-                        <ArrowLeft size={22} />
+        <div className="max-w-7xl mx-auto px-6 py-6 md:py-10 text-white">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-5 w-full lg:w-auto">
+                    <button onClick={onBack} className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all border border-white/10 shadow-lg active:scale-95">
+                        <ArrowLeft size={20} />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="text-xl md:text-2xl font-serif font-black text-white leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
+                        <h1 className="text-lg md:text-2xl font-serif font-black text-white leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
                         <div className="flex items-center gap-3 mt-1">
-                            <span className="px-2 py-0.5 bg-gold-500/20 text-gold-400 text-[10px] font-black uppercase tracking-widest rounded border border-gold-500/30">{lesson.lesson_type}</span>
-                            <span className="text-royal-200 text-[11px] font-bold flex items-center gap-1 opacity-80"><BookOpen size={12}/> {lesson.book} {lesson.chapter}</span>
+                            <span className="px-2 py-0.5 bg-gold-400 text-royal-900 text-[10px] font-black uppercase tracking-widest rounded">{lesson.lesson_type}</span>
+                            <span className="text-royal-100 text-[11px] font-bold flex items-center gap-1 opacity-80"><BookOpen size={12}/> {lesson.book} {lesson.chapter}</span>
                         </div>
                     </div>
                 </div>
 
-                {/* Stats Row */}
                 <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-center w-full lg:w-auto">
-                    {/* Compact Circular Score */}
-                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-3xl px-5 py-3 backdrop-blur-md shadow-2xl group transition-all hover:bg-white/10">
-                        <div className="relative w-14 h-14 flex items-center justify-center transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full transform -rotate-90 scale-110">
-                                <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="none" />
-                                <circle 
-                                    cx="28" cy="28" r="22" stroke="#fbbf24" strokeWidth="5" fill="none" 
-                                    strokeDasharray={138.2} strokeDashoffset={138.2 - (138.2 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
-                                    strokeLinecap="round" className="transition-all duration-1000 ease-out" 
-                                />
+                    {/* Light-colored Circular Score for High Contrast */}
+                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-md">
+                        <div className="relative w-12 h-12 flex items-center justify-center">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                                <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="3" fill="none" />
+                                <circle cx="24" cy="24" r="20" stroke="#fbbf24" strokeWidth="4" fill="none" strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} strokeLinecap="round" className="transition-all duration-1000" />
                             </svg>
-                            <span className="relative z-10 text-lg font-black text-gold-400">{score.correct}</span>
+                            <span className="relative z-10 text-base font-black text-gold-400">{score.correct}</span>
                         </div>
                         <div className="text-left">
-                            <span className="block text-[10px] font-black text-royal-200 uppercase tracking-widest leading-none mb-1">Total Score</span>
-                            <span className="text-xs font-bold text-white/90">Validated</span>
+                            <span className="block text-[9px] font-black text-royal-200 uppercase tracking-widest mb-0.5">SCORE</span>
+                            <span className="text-[11px] font-bold text-white/90">Validated</span>
                         </div>
                     </div>
 
-                    {/* Compact Circular Timer */}
-                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-3xl px-5 py-3 backdrop-blur-md shadow-2xl group transition-all hover:bg-white/10">
-                        <div className="relative w-14 h-14 flex items-center justify-center transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full transform -rotate-90 scale-110">
-                                <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="none" />
-                                <circle 
-                                    cx="28" cy="28" r="22" stroke="#6366f1" strokeWidth="5" fill="none" 
-                                    strokeDasharray={138.2} strokeDashoffset={138.2 - (138.2 * ((elapsedTime % 60) / 60))} 
-                                    strokeLinecap="round" className="transition-all duration-1000 ease-linear" 
-                                />
-                            </svg>
-                            <Clock size={18} className="relative z-10 text-indigo-400 animate-pulse" />
+                    {/* Light-colored Timer */}
+                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-md">
+                        <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+                            <Clock size={16} className="text-indigo-300" />
                         </div>
                         <div className="text-left">
-                            <span className="block text-[10px] font-black text-royal-200 uppercase tracking-widest leading-none mb-1">Time Study</span>
-                            <span className="text-xs font-mono font-bold text-white tracking-tighter">{formatTime(elapsedTime)}</span>
+                            <span className="block text-[9px] font-black text-royal-200 uppercase tracking-widest mb-0.5">DURATION</span>
+                            <span className="text-sm font-mono font-black text-white">{formatTime(elapsedTime)}</span>
                         </div>
                     </div>
 
-                    {/* Compact Horizontal Progress */}
-                    <div className="hidden sm:flex flex-col gap-2 w-48 lg:w-56">
+                    {/* High Visibility Horizontal Progress */}
+                    <div className="hidden sm:flex flex-col gap-1.5 w-40 md:w-56">
                         <div className="flex justify-between items-end">
-                            <span className="text-[10px] font-black text-royal-300 uppercase tracking-[0.2em] opacity-80">Completion Status</span>
-                            <div className="bg-white/10 px-2 py-0.5 rounded text-[9px] font-black text-gold-400 ring-1 ring-white/10">{Math.round(progressPercent)}%</div>
+                            <span className="text-[9px] font-black text-royal-200 uppercase tracking-widest">PROGRESS</span>
+                            <div className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-black text-gold-400">{Math.round(progressPercent)}%</div>
                         </div>
-                        <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/10 ring-1 ring-black/20 shadow-inner">
-                            <div 
-                                className="h-full bg-gradient-to-r from-gold-500 to-amber-300 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(245,158,11,0.4)]" 
-                                style={{ width: `${progressPercent}%` }}
-                            />
+                        <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/5">
+                            <div className="h-full bg-gradient-to-r from-gold-500 to-amber-300 rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }} />
                         </div>
                     </div>
                 </div>
@@ -333,9 +297,7 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                 btnClass += "bg-white border-gray-100 hover:border-royal-400 hover:bg-royal-50 cursor-pointer";
                 textClass += "text-gray-800";
             } else {
-                // --- MULTI-COLOR REVEAL ANIMATION LOGIC ---
                 if (isSelectedCorrect) {
-                    // Scenario B: User was correct
                     if (isOptionCorrect) {
                         btnClass += "bg-green-50 border-green-500 shadow-xl scale-[1.03] z-10";
                         textClass += "text-green-600 animate-bounce-pulse font-black";
@@ -344,17 +306,13 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                         textClass += "text-red-600 animate-red-pulse font-bold";
                     }
                 } else {
-                    // Scenario A: User was wrong
                     if (isOptionSelected) {
-                        // Reveal that wrong option in ANIMATED BOLD RED FONTS
                         btnClass += "bg-red-50 border-red-500 shadow-xl scale-[1.03] z-10";
                         textClass += "text-red-600 animate-bounce-pulse font-black";
                     } else if (isOptionCorrect) {
-                        // CORRECT answer in GREEN fonts
                         btnClass += "bg-green-50 border-green-500";
                         textClass += "text-green-600 animate-green-pulse delay-200 font-bold";
                     } else {
-                        // OTHER 2 wrong options in ANIMATED BOLD ORANGE
                         btnClass += "bg-orange-50 border-orange-200 opacity-80";
                         textClass += "text-orange-500 animate-orange-pulse delay-100 font-bold";
                     }
@@ -369,7 +327,6 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
                         {isAnswered && isOptionCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
                         {isAnswered && isOptionSelected && !isOptionCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
                     </div>
-                    {/* UPDATED LOGIC: Reveal explanation for ALL options once the question is answered with increased font size */}
                     {isAnswered && option.explanation && (
                         <div className="mt-4 pt-4 border-t border-gray-100 text-xl font-semibold text-slate-600 animate-in slide-in-from-top-2">
                            {option.explanation}

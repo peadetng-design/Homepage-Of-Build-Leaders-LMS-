@@ -70,7 +70,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       } else if (activeTab === 'lessons') {
         const data = await lessonService.getLessons(); 
         setLessons(data);
-      } else if (activeTab === 'requests' && isMentor) {
+      } else if (activeTab === 'requests' && (isMentor || isAdmin)) {
         const data = await authService.getJoinRequests(currentUser);
         setRequests(data);
       } else if (activeTab === 'curated') {
@@ -215,8 +215,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
              </>
            )}
            <button onClick={() => setActiveTab('lessons')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>MANAGE LESSONS</button>
-           <button onClick={() => setActiveTab('curated')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'curated' ? 'bg-purple-600 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>PERSONAL LIST</button>
-           {isMentor && <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Requests</button>}
+           <button onClick={() => setActiveTab('curated')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'curated' ? 'bg-purple-600 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>PERSONAL LIST</button>
+           {(isMentor || isAdmin) && <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Requests</button>}
            <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Logs</button>
         </div>
       </div>
@@ -383,10 +383,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           </div>
         )}
 
-        {/* REQUESTS TAB (Mentor Only) */}
-        {activeTab === 'requests' && isMentor && (
+        {/* REQUESTS TAB (Mentor & Admin) */}
+        {activeTab === 'requests' && (isMentor || isAdmin) && (
             <div className="space-y-6 max-w-4xl mx-auto">
-                <h3 className="font-black text-gray-900 text-xl flex items-center gap-3"><Users className="text-royal-500"/> Student Join Requests</h3>
+                <h3 className="font-black text-gray-900 text-xl flex items-center gap-3"><Users className="text-royal-500"/> {isAdmin ? 'Global' : 'Student'} Join Requests</h3>
                 <div className="grid gap-4">
                     {requests.map(req => (
                         <div key={req.id} className="bg-white border-2 border-gray-100 p-6 rounded-3xl flex justify-between items-center shadow-lg hover:border-royal-200 transition-all">
@@ -394,11 +394,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                 <div className="w-14 h-14 bg-royal-100 text-royal-600 rounded-2xl flex items-center justify-center font-black text-xl">{req.studentName.charAt(0)}</div>
                                 <div>
                                     <div className="font-black text-gray-900 text-lg">{req.studentName}</div>
-                                    <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest flex items-center gap-2"><Clock size={12}/> {new Date(req.timestamp).toLocaleDateString()}</div>
+                                    <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest flex items-center gap-2">
+                                        <Clock size={12}/> {new Date(req.timestamp).toLocaleDateString()}
+                                        {isAdmin && <span className="text-royal-600 ml-2">• Requested Mentor: {req.mentorId}</span>}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <button onClick={() => handleRequestResponse(req.id, 'accepted')} className="px-6 py-3 bg-green-600 text-white rounded-xl font-black shadow-lg hover:bg-green-700 transition-all flex items-center gap-2"><Check size={18}/> ACCEPT</button>
+                                <button onClick={() => handleRequestResponse(req.id, 'accepted')} className="px-6 py-3 bg-green-600 text-white rounded-xl font-black shadow-lg hover:bg-green-700 transition-all flex items-center gap-2"><Check size={18}/> APPROVE</button>
                                 <button onClick={() => handleRequestResponse(req.id, 'rejected')} className="px-6 py-3 bg-gray-100 text-gray-600 rounded-xl font-black hover:bg-red-50 hover:text-red-600 transition-all">DECLINE</button>
                             </div>
                         </div>

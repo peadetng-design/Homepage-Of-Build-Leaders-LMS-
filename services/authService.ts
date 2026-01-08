@@ -641,27 +641,37 @@ class AuthService {
   }
 
   async getAllMentors(): Promise<User[]> { return this.users.filter(u => u.role === UserRole.MENTOR || u.role === UserRole.CO_ADMIN); }
-  async getJoinRequests(m: User): Promise<JoinRequest[]> { return this.requests.filter(r => r.mentorId === m.id && r.status === 'pending'); }
+
+  async getJoinRequests(u: User): Promise<JoinRequest[]> { 
+    const isAdminType = u.role === UserRole.ADMIN || u.role === UserRole.CO_ADMIN;
+    if (isAdminType) return this.requests.filter(r => r.status === 'pending');
+    return this.requests.filter(r => r.mentorId === u.id && r.status === 'pending'); 
+  }
+
   async requestJoinMentor(s: User, mId: string): Promise<void> {
       if (this.requests.find(r => r.studentId === s.id && r.mentorId === mId && r.status === 'pending')) throw new Error("Pending");
       this.requests.push({ id: crypto.randomUUID(), studentId: s.id, studentName: s.name, mentorId: mId, status: 'pending', timestamp: new Date().toISOString() });
       this.saveRequests();
       this.logAction(s, 'REQUEST_JOIN', `Requested to join mentor group ${mId}`);
   }
-  async respondToRequest(rid: string, status: 'accepted'|'rejected', mentor: User): Promise<void> {
+
+  async respondToRequest(rid: string, status: 'accepted'|'rejected', actor: User): Promise<void> {
       const r = this.requests.find(x => x.id === rid);
       if(r) { 
         r.status = status; 
         if(status === 'accepted') { 
             const s = this.users.find(u => u.id === r.studentId); 
             if(s) { 
-                s.mentorId = mentor.id; 
-                if(mentor.organizationId) s.organizationId = mentor.organizationId; 
+                const mentor = this.users.find(u => u.id === r.mentorId);
+                if (mentor) {
+                    s.mentorId = mentor.id; 
+                    if(mentor.organizationId) s.organizationId = mentor.organizationId; 
+                }
             } 
         } 
         this.saveRequests(); 
         this.saveUsers(); 
-        this.logAction(mentor, 'RESPOND_REQUEST', `Request for ${r.studentName} ${status}`);
+        this.logAction(actor, 'RESPOND_REQUEST', `Request for ${r.studentName} ${status} by ${actor.name}`);
       }
   }
 

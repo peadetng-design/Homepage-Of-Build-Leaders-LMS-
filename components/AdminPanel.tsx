@@ -7,7 +7,7 @@ import Tooltip from './Tooltip';
 import { 
   Users, UserPlus, Shield, Search, Mail, 
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
-  BookOpen, Edit2, Eye, Plus, Upload, ListPlus, Trash2,
+  BookOpen, Edit2, Eye, Plus, Upload, ListPlus, Trash, Trash2,
   Download, List, Send, Loader2, Book, Star, Settings, Globe,
   Clock, FileText, CheckCircle, Activity
 } from 'lucide-react';
@@ -498,14 +498,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </td>
                           <td className="p-6 text-right">
                              <div className="flex justify-end items-center gap-3">
-                                <Tooltip content={isCurated ? "Remove from my personal list" : "Add to my personal list"}>
-                                    <button 
-                                        onClick={() => toggleCurated(l.id)} 
-                                        className={`p-3 rounded-xl transition-all shadow-sm ${isCurated ? 'bg-gold-500 text-white ring-4 ring-gold-100 scale-110' : 'bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-royal-600'}`}
-                                    >
-                                        {isCurated ? <X size={20} /> : <Plus size={20} />}
-                                    </button>
-                                </Tooltip>
+                                {isCurated ? (
+                                    <Tooltip content="Remove from my personal list">
+                                        <button 
+                                            onClick={() => toggleCurated(l.id)} 
+                                            className="p-3 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition-all shadow-sm ring-1 ring-red-100"
+                                        >
+                                            <Trash size={20} />
+                                        </button>
+                                    </Tooltip>
+                                ) : (
+                                    <Tooltip content="Add to my personal list">
+                                        <button 
+                                            onClick={() => toggleCurated(l.id)} 
+                                            className="p-3 bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-royal-600 rounded-xl transition-all shadow-sm"
+                                        >
+                                            <Plus size={20} />
+                                        </button>
+                                    </Tooltip>
+                                )}
                                 
                                 {canManage ? (
                                     <>
@@ -514,7 +525,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                             <button onClick={() => { setEditingLesson(l); setActiveTab('upload'); }} className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors border border-transparent hover:border-blue-200"><Edit2 size={20} /></button>
                                         </Tooltip>
                                         <Tooltip content="PERMANENT System Delete">
-                                            <button onClick={() => handleDeleteLesson(l.id)} className="p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors border border-transparent hover:border-red-200"><Trash2 size={20} /></button>
+                                            <button onClick={() => handleDeleteLesson(l.id)} className="p-3 text-red-600 hover:bg-red-100 rounded-xl transition-colors border border-transparent border-red-200"><Trash2 size={20} /></button>
                                         </Tooltip>
                                     </>
                                 ) : (

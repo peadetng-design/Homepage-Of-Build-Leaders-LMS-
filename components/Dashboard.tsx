@@ -16,6 +16,7 @@ import ResourceView from './ResourceView';
 import NewsView from './NewsView';
 import PerformanceReport from './PerformanceReport';
 import ChatPanel from './ChatPanel';
+import FrontendEngineerBadge from './FrontendEngineerBadge';
 import CertificatesPanel from './CertificatesPanel'; 
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
@@ -323,8 +324,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
         setOrgSubTab('lessons');
         setCurrentView('manage-lessons');
     } else if (isStudentView) {
+        setAdminActiveTab('lessons');
         setCurrentView('manage-lessons');
-        setAdminActiveTab('lessons'); // Reuses AdminPanel for curation
     } else {
         setCurrentView('dashboard');
         if (isAdminView) setAdminActiveTab('lessons');
@@ -333,12 +334,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   };
 
   const handleViewCuratedLessons = () => {
-    if (isOrgView) {
-        setOrgSubTab('curated'); 
-        setCurrentView('manage-lessons');
-    } else {
+    if (isAdminView) {
+        setAdminActiveTab('curated');
         setCurrentView('dashboard');
-        if (isMentorView) setMentorActiveTab('curated');
+    } else if (isMentorView) {
+        setMentorActiveTab('curated');
+        setCurrentView('dashboard');
+    } else if (isOrgView) {
+        setOrgSubTab('curated');
+        setCurrentView('manage-lessons');
+    } else if (isStudentView) {
+        setAdminActiveTab('curated'); 
+        setCurrentView('manage-lessons');
     }
   };
 
@@ -581,17 +588,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                 </button>
            </Tooltip>
 
-           {(isMentorView || isOrgView) && (
-              <Tooltip content="Manage the specific list of lessons visible to your group.">
+           <Tooltip content="Manage the specific list of lessons visible to your group.">
                 <button 
                   onClick={handleViewCuratedLessons}
-                  className={`flex items-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-600/20 transition-all transform hover:-translate-y-0.5 ${((isMentorView && mentorActiveTab === 'curated') || (isOrgView && orgSubTab === 'curated')) ? 'ring-2 ring-purple-400' : ''}`}
+                  className={`flex items-center gap-2 px-5 py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-600/20 transition-all transform hover:-translate-y-0.5 ${((isMentorView && mentorActiveTab === 'curated') || (isOrgView && orgSubTab === 'curated') || (isAdminView && adminActiveTab === 'curated')) ? 'ring-2 ring-purple-400' : ''}`}
                 >
                   <List size={18} /> 
                   <span>VIEW CURATED LESSONS</span>
                 </button>
-              </Tooltip>
-           )}
+           </Tooltip>
 
            <Tooltip content="View detailed reports of all your lesson attempts and scores.">
              <button 
@@ -674,7 +679,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                    <AdminPanel currentUser={user} activeTab="logs" onTabChange={(tab: any) => { if (tab !== 'logs') setCurrentView('dashboard'); }} />
                )}
                {currentView === 'manage-lessons' && (
-                   <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => { if (tab !== 'lessons' && tab !== 'upload' && tab !== 'logs') setCurrentView('dashboard'); }} />
+                   <AdminPanel currentUser={user} activeTab={isStudentView ? 'curated' : 'lessons'} onTabChange={(tab: any) => { if (tab !== 'lessons' && tab !== 'upload' && tab !== 'logs' && tab !== 'curated') setCurrentView('dashboard'); }} />
                )}
                {isAdminView && currentView !== 'manage-lessons' && currentView !== 'view-logs' && (
                    <AdminPanel currentUser={user} activeTab={adminActiveTab} onTabChange={setAdminActiveTab} />
@@ -713,6 +718,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                <AIQuizCard question={quizQuestion} state={quizState} onAnswer={handleQuizAnswer} />
             </div>
          </div>
+         <FrontendEngineerBadge />
     </div>
   );
 };

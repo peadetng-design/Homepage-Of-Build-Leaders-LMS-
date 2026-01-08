@@ -215,6 +215,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
              </>
            )}
            <button onClick={() => setActiveTab('lessons')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>MANAGE LESSONS</button>
+           <button onClick={() => setActiveTab('curated')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'curated' ? 'bg-purple-600 text-white shadow-lg' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>PERSONAL LIST</button>
            {isMentor && <button onClick={() => setActiveTab('requests')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'requests' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Requests</button>}
            <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'logs' ? 'bg-white text-royal-900' : 'bg-royal-800 text-royal-200 hover:bg-royal-700'}`}>Logs</button>
         </div>
@@ -413,9 +414,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         )}
 
         {/* LESSONS TAB (Consolidated Management & Curation) */}
-        {activeTab === 'lessons' && (
+        {(activeTab === 'lessons' || activeTab === 'curated') && (
            <div className="space-y-6">
-              {!isAdmin && (
+              {activeTab === 'lessons' && !isAdmin && (
                   <div className="flex p-1 bg-gray-100 rounded-xl w-full max-w-2xl border-2 border-gray-200 shadow-sm mb-6">
                       <button 
                         onClick={() => setLessonSubMode('main')}
@@ -434,14 +435,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${lessonSubMode === 'main' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                        {lessonSubMode === 'main' ? <Globe size={20}/> : <Book size={20}/>}
+                    <div className={`p-2 rounded-lg ${activeTab === 'curated' ? 'bg-purple-100 text-purple-600' : lessonSubMode === 'main' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                        {activeTab === 'curated' ? <Star size={20}/> : lessonSubMode === 'main' ? <Globe size={20}/> : <Book size={20}/>}
                     </div>
                     <h3 className="font-black text-gray-900 uppercase text-sm tracking-widest">
-                        {isAdmin ? "MASTER SYSTEM LIBRARY" : lessonSubMode === 'main' ? "GLOBAL CURRICULUM (CURATE ONLY)" : "YOUR PERSONAL REPOSITORY"}
+                        {activeTab === 'curated' ? "YOUR PERSONAL LIST" : isAdmin ? "MASTER SYSTEM LIBRARY" : lessonSubMode === 'main' ? "GLOBAL CURRICULUM (CURATE ONLY)" : "YOUR PERSONAL REPOSITORY"}
                     </h3>
                 </div>
-                { (isAdmin || lessonSubMode === 'personal') && (
+                { activeTab === 'lessons' && (isAdmin || lessonSubMode === 'personal') && (
                     <button onClick={() => { setEditingLesson(null); setActiveTab('upload'); }} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg hover:bg-indigo-700 transform hover:-translate-y-0.5 transition-all">
                         <Plus size={18} /> Upload New
                     </button>
@@ -514,8 +515,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                         </Tooltip>
                                     </>
                                 ) : (
-                                    <Tooltip content="Main Library Content (Read Only)">
-                                        <div className="p-3 text-gray-200 bg-gray-50 rounded-xl"><Shield size={20} /></div>
+                                    <Tooltip content="View my personal list">
+                                        <button 
+                                            onClick={() => setActiveTab('curated')} 
+                                            className="p-3 text-royal-600 bg-royal-50 rounded-xl hover:bg-royal-100 transition-all border border-transparent hover:border-royal-200"
+                                        >
+                                            <Shield size={20} />
+                                        </button>
                                     </Tooltip>
                                 )}
                              </div>

@@ -125,72 +125,74 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-      {/* --- REDESIGNED COMPACT NON-STICKY ROYAL PANEL --- */}
-      <div className="bg-gradient-to-br from-royal-900 via-royal-950 to-indigo-950 text-white relative z-50 shadow-2xl rounded-b-[3rem] overflow-hidden">
+      {/* --- REDESIGNED COMPACT NON-STICKY ROYAL PANEL (HIGH VISIBILITY) --- */}
+      <div className="bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white relative shadow-2xl rounded-b-[3.5rem] overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto px-6 py-6 lg:py-8">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-12">
+        <div className="max-w-7xl mx-auto px-8 py-8 md:py-10">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+                {/* Back Button & Title */}
                 <div className="flex items-center gap-6 w-full lg:w-auto">
-                    <button onClick={onBack} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all backdrop-blur-md border border-white/10 active:translate-y-1">
-                        <ArrowLeft size={20} />
+                    <button onClick={onBack} className="p-3.5 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all backdrop-blur-md border border-white/10 shadow-lg active:scale-95">
+                        <ArrowLeft size={22} />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="text-xl md:text-2xl font-serif font-bold text-white leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <span className="px-2 py-0.5 bg-gold-500/20 text-gold-400 text-[9px] font-black uppercase tracking-widest rounded border border-gold-500/30">{lesson.lesson_type}</span>
-                            <span className="text-royal-300 text-[11px] font-bold flex items-center gap-1"><BookOpen size={10}/> {lesson.book} {lesson.chapter}</span>
+                        <h1 className="text-xl md:text-2xl font-serif font-black text-white leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
+                        <div className="flex items-center gap-3 mt-1">
+                            <span className="px-2 py-0.5 bg-gold-500/20 text-gold-400 text-[10px] font-black uppercase tracking-widest rounded border border-gold-500/30">{lesson.lesson_type}</span>
+                            <span className="text-royal-200 text-[11px] font-bold flex items-center gap-1 opacity-80"><BookOpen size={12}/> {lesson.book} {lesson.chapter}</span>
                         </div>
                     </div>
                 </div>
 
+                {/* Stats Row */}
                 <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-center w-full lg:w-auto">
                     {/* Compact Circular Score */}
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-sm shadow-inner group">
-                        <div className="relative w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-                                <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
+                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-3xl px-5 py-3 backdrop-blur-md shadow-2xl group transition-all hover:bg-white/10">
+                        <div className="relative w-14 h-14 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90 scale-110">
+                                <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="none" />
                                 <circle 
-                                    cx="24" cy="24" r="20" stroke="#f59e0b" strokeWidth="4" fill="none" 
-                                    strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
+                                    cx="28" cy="28" r="22" stroke="#fbbf24" strokeWidth="5" fill="none" 
+                                    strokeDasharray={138.2} strokeDashoffset={138.2 - (138.2 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
                                     strokeLinecap="round" className="transition-all duration-1000 ease-out" 
                                 />
                             </svg>
-                            <span className="relative z-10 text-base font-black text-gold-400">{score.correct}</span>
+                            <span className="relative z-10 text-lg font-black text-gold-400">{score.correct}</span>
                         </div>
                         <div className="text-left">
-                            <span className="block text-[9px] font-black text-royal-300 uppercase tracking-widest leading-none">Score</span>
-                            <span className="text-xs font-bold text-white">Live Data</span>
+                            <span className="block text-[10px] font-black text-royal-200 uppercase tracking-widest leading-none mb-1">Total Score</span>
+                            <span className="text-xs font-bold text-white/90">Validated</span>
                         </div>
                     </div>
 
                     {/* Compact Circular Timer */}
-                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-sm shadow-inner group">
-                        <div className="relative w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-                                <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
+                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-3xl px-5 py-3 backdrop-blur-md shadow-2xl group transition-all hover:bg-white/10">
+                        <div className="relative w-14 h-14 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90 scale-110">
+                                <circle cx="28" cy="28" r="22" stroke="rgba(255,255,255,0.05)" strokeWidth="4" fill="none" />
                                 <circle 
-                                    cx="24" cy="24" r="20" stroke="#6366f1" strokeWidth="4" fill="none" 
-                                    strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * ((elapsedTime % 60) / 60))} 
+                                    cx="28" cy="28" r="22" stroke="#6366f1" strokeWidth="5" fill="none" 
+                                    strokeDasharray={138.2} strokeDashoffset={138.2 - (138.2 * ((elapsedTime % 60) / 60))} 
                                     strokeLinecap="round" className="transition-all duration-1000 ease-linear" 
                                 />
                             </svg>
-                            <Clock size={16} className="relative z-10 text-indigo-400 animate-pulse" />
+                            <Clock size={18} className="relative z-10 text-indigo-400 animate-pulse" />
                         </div>
                         <div className="text-left">
-                            <span className="block text-[9px] font-black text-royal-300 uppercase tracking-widest leading-none">Timer</span>
+                            <span className="block text-[10px] font-black text-royal-200 uppercase tracking-widest leading-none mb-1">Time Study</span>
                             <span className="text-xs font-mono font-bold text-white tracking-tighter">{formatTime(elapsedTime)}</span>
                         </div>
                     </div>
 
                     {/* Compact Horizontal Progress */}
-                    <div className="hidden sm:flex flex-col gap-1.5 w-40 md:w-48">
+                    <div className="hidden sm:flex flex-col gap-2 w-48 lg:w-56">
                         <div className="flex justify-between items-end">
-                            <span className="text-[9px] font-black text-royal-400 uppercase tracking-[0.2em]">Progress</span>
-                            <span className="text-[10px] font-black text-white">{Math.round(progressPercent)}%</span>
+                            <span className="text-[10px] font-black text-royal-300 uppercase tracking-[0.2em] opacity-80">Completion Status</span>
+                            <div className="bg-white/10 px-2 py-0.5 rounded text-[9px] font-black text-gold-400 ring-1 ring-white/10">{Math.round(progressPercent)}%</div>
                         </div>
-                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+                        <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden p-0.5 border border-white/10 ring-1 ring-black/20 shadow-inner">
                             <div 
-                                className="h-full bg-gradient-to-r from-royal-400 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                className="h-full bg-gradient-to-r from-gold-500 to-amber-300 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(245,158,11,0.4)]" 
                                 style={{ width: `${progressPercent}%` }}
                             />
                         </div>
@@ -362,7 +364,7 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
             return (
                 <button key={option.id} disabled={isAnswered} onClick={() => onSelect(option)} className={btnClass}>
                     <div className="flex items-center gap-5 w-full">
-                        <span className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 ${isAnswered && isOptionCorrect ? 'bg-green-50 border-green-500 text-white' : 'border-gray-200 text-gray-400 bg-white'}`}>{option.label}</span>
+                        <span className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 ${isAnswered && isOptionCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200 text-gray-400 bg-white'}`}>{option.label}</span>
                         <span className={textClass}>{option.text}</span>
                         {isAnswered && isOptionCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
                         {isAnswered && isOptionSelected && !isOptionCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}

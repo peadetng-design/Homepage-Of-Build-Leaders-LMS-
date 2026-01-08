@@ -96,7 +96,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (!manualLesson.title) throw new Error("Lesson Title is required");
       if (!manualLesson.moduleId) throw new Error("A module assignment is required for certification tracking.");
       
-      // Proactive Check: If user clicks "Save & Add Another" but they are already on the last expected lesson
+      // Strict Enforcement: If user clicks "Save & Add Another" but they are already at the target count
       if (!shouldClose && isTerminationPoint) {
           throw new Error("THE MODULE HAS ALREADY REACHED ITS SPECIFIED NUMBER OF LESSONS");
       }
@@ -104,7 +104,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       for (const section of manualLesson.sections || []) {
         if (section.type === 'quiz_group') {
           for (const [idx, quiz] of (section.quizzes || []).entries()) {
-            if (!quiz.options.some(o => o.isCorrect)) {
+            if (!quiz.options || !quiz.options.some(o => o.isCorrect)) {
               throw new Error(`CRITICAL ERROR: Question #${idx + 1} in "${section.title}" has NO correct answer selected. Users cannot be scored correctly until an option is marked as correct.`);
             }
           }
@@ -233,7 +233,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                             <button onClick={() => setShowModuleWizard(true)} className="text-xs font-bold bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2">New Module</button>
                          </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div><label className={labelClass}>Module Selection</label><select className={inputClass} value={manualLesson.moduleId} onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}><option value="">-- Choose Module for Certification --</option>{modules.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></div>
+                            <div><label className={labelClass}>Module Selection</label><select className={inputClass} value={manualLesson.moduleId} onChange={e => setManualLesson({...manualLesson, moduleId: e.target.value})}><option value="">-- Choose Module for Certification --</option>{modules?.map(m => <option key={m.id} value={m.id}>{m.title}</option>)}</select></div>
                             <div><label className={labelClass}>Lesson Order (Target: {totalInModule})</label><input type="number" className={inputClass} value={manualLesson.orderInModule} onChange={e => setManualLesson({...manualLesson, orderInModule: parseInt(e.target.value)})} /></div>
                          </div>
                       </div>
@@ -280,8 +280,8 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                      <div className="flex items-center gap-4">
                                         {s.type === 'quiz_group' && (
                                             <div className="flex gap-1">
-                                                {(s.quizzes || []).map((q, idx) => (
-                                                    <div key={q.id} className={`w-2 h-2 rounded-full ${q.options.some(o => o.isCorrect) ? 'bg-green-500' : 'bg-red-400 animate-pulse'}`} title={`Question ${idx+1} status`}></div>
+                                                {s.quizzes?.map((q, idx) => (
+                                                    <div key={q.id} className={`w-2 h-2 rounded-full ${q.options?.some(o => o.isCorrect) ? 'bg-green-500' : 'bg-red-400 animate-pulse'}`} title={`Question ${idx+1} status`}></div>
                                                 ))}
                                             </div>
                                         )}
@@ -304,7 +304,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                  </div>
 
                                                  {s.quizzes?.map((q, idx) => {
-                                                     const hasCorrectAnswer = q.options.some(o => o.isCorrect);
+                                                     const hasCorrectAnswer = q.options?.some(o => o.isCorrect);
                                                      return (
                                                      <div key={q.id} className={`bg-slate-50 p-6 rounded-3xl border-4 transition-all relative ${hasCorrectAnswer ? 'border-slate-200' : 'border-red-300 shadow-[0_0_20px_rgba(239,68,68,0.1)]'}`}>
                                                          <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600 transition-colors"><Trash2 size={20}/></button>
@@ -329,7 +329,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                             </div>
 
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                                {q.options.map(opt => (
+                                                                {q.options?.map(opt => (
                                                                   <div key={opt.id} className={`p-4 rounded-2xl border-4 transition-all ${opt.isCorrect ? 'bg-green-50 border-green-500 shadow-md ring-4 ring-green-100' : 'bg-white border-gray-200 hover:border-royal-200 shadow-sm'}`}>
                                                                     <div className="flex gap-3 items-center mb-3">
                                                                       <button 
@@ -370,7 +370,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                           <div className="animate-in fade-in slide-in-from-bottom-8">
                               <div className="flex justify-between items-center mb-8"><h3 className="text-2xl font-bold text-gray-900">Module Sync Preview</h3><button onClick={() => { setDraft(null); setFile(null); }} className="text-sm font-bold text-red-500 underline hover:text-red-700">Discard Data</button></div>
                               <div className="bg-indigo-900 text-white p-8 rounded-3xl shadow-xl mb-8 border-4 border-indigo-950"><h4 className="font-serif font-bold text-2xl mb-2">Module: {draft.moduleMetadata?.title}</h4><p className="text-indigo-200 font-medium mb-6">{draft.moduleMetadata?.description}</p></div>
-                              <div className="grid gap-4">{draft.lessons.map(l => (<div key={l.metadata.lesson_id} className="bg-white border-4 border-gray-100 rounded-2xl p-6 flex justify-between items-center shadow-sm"><div><h4 className="font-bold text-gray-900 text-lg">{l.metadata.title}</h4><p className="text-xs text-gray-400 font-black">{l.bibleQuizzes.length} Bible Quizzes Identified</p></div><CheckCircle size={28} className="text-green-500" /></div>))}</div>
+                              <div className="grid gap-4">{draft.lessons?.map(l => (<div key={l.metadata.lesson_id} className="bg-white border-4 border-gray-100 rounded-2xl p-6 flex justify-between items-center shadow-sm"><div><h4 className="font-bold text-gray-900 text-lg">{l.metadata.title}</h4><p className="text-xs text-gray-400 font-black">{l.bibleQuizzes?.length || 0} Bible Quizzes Identified</p></div><CheckCircle size={28} className="text-green-500" /></div>))}</div>
                           </div>
                       )}
                    </div>

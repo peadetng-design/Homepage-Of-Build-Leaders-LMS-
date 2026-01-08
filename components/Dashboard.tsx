@@ -150,7 +150,7 @@ const AIQuizCard = ({ question, state, onAnswer }: any) => (
         <>
            <h4 className="font-bold text-gray-800 mb-4">{question.question}</h4>
            <div className="space-y-2">
-              {question.options.map((opt: string, i: number) => (
+              {question.options?.map((opt: string, i: number) => (
                  <button 
                    key={i}
                    disabled={state !== 'idle'}
@@ -189,7 +189,7 @@ const RecentChatsWidget = ({ messages, onGoToChat }: { messages: ChatMessage[], 
             <button onClick={onGoToChat} className="text-xs font-bold text-royal-600 hover:underline">View All</button>
         </div>
         <div className="space-y-4">
-            {messages.length === 0 ? (
+            {!messages || messages.length === 0 ? (
                 <div className="py-4 text-center text-gray-400 text-sm italic">No recent messages.</div>
             ) : (
                 messages.map(msg => (
@@ -267,7 +267,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
         const quiz = await getAIQuizQuestion();
         setQuizQuestion(quiz);
         const msgs = await authService.getRecentMessages(user, 2);
-        setRecentMessages(msgs);
+        setRecentMessages(msgs || []);
       } finally {
         setLoadingVerse(false);
       }

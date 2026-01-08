@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -126,86 +125,75 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-      {/* --- ENHANCED 3D INDICATOR HEADER --- */}
-      <div className="bg-white border-b-4 border-gray-100 sticky top-0 z-50 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
+      {/* --- REDESIGNED COMPACT NON-STICKY ROYAL PANEL --- */}
+      <div className="bg-gradient-to-br from-royal-900 via-royal-950 to-indigo-950 text-white relative z-50 shadow-2xl rounded-b-[3rem] overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-6 py-6 lg:py-8">
+            <div className="flex flex-col lg:flex-row items-center justify-between gap-6 lg:gap-12">
                 <div className="flex items-center gap-6 w-full lg:w-auto">
-                    <button onClick={onBack} className="p-4 bg-gray-100 hover:bg-gray-200 rounded-2xl text-gray-700 transition-all border-b-4 border-gray-300 active:border-b-0 active:translate-y-1">
-                        <ArrowLeft size={24} />
+                    <button onClick={onBack} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all backdrop-blur-md border border-white/10 active:translate-y-1">
+                        <ArrowLeft size={20} />
                     </button>
                     <div className="min-w-0">
-                        <h1 className="text-2xl font-serif font-black text-royal-950 leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className="px-2 py-0.5 bg-royal-100 text-royal-700 text-[10px] font-black uppercase tracking-widest rounded shadow-inner">{lesson.lesson_type}</span>
-                            <span className="text-gray-400 text-xs font-bold flex items-center gap-1"><BookOpen size={12}/> {lesson.book} {lesson.chapter}</span>
+                        <h1 className="text-xl md:text-2xl font-serif font-bold text-white leading-tight truncate max-w-xs md:max-w-md">{lesson.title}</h1>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <span className="px-2 py-0.5 bg-gold-500/20 text-gold-400 text-[9px] font-black uppercase tracking-widest rounded border border-gold-500/30">{lesson.lesson_type}</span>
+                            <span className="text-royal-300 text-[11px] font-bold flex items-center gap-1"><BookOpen size={10}/> {lesson.book} {lesson.chapter}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-8 md:gap-12 flex-wrap justify-center">
-                    {/* Circular Score */}
-                    <div className="flex flex-col items-center gap-2 group">
-                        <div className="relative w-28 h-28 flex items-center justify-center bg-white rounded-full shadow-[0_15px_30px_rgba(245,158,11,0.2),inset_0_-6px_12px_rgba(0,0,0,0.1)] border-4 border-amber-50 transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full p-2 transform -rotate-90">
-                                <defs>
-                                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#fbbf24" /><stop offset="100%" stopColor="#d97706" /></linearGradient>
-                                    <filter id="scoreGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                                </defs>
-                                <circle cx="56" cy="56" r="48" stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-center w-full lg:w-auto">
+                    {/* Compact Circular Score */}
+                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-sm shadow-inner group">
+                        <div className="relative w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                                <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
                                 <circle 
-                                    cx="56" cy="56" r="48" stroke="url(#scoreGradient)" strokeWidth="10" fill="none" 
-                                    strokeDasharray={301.6} strokeDashoffset={301.6 - (301.6 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
-                                    strokeLinecap="round" filter="url(#scoreGlow)" className="transition-all duration-1000 ease-out" 
+                                    cx="24" cy="24" r="20" stroke="#f59e0b" strokeWidth="4" fill="none" 
+                                    strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * (totalQuestions > 0 ? score.correct / totalQuestions : 0))} 
+                                    strokeLinecap="round" className="transition-all duration-1000 ease-out" 
                                 />
                             </svg>
-                            <div className="relative z-10 text-center">
-                                <span className="block text-2xl font-black text-gray-900 leading-none">{score.correct}</span>
-                                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tighter">SCORE</span>
-                            </div>
+                            <span className="relative z-10 text-base font-black text-gold-400">{score.correct}</span>
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Real-Time Score</span>
+                        <div className="text-left">
+                            <span className="block text-[9px] font-black text-royal-300 uppercase tracking-widest leading-none">Score</span>
+                            <span className="text-xs font-bold text-white">Live Data</span>
+                        </div>
                     </div>
 
-                    {/* Circular Timer */}
-                    <div className="flex flex-col items-center gap-2 group">
-                        <div className="relative w-28 h-28 flex items-center justify-center bg-white rounded-full shadow-[0_15px_30px_rgba(79,70,229,0.2),inset_0_-6px_12px_rgba(0,0,0,0.1)] border-4 border-indigo-50 transition-transform group-hover:scale-105">
-                            <svg className="absolute inset-0 w-full h-full p-2 transform -rotate-90">
-                                <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#6366f1" /><stop offset="100%" stopColor="#4338ca" /></linearGradient>
-                                <circle cx="56" cy="56" r="48" stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                    {/* Compact Circular Timer */}
+                    <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-sm shadow-inner group">
+                        <div className="relative w-12 h-12 flex items-center justify-center transition-transform group-hover:scale-105">
+                            <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+                                <circle cx="24" cy="24" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="none" />
                                 <circle 
-                                    cx="56" cy="56" r="48" stroke="url(#timerGradient)" strokeWidth="10" fill="none" 
-                                    strokeDasharray={301.6} strokeDashoffset={301.6 - (301.6 * ((elapsedTime % 60) / 60))} 
+                                    cx="24" cy="24" r="20" stroke="#6366f1" strokeWidth="4" fill="none" 
+                                    strokeDasharray={125.6} strokeDashoffset={125.6 - (125.6 * ((elapsedTime % 60) / 60))} 
                                     strokeLinecap="round" className="transition-all duration-1000 ease-linear" 
                                 />
                             </svg>
-                            <div className="relative z-10 text-center">
-                                <span className="block text-xl font-black text-indigo-700 font-mono leading-none tracking-tighter">{formatTime(elapsedTime)}</span>
-                                <Clock size={14} className="mx-auto mt-1 text-indigo-400 animate-pulse" />
-                            </div>
+                            <Clock size={16} className="relative z-10 text-indigo-400 animate-pulse" />
                         </div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Timer</span>
+                        <div className="text-left">
+                            <span className="block text-[9px] font-black text-royal-300 uppercase tracking-widest leading-none">Timer</span>
+                            <span className="text-xs font-mono font-bold text-white tracking-tighter">{formatTime(elapsedTime)}</span>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            {/* Horizontal Progress Bar */}
-            <div className="mt-8 relative group">
-                <div className="flex justify-between items-end mb-2">
-                    <span className="text-xs font-black text-royal-800 uppercase tracking-widest flex items-center gap-2">
-                         Lesson Progress Calibrated
-                    </span>
-                    <div className="bg-royal-950 text-white px-3 py-1 rounded-full text-[10px] font-black shadow-lg animate-bounce">
-                        {Math.round(progressPercent)}% COMPLETE
-                    </div>
-                </div>
-                <div className="h-8 w-full bg-gray-200 rounded-full border-4 border-white shadow-[inset_0_4px_12px_rgba(0,0,0,0.15)] overflow-hidden p-1.5 relative">
-                    <div 
-                        className="h-full bg-gradient-to-r from-royal-700 via-royal-400 to-royal-700 rounded-full transition-all duration-1000 relative overflow-hidden" 
-                        style={{ width: `${progressPercent}%` }}
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent"></div>
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 animate-pulse"></div>
+                    {/* Compact Horizontal Progress */}
+                    <div className="hidden sm:flex flex-col gap-1.5 w-40 md:w-48">
+                        <div className="flex justify-between items-end">
+                            <span className="text-[9px] font-black text-royal-400 uppercase tracking-[0.2em]">Progress</span>
+                            <span className="text-[10px] font-black text-white">{Math.round(progressPercent)}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+                            <div 
+                                className="h-full bg-gradient-to-r from-royal-400 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(99,102,241,0.5)]" 
+                                style={{ width: `${progressPercent}%` }}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -322,8 +310,8 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
         <span className="shrink-0 w-14 h-14 rounded-2xl bg-royal-950 text-white font-black flex items-center justify-center text-2xl shadow-xl">{index}</span>
         <div className="flex-1 w-full space-y-6">
             {quiz.reference && (
-                <div className="p-6 bg-gray-50 border-4 border-gray-200 rounded-3xl text-gray-700 font-serif font-black italic relative text-sm leading-relaxed shadow-inner" style={{ fontSize: '0.6em' }}>
-                    <div className="absolute -top-3 -left-3 p-2 bg-gray-200 rounded-xl"><Book size={14} className="text-gray-500" /></div>
+                <div className="p-8 bg-royal-50/50 border-2 border-royal-100 border-l-8 border-l-royal-500 rounded-3xl text-slate-800 font-sans font-semibold italic relative text-xl leading-relaxed shadow-inner">
+                    <div className="absolute -top-3 -left-3 p-2 bg-royal-500 rounded-xl shadow-lg"><Book size={18} className="text-white" /></div>
                     {quiz.reference}
                 </div>
             )}
@@ -374,13 +362,14 @@ const QuizCard: React.FC<{ quiz: QuizQuestion, index: number, selectedOptionId?:
             return (
                 <button key={option.id} disabled={isAnswered} onClick={() => onSelect(option)} className={btnClass}>
                     <div className="flex items-center gap-5 w-full">
-                        <span className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 ${isAnswered && isOptionCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-200 text-gray-400 bg-white'}`}>{option.label}</span>
+                        <span className={`w-10 h-10 rounded-full border-4 flex items-center justify-center font-black text-lg shrink-0 ${isAnswered && isOptionCorrect ? 'bg-green-50 border-green-500 text-white' : 'border-gray-200 text-gray-400 bg-white'}`}>{option.label}</span>
                         <span className={textClass}>{option.text}</span>
                         {isAnswered && isOptionCorrect && <div className="p-2 bg-green-500 text-white rounded-full shadow-lg"><Check size={20} strokeWidth={4}/></div>}
                         {isAnswered && isOptionSelected && !isOptionCorrect && <div className="p-2 bg-red-500 text-white rounded-full shadow-lg"><X size={20} strokeWidth={4}/></div>}
                     </div>
-                    {isAnswered && (isOptionSelected || isOptionCorrect) && option.explanation && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 text-xs font-bold text-gray-500 animate-in slide-in-from-top-2">
+                    {/* UPDATED LOGIC: Reveal explanation for ALL options once the question is answered with increased font size */}
+                    {isAnswered && option.explanation && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 text-xl font-semibold text-slate-600 animate-in slide-in-from-top-2">
                            {option.explanation}
                         </div>
                     )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, LessonDraft, Lesson, LessonSection, QuizQuestion, QuizOption, SectionType, LessonType, TargetAudience, UserRole, HomepageContent, Module } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, AlertCircle, AlertTriangle, Home, ListChecks, Layers, BadgeCheck, PenTool, Check, Flag } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, ChevronDown, ChevronUp, CheckCircle, HelpCircle, ArrowRight, AlertCircle, AlertTriangle, Home, ListChecks, Layers, BadgeCheck, PenTool, Check, Flag, Info } from 'lucide-react';
 
 interface LessonUploadProps {
   currentUser: User;
@@ -14,7 +14,7 @@ type ContentType = 'lesson' | 'resource' | 'news' | 'homepage';
 
 const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onCancel, initialData }) => {
   const [contentType, setContentType] = useState<ContentType>('lesson');
-  const [mode, setMode] = useState<'manual' | 'bulk'>(initialData ? 'manual' : 'bulk');
+  const [metricMode, setMetricMode] = useState<'manual' | 'bulk'>(initialData ? 'manual' : 'bulk');
 
   const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -100,7 +100,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
         if (section.type === 'quiz_group') {
           for (const [idx, quiz] of (section.quizzes || []).entries()) {
             if (!quiz.options.some(o => o.isCorrect)) {
-              throw new Error(`Question #${idx + 1} in "${section.title}" has no correct answer selected.`);
+              throw new Error(`CRITICAL ERROR: Question #${idx + 1} in "${section.title}" has NO correct answer selected. Users cannot be scored correctly until an option is marked as correct.`);
             }
           }
         }
@@ -186,7 +186,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        <div className="bg-gray-50 px-8 py-6 border-b border-gray-100 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
               <div className="bg-royal-800 text-white p-3 rounded-2xl shadow-lg">{initialData ? <Edit3 size={24} /> : <Upload size={24} />}</div>
-              <div><h2 className="font-bold text-gray-800 text-xl">{initialData ? 'Edit Content' : 'Mass Content Ingestion'}</h2><p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">LMS Console</p></div>
+              <div><h2 className="font-bold text-gray-800 text-xl">{initialData ? 'Edit Content' : 'Manual Builder'}</h2><p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">LMS Console</p></div>
           </div>
           <div className="flex gap-2">
             {isAdmin && !initialData && (
@@ -200,16 +200,16 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        </div>
 
        <div id="upload-modal-content" className="flex-1 overflow-y-auto custom-scrollbar p-8 bg-[#fdfdfd]">
-          {error && <div className="bg-red-50 border-2 border-red-200 text-red-700 p-6 rounded-2xl mb-8 flex items-start gap-4 animate-in slide-in-from-top-4"><AlertCircle className="shrink-0" size={24} /><div><h4 className="font-bold text-lg">Alert</h4><p className="text-sm opacity-90">{error}</p></div></div>}
-          {saveFeedback && <div className="bg-green-50 border-2 border-green-200 text-green-700 p-6 rounded-2xl mb-8 flex items-start gap-4 animate-in slide-in-from-top-4"><CheckCircle className="shrink-0" size={24} /><div><h4 className="font-bold text-lg">Recorded</h4><p className="text-sm opacity-90">{saveFeedback}</p></div></div>}
+          {error && <div className="bg-red-50 border-2 border-red-200 text-red-700 p-6 rounded-2xl mb-8 flex items-start gap-4 animate-in slide-in-from-top-4 shadow-lg ring-4 ring-red-100"><AlertTriangle className="shrink-0 text-red-500" size={32} /><div><h4 className="font-black text-xl uppercase tracking-tighter mb-1 text-red-600">Action Blocked</h4><p className="text-sm font-bold opacity-90 leading-relaxed">{error}</p></div></div>}
+          {saveFeedback && <div className="bg-green-50 border-2 border-green-200 text-green-700 p-6 rounded-2xl mb-8 flex items-start gap-4 animate-in slide-in-from-top-4 shadow-lg"><CheckCircle className="shrink-0 text-green-500" size={32} /><div><h4 className="font-black text-xl uppercase tracking-tighter mb-1 text-red-600">Recorded</h4><p className="text-sm font-bold opacity-90">{saveFeedback}</p></div></div>}
 
           {contentType === 'lesson' && (
              <div className="space-y-8">
                 {!initialData && !moduleComplete && (
                     <div className="flex justify-center">
                         <div className="bg-gray-100 p-1.5 rounded-2xl flex shadow-inner">
-                            <button onClick={() => setMode('bulk')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mode === 'bulk' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500'}`}><FileIcon size={18}/> Excel Import</button>
-                            <button onClick={() => setMode('manual')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${mode === 'manual' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500'}`}><PenTool size={18}/> Manual Builder</button>
+                            <button onClick={() => setMetricMode('bulk')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${metricMode === 'bulk' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500'}`}><FileIcon size={18}/> Excel Import</button>
+                            <button onClick={() => setMetricMode('manual')} className={`px-8 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${metricMode === 'manual' ? 'bg-white shadow-xl text-royal-700' : 'text-gray-500'}`}><PenTool size={18}/> Manual Builder</button>
                         </div>
                     </div>
                 )}
@@ -220,7 +220,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                       <h3 className="text-3xl font-serif font-bold text-gray-900">Termination Point Fulfilled.</h3>
                       <button onClick={onSuccess} className="px-12 py-4 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl transition-all">FINALIZE & EXIT</button>
                    </div>
-                ) : mode === 'manual' ? (
+                ) : metricMode === 'manual' ? (
                    <div className="max-w-5xl mx-auto space-y-10 pb-20">
                       <div className="bg-indigo-50/50 p-8 rounded-3xl border-4 border-indigo-200 shadow-sm relative overflow-hidden">
                          <div className="flex justify-between items-center mb-6">
@@ -272,7 +272,16 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                              <div key={s.id} className="border-4 border-gray-200 rounded-3xl overflow-hidden bg-white shadow-md">
                                  <div className="bg-gray-50/50 p-6 flex justify-between items-center cursor-pointer" onClick={() => setExpandedSection(expandedSection === s.id ? null : s.id)}>
                                      <div className="flex items-center gap-4"><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${s.type === 'note' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>{s.type}</span><span className="font-bold text-gray-950">{s.title}</span></div>
-                                     {expandedSection === s.id ? <ChevronUp size={24}/> : <ChevronDown size={24}/>}
+                                     <div className="flex items-center gap-4">
+                                        {s.type === 'quiz_group' && (
+                                            <div className="flex gap-1">
+                                                {(s.quizzes || []).map((q, idx) => (
+                                                    <div key={q.id} className={`w-2 h-2 rounded-full ${q.options.some(o => o.isCorrect) ? 'bg-green-500' : 'bg-red-400 animate-pulse'}`} title={`Question ${idx+1} status`}></div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {expandedSection === s.id ? <ChevronUp size={24}/> : <ChevronDown size={24}/>}
+                                     </div>
                                  </div>
                                  {expandedSection === s.id && (
                                      <div className="p-8 border-t-2 border-gray-200 space-y-8 animate-in slide-in-from-top-4">
@@ -282,29 +291,60 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                          ) : (
                                              <div className="space-y-8">
                                                  <div className="flex justify-between items-center"><h4 className="font-bold text-sm uppercase text-gray-400">Question Queue ({s.quizzes?.length || 0})</h4><button onClick={() => addQuestion(s.id)} className="text-xs font-bold bg-royal-100 text-royal-700 px-4 py-2 rounded-xl border border-royal-200">+ Add Question</button></div>
-                                                 {s.quizzes?.map((q) => (
-                                                     <div key={q.id} className="bg-slate-50 p-6 rounded-3xl border-4 border-slate-200 relative">
+                                                 
+                                                 {/* INSTRUCTIONAL BANNER */}
+                                                 <div className="bg-amber-50 border-2 border-dashed border-amber-200 p-4 rounded-2xl flex items-center gap-3">
+                                                     <Info className="text-amber-600 shrink-0" size={24}/>
+                                                     <p className="text-xs font-black text-amber-900 uppercase tracking-tighter">Crucial Step: Tap the circular label (A, B, C, or D) to identify the correct answer for each question. This enables the system to score students.</p>
+                                                 </div>
+
+                                                 {s.quizzes?.map((q, idx) => {
+                                                     const hasCorrectAnswer = q.options.some(o => o.isCorrect);
+                                                     return (
+                                                     <div key={q.id} className={`bg-slate-50 p-6 rounded-3xl border-4 transition-all relative ${hasCorrectAnswer ? 'border-slate-200' : 'border-red-300 shadow-[0_0_20px_rgba(239,68,68,0.1)]'}`}>
                                                          <button onClick={() => removeQuestion(s.id, q.id)} className="absolute top-4 right-4 text-red-400 hover:text-red-600 transition-colors"><Trash2 size={20}/></button>
+                                                         
+                                                         <div className="flex justify-between items-center mb-6 border-b-2 border-slate-100 pb-4">
+                                                            <span className="font-black text-slate-400 uppercase tracking-widest text-xs">Question #{idx + 1}</span>
+                                                            <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-2 ${hasCorrectAnswer ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600 animate-pulse'}`}>
+                                                                {hasCorrectAnswer ? <Check size={12}/> : <AlertTriangle size={12}/>}
+                                                                {hasCorrectAnswer ? 'Answer Verified' : 'Missing Correct Answer'}
+                                                            </div>
+                                                         </div>
+
                                                          <div className="space-y-6">
                                                             <div>
-                                                                <label className={labelClass}>Reference Text (60% Font Scale)</label>
-                                                                <textarea className="w-full p-4 border-4 border-gray-300 rounded-2xl font-bold text-[0.6em] bg-white h-24" placeholder="Enter reference text (not more than 100 words)..." value={q.reference || ''} onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} />
+                                                                <label className={labelClass}>Reference Text (Academic Preview)</label>
+                                                                <textarea className="w-full p-8 border-4 border-gray-300 rounded-2xl font-semibold text-xl bg-royal-50/30 text-slate-800 h-32 outline-none focus:border-royal-500 transition-all font-sans" placeholder="Enter reference text (scripture or core reading)..." value={q.reference || ''} onChange={e => updateQuestion(s.id, q.id, {reference: e.target.value})} />
                                                             </div>
                                                             <div><label className={labelClass}>Question Prompt Text</label><input className={inputClass} placeholder="Enter your question prompt..." value={q.text} onChange={e => updateQuestion(s.id, q.id, {text: e.target.value})} /></div>
+                                                            
+                                                            <div className="bg-royal-950/5 p-4 rounded-2xl border-2 border-royal-950/10 mb-2">
+                                                                <p className="text-[10px] font-black text-royal-800 uppercase tracking-widest text-center">Tap A, B, C, or D below to mark the correct choice:</p>
+                                                            </div>
+
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                                 {q.options.map(opt => (
-                                                                  <div key={opt.id} className={`p-4 rounded-2xl border-4 transition-all ${opt.isCorrect ? 'bg-green-50 border-green-500 shadow-md ring-4 ring-green-100' : 'bg-gray-50 border-gray-200 hover:border-royal-200'}`}>
+                                                                  <div key={opt.id} className={`p-4 rounded-2xl border-4 transition-all ${opt.isCorrect ? 'bg-green-50 border-green-500 shadow-md ring-4 ring-green-100' : 'bg-white border-gray-200 hover:border-royal-200 shadow-sm'}`}>
                                                                     <div className="flex gap-3 items-center mb-3">
-                                                                      <button onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} className={`shrink-0 w-10 h-10 rounded-xl border-4 flex items-center justify-center font-bold transition-all ${opt.isCorrect ? 'bg-green-600 text-white border-green-600' : 'bg-white border-gray-300 text-gray-400'}`}>{opt.isCorrect ? <Check size={20}/> : opt.label}</button>
-                                                                      <input className="flex-1 p-2 bg-transparent font-bold outline-none" placeholder={`Type Option ${opt.label}...`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} />
+                                                                      <button 
+                                                                        onClick={() => updateOption(s.id, q.id, opt.id, {isCorrect: true})} 
+                                                                        className={`shrink-0 w-12 h-12 rounded-xl border-4 flex items-center justify-center font-black transition-all transform active:scale-90 ${opt.isCorrect ? 'bg-green-600 text-white border-green-700 shadow-lg scale-110' : 'bg-white border-gray-300 text-gray-400 hover:bg-royal-50 hover:border-royal-400 ' + (!hasCorrectAnswer ? 'animate-bounce' : '')}`}
+                                                                        title="Mark as Correct Answer"
+                                                                      >
+                                                                          {opt.isCorrect ? <Check size={24} strokeWidth={3}/> : opt.label}
+                                                                      </button>
+                                                                      <input className="flex-1 p-2 bg-transparent font-bold outline-none text-gray-800 placeholder:text-gray-300" placeholder={`Type Option ${opt.label}...`} value={opt.text} onChange={e => updateOption(s.id, q.id, opt.id, {text: e.target.value})} />
                                                                     </div>
-                                                                    <textarea className="w-full p-2 text-[10px] border-2 border-dashed rounded-lg h-16 outline-none bg-white/50 focus:bg-white" placeholder="Insightful explanation..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} />
+                                                                    <div className="relative">
+                                                                        <textarea className="w-full p-2 text-sm border-2 border-dashed border-gray-200 rounded-lg h-20 outline-none bg-white/50 focus:bg-white focus:border-royal-300 transition-colors font-medium text-gray-600" placeholder="Explanation (Revealed at scale text-xl after answer)..." value={opt.explanation} onChange={e => updateOption(s.id, q.id, opt.id, {explanation: e.target.value})} />
+                                                                    </div>
                                                                   </div>
                                                                 ))}
                                                             </div>
                                                          </div>
                                                      </div>
-                                                 ))}
+                                                 )})}
                                              </div>
                                          )}
                                      </div>
@@ -451,7 +491,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
        <div className="bg-gray-50 px-8 py-6 border-t border-gray-100 flex justify-end gap-4 shrink-0">
           <button onClick={onCancel} className="px-8 py-3 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors bg-white border-2 border-gray-300">Cancel Action</button>
           
-          {contentType === 'lesson' && mode === 'manual' && !moduleComplete && (
+          {contentType === 'lesson' && metricMode === 'manual' && !moduleComplete && (
               <>
                  <button 
                    onClick={() => saveManualLesson(false)} 
@@ -471,7 +511,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
               </>
           )}
 
-          {contentType === 'lesson' && mode === 'bulk' && (
+          {contentType === 'lesson' && metricMode === 'bulk' && (
              <button onClick={commitImport} disabled={!draft?.isValid} className="px-10 py-3 bg-royal-800 text-white font-bold rounded-2xl hover:bg-royal-950 shadow-xl flex items-center gap-3 border-4 border-royal-900 transition-all transform hover:-translate-y-1"><Save size={20} /> SYNCHRONIZE DATA</button>
           )}
 

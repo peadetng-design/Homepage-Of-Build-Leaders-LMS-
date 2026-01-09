@@ -22,13 +22,13 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, 
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History
+  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid
 } from 'lucide-react';
 
 export type DashboardView = 
   | 'dashboard' | 'home' | 'resources' | 'news' | 'chat' | 'certificates' 
   | 'lessons' | 'progress' | 'group' | 'assignments' | 'admin' | 'users' 
-  | 'org-panel' | 'staff' | 'child-progress' | 'settings' | 'upload' | 'performance-report' | 'requests' | 'logs';
+  | 'org-panel' | 'staff' | 'child-progress' | 'settings' | 'upload' | 'performance-report' | 'requests' | 'logs' | 'invites' | 'curated';
 
 interface DashboardProps {
   user: User;
@@ -80,19 +80,19 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color, type = 'card', pr
 
   if (type === 'ring') {
     return (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-6">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-6 w-full">
         <CircularProgress percentage={progress || 0} color={color} size={70} icon={Icon} />
-        <div>
-          <h3 className="text-gray-500 font-medium text-xs uppercase tracking-wider mb-1">{title}</h3>
-          <div className="text-2xl font-bold text-gray-900">{value}</div>
-          <div className={`text-xs font-bold mt-1 ${colors.text}`}>{subtitle}</div>
+        <div className="min-w-0">
+          <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-wider mb-1 truncate">{title}</h3>
+          <div className="text-2xl font-black text-gray-900">{value}</div>
+          <div className={`text-[10px] font-black mt-1 ${colors.text} truncate`}>{subtitle}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group">
+    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group w-full">
       <div className={`absolute top-0 right-0 w-24 h-24 ${colors.light} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
       <div className="relative z-10">
         <div className={`w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center mb-4`}>
@@ -136,123 +136,221 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     else setQuizState('incorrect');
   };
 
+  // Helper for "Bordered White Font" styling
+  const getOutlinedTextStyle = (outlineColor: string) => ({
+    textShadow: `
+      2px 2px 0px ${outlineColor},
+      -2px -2px 0px ${outlineColor},
+      2px -2px 0px ${outlineColor},
+      -2px 2px 0px ${outlineColor},
+      2px 0px 0px ${outlineColor},
+      -2px 0px 0px ${outlineColor},
+      0px 2px 0px ${outlineColor},
+      0px -2px 0px ${outlineColor}
+    `
+  });
+
   const renderHomeDashboard = () => {
     const isAdmin = user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
     const isMentor = user.role === UserRole.MENTOR;
     const isOrg = user.role === UserRole.ORGANIZATION;
-    const isParent = user.role === UserRole.PARENT;
+    const canManageGroup = isAdmin || isMentor || isOrg;
 
     return (
-      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-8 rounded-3xl border border-gray-100 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-royal-50 rounded-bl-[4rem] -mr-8 -mt-8 opacity-50"></div>
-              <div className="flex items-center gap-6 relative z-10">
-                  <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-royal-600 to-indigo-800 flex items-center justify-center text-white font-black text-3xl shadow-2xl border-4 border-white">
+      <div className="space-y-8 md:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+          {/* Welcome Header */}
+          <div className="bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/20 to-transparent pointer-events-none"></div>
+              <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 relative z-10 text-center md:text-left">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-3xl md:text-4xl shadow-2xl ring-4 md:ring-8 ring-royal-50">
                       {user.name.charAt(0)}
                   </div>
                   <div>
-                      <div className="flex items-center gap-3">
-                          <h1 className="text-3xl md:text-4xl font-serif font-black text-gray-900 leading-none">Welcome, <span className="text-royal-600">{user.name.split(' ')[0]}</span></h1>
-                          <span className="px-3 py-1 bg-royal-50 text-royal-700 text-[10px] font-black rounded-full border border-royal-100 uppercase tracking-widest">{user.role.replace('_', ' ')}</span>
+                      <h1 className="text-2xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-none">
+                        Shalom, <span className="text-royal-700">{user.name.split(' ')[0]}</span>
+                      </h1>
+                      <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
+                          <div className="flex items-center gap-2 px-3 py-1 bg-royal-900 text-white rounded-lg shadow-md shrink-0">
+                             <Shield size={12} className="text-gold-400" />
+                             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{user.role.replace('_', ' ')}</span>
+                          </div>
                       </div>
-                      <p className="text-gray-500 mt-2 max-w-md line-clamp-1 italic font-medium">{loadingVerse ? "Loading daily inspiration..." : `"${verse?.verse}"`}</p>
                   </div>
               </div>
-              
-              <div className="flex flex-wrap gap-3 w-full xl:w-auto relative z-10">
-                  <button onClick={() => setInternalView('performance-report')} className="flex items-center gap-2 px-6 py-4 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 transition-all transform hover:-translate-y-1 active:scale-95 border-b-4 border-indigo-900">
-                      <BarChart3 size={18} /> <span>PERFORMANCE REPORT</span>
+              <div className="relative z-10 w-full md:w-auto">
+                  <button 
+                    onClick={() => setInternalView('performance-report')} 
+                    className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-lg transition-all transform hover:-translate-y-1 active:scale-95"
+                  >
+                      <Activity size={18} /> ANALYTICS
                   </button>
-                  {isAdmin && (
-                    <button onClick={() => setInternalView('users')} className="flex items-center gap-2 px-6 py-4 bg-royal-800 text-white rounded-2xl font-black hover:bg-royal-950 shadow-lg shadow-royal-800/20 transition-all transform hover:-translate-y-1 active:scale-95 border-b-4 border-royal-950">
-                        <Users size={18} /> <span>MANAGE USERS</span>
-                    </button>
-                  )}
-                  {isMentor && (
-                    <button onClick={() => setInternalView('group')} className="flex items-center gap-2 px-6 py-4 bg-royal-800 text-white rounded-2xl font-black hover:bg-royal-950 shadow-lg shadow-royal-800/20 transition-all transform hover:-translate-y-1 active:scale-95 border-b-4 border-royal-950">
-                        <Users size={18} /> <span>MY GROUP</span>
-                    </button>
-                  )}
               </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <button onClick={() => setInternalView('lessons')} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all flex items-center gap-4 text-left group">
-                  <div className="p-3 bg-blue-100 text-blue-600 rounded-xl group-hover:scale-110 transition-transform"><Play size={24} fill="currentColor"/></div>
-                  <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Action</p><h4 className="font-black text-gray-900">Take Lessons</h4></div>
-              </button>
-              {(isAdmin || isMentor || isOrg) && (
-                <button onClick={() => setInternalView('upload')} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all flex items-center gap-4 text-left group">
-                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform"><Upload size={24}/></div>
-                    <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Management</p><h4 className="font-black text-gray-900">Upload Content</h4></div>
-                </button>
-              )}
-              {(isAdmin || isMentor) && (
-                <button onClick={() => setInternalView('requests')} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all flex items-center gap-4 text-left group">
-                    <div className="p-3 bg-amber-100 text-amber-600 rounded-xl group-hover:scale-110 transition-transform"><UserPlus size={24}/></div>
-                    <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Platform</p><h4 className="font-black text-gray-900">Pending Requests</h4></div>
-                </button>
-              )}
-              {isAdmin && (
-                <button onClick={() => setInternalView('logs')} className="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all flex items-center gap-4 text-left group">
-                    <div className="p-3 bg-purple-100 text-purple-600 rounded-xl group-hover:scale-110 transition-transform"><History size={24}/></div>
-                    <div><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Security</p><h4 className="font-black text-gray-900">Audit Logs</h4></div>
-                </button>
-              )}
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-8">
-              <div className="lg:w-2/3 space-y-8">
-                  <div className="bg-gradient-to-br from-royal-950 to-royal-800 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden border-b-8 border-gold-500">
-                      <div className="absolute top-0 right-0 opacity-10 -translate-y-1/4 translate-x-1/4 pointer-events-none"><BookOpen size={300} /></div>
-                      <h3 className="text-gold-400 font-black uppercase text-xs tracking-[0.4em] mb-6">Verse of the Day</h3>
-                      <p className="text-3xl md:text-4xl font-serif font-bold leading-tight mb-8">"{verse?.verse}"</p>
-                      <div className="flex justify-between items-end border-t border-white/10 pt-8">
-                          <div>
-                              <span className="text-gold-400 font-black text-xl tracking-tighter uppercase">{verse?.reference}</span>
-                              <div className="h-1 w-12 bg-gold-500 mt-1 rounded-full"></div>
+          {/* MATURE ACTION CONSOLES - STACKED VERTICALLY - OPTIMIZED FOR MOBILE LABELS UNDER ICONS */}
+          <div className="flex flex-col gap-8 md:gap-10">
+              
+              {/* PERSONAL CONSOLE - TOP POSITION */}
+              <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-3xl p-6 md:p-10 shadow-xl relative group overflow-hidden border-b-8 border-indigo-950 w-full">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                  
+                  <div className="flex justify-between items-center mb-8 md:mb-10 relative z-10">
+                      <div className="flex items-center gap-3 md:gap-4">
+                          <div className="p-2 md:p-3 bg-white/10 text-white rounded-xl border border-white/20 shadow-lg backdrop-blur-md">
+                            <UserCircle size={20} className="md:w-7 md:h-7"/>
                           </div>
-                          <span className="text-sm text-indigo-200 italic max-w-[60%] text-right leading-relaxed font-medium">"{verse?.reflection}"</span>
+                          <h3 className="font-serif font-black text-white uppercase text-xs md:text-lg tracking-widest">Personal Console</h3>
                       </div>
+                      <div className="h-px flex-1 mx-4 md:mx-6 bg-gradient-to-r from-white/20 to-transparent"></div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <StatCard title="Overall Mastery" value="84%" subtitle="+5% this week" icon={Trophy} color="gold" type="ring" progress={84} />
-                      <StatCard title="Lessons Complete" value="12" subtitle="3 pending" icon={CheckCircle} color="green" type="ring" progress={65} />
-                  </div>
-              </div>
-              <div className="lg:w-1/3 space-y-8">
-                  <div className="bg-white rounded-[2rem] p-8 border-2 border-gray-50 shadow-xl">
-                      <div className="flex justify-between items-start mb-8">
-                          <div className="p-2 bg-gold-100 rounded-lg"><Star size={20} className="text-gold-600" fill="currentColor"/></div>
-                          <span className="text-[10px] text-gray-400 font-black tracking-widest uppercase">AI Study Hub</span>
-                      </div>
-                      {quizQuestion && (
-                          <div className="space-y-6">
-                              <h4 className="font-black text-gray-900 text-xl leading-snug">{quizQuestion.question}</h4>
-                              <div className="space-y-2">
-                                  {quizQuestion.options?.map((opt: any, i: number) => (
-                                      <button key={i} disabled={quizState !== 'idle'} onClick={() => handleQuizAnswer(opt)} className={`w-full text-left p-4 rounded-2xl text-sm font-bold transition-all border-2 ${quizState === 'idle' ? 'bg-gray-50 border-transparent hover:border-royal-300 hover:bg-white' : opt === quizQuestion.answer ? 'bg-green-50 border-green-500 text-green-700' : 'opacity-40 border-transparent'}`}>
-                                          {opt}
-                                      </button>
-                                  ))}
-                              </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative z-10">
+                      <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-indigo-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                          <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl shadow-inner group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-colors shrink-0">
+                            <Play size={24} className="md:w-6 md:h-6" fill="currentColor"/>
                           </div>
+                          <span className="leading-tight">TAKE LESSONS</span>
+                      </button>
+                      
+                      {(isAdmin || isMentor || isOrg) && (
+                        <button onClick={() => setInternalView('upload')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-emerald-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl shadow-inner group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors shrink-0">
+                              <Upload size={24} className="md:w-6 md:h-6"/>
+                            </div>
+                            <span className="leading-tight">UPLOAD CONTENT</span>
+                        </button>
                       )}
+
+                      <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-royal-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                          <div className="p-3 bg-royal-100 text-royal-600 rounded-xl shadow-inner group-hover/btn:bg-royal-500 group-hover/btn:text-white transition-colors shrink-0">
+                            <Trophy size={24} className="md:w-6 md:h-6"/>
+                          </div>
+                          <span className="leading-tight">MY PERFORMANCE</span>
+                      </button>
+
+                      <button onClick={() => setInternalView('curated')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-purple-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                          <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-inner group-hover/btn:bg-purple-500 group-hover/btn:text-white transition-colors shrink-0">
+                            <Bookmark size={24} className="md:w-6 md:h-6" fill="currentColor"/>
+                          </div>
+                          <span className="leading-tight">MY LIST</span>
+                      </button>
                   </div>
-                  <div className="bg-white rounded-[2rem] p-8 border-2 border-gray-50 shadow-xl">
-                      <h3 className="font-black text-gray-900 text-xs uppercase tracking-[0.2em] mb-6 flex items-center gap-3"><MessageSquare size={18} className="text-royal-600" /> RECENT TEAM INTEL</h3>
-                      <div className="space-y-6">
+              </div>
+
+              {/* GROUP CONSOLE - BELOW PERSONAL CONSOLE - OPTIMIZED LABELS UNDER ICONS */}
+              <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-3xl p-6 md:p-10 border-t-4 border-gold-500 shadow-xl relative overflow-hidden group w-full">
+                  <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"></div>
+                  
+                  <div className="flex justify-between items-center mb-8 md:mb-10 relative z-10">
+                      <div className="flex items-center gap-3 md:gap-4">
+                          <div className="p-2 md:p-3 bg-white/5 text-gold-400 rounded-xl border border-white/10 shadow-lg backdrop-blur-md">
+                            <Users size={20} className="md:w-7 md:h-7"/>
+                          </div>
+                          <h3 className="font-serif font-black text-white uppercase text-xs md:text-lg tracking-widest">Group Console</h3>
+                      </div>
+                      <div className="h-px flex-1 mx-4 md:mx-6 bg-gradient-to-r from-gold-500/20 to-transparent"></div>
+                  </div>
+
+                  {canManageGroup ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5 relative z-10">
+                        {(isAdmin || isMentor) && (
+                            <button onClick={() => setInternalView('requests')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                                <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-all shrink-0">
+                                    <UserPlus size={22}/>
+                                </div>
+                                <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#92400e')}>REQUESTS</span>
+                            </button>
+                        )}
+                        
+                        <button onClick={() => setInternalView('users')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                            <div className="p-3 bg-royal-500/10 text-royal-600 rounded-xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0">
+                                <Users size={22}/>
+                            </div>
+                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#1e1b4b')}>USERS</span>
+                        </button>
+
+                        <button onClick={() => setInternalView('invites')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                            <div className="p-3 bg-blue-500/10 text-blue-600 rounded-xl group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-all shrink-0">
+                                <Mail size={22}/>
+                            </div>
+                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#1e3a8a')}>INVITES</span>
+                        </button>
+
+                        <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                            <div className="p-3 bg-gold-500/10 text-gold-600 rounded-xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0">
+                                <BarChart3 size={22}/>
+                            </div>
+                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#b45309')}>ANALYTICS</span>
+                        </button>
+
+                        <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                            <div className="p-3 bg-purple-500/10 text-purple-600 rounded-xl group-hover/btn:bg-purple-600 group-hover/btn:text-white transition-all shrink-0">
+                                <LayoutGrid size={22}/>
+                            </div>
+                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#581c87')}>CURRICULUM</span>
+                        </button>
+
+                        {isAdmin && (
+                            <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
+                                <div className="p-3 bg-slate-500/10 text-slate-600 rounded-xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0">
+                                    <History size={22}/>
+                                </div>
+                                <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#0f172a')}>AUDIT LOGS</span>
+                            </button>
+                        )}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center border-2 border-dashed border-white/10 rounded-2xl">
+                        <Shield size={32} className="text-white/20 mb-3" />
+                        <h4 className="text-white font-bold tracking-widest text-[10px] uppercase">Staff Console Protected</h4>
+                        <p className="text-royal-300 text-[10px] font-medium mt-1 max-w-[180px] mx-auto opacity-70">Management tools are active for verified mentors.</p>
+                    </div>
+                  )}
+              </div>
+          </div>
+
+          {/* LOWER CONTENT GRID - STATS AND COMMS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
+              <div className="lg:col-span-2 space-y-8 md:gap-10">
+                  {/* Mastery Stats */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
+                      <StatCard title="Overall Mastery" value="84%" subtitle="+5% this week" icon={Trophy} color="gold" type="ring" progress={84} />
+                      <StatCard title="Course Velocity" value="12" subtitle="3 pending modules" icon={CheckCircle} color="green" type="ring" progress={65} />
+                  </div>
+                  
+                  {/* Learning Path */}
+                  <div className="p-8 bg-white rounded-3xl border-2 border-gray-50 shadow-sm flex flex-col sm:flex-row items-center gap-6">
+                      <div className="p-4 bg-royal-50 rounded-2xl text-royal-600 shrink-0">
+                          <Globe size={32}/>
+                      </div>
+                      <div className="text-center sm:text-left">
+                          <h4 className="font-serif font-black text-gray-900 text-lg uppercase tracking-tight">Active Learning Path</h4>
+                          <p className="text-sm text-gray-500 font-medium">Continue from where you left off in your biblical leadership journey.</p>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Sidebars - Comms Hub Only */}
+              <div className="space-y-8 md:space-y-10">
+                  {/* Comms Hub */}
+                  <div className="bg-white rounded-3xl p-6 md:p-10 border-2 border-gray-50 shadow-xl">
+                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-widest mb-6 md:mb-10 flex items-center gap-3 md:gap-4">
+                        <MessageSquare size={18} className="text-royal-600" /> RECENT INTEL
+                      </h3>
+                      <div className="space-y-6 md:space-y-8">
                           {recentChats.map(m => (
-                              <div key={m.id} className="flex gap-4 group cursor-pointer" onClick={() => setInternalView('chat')}>
-                                  <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center font-black text-sm text-royal-600 border-2 border-transparent group-hover:border-royal-500 transition-all">{m.senderName.charAt(0)}</div>
+                              <div key={m.id} className="flex gap-4 md:gap-5 group cursor-pointer" onClick={() => setInternalView('chat')}>
+                                  <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-royal-50 flex items-center justify-center font-black text-sm md:text-lg text-royal-700 border-2 border-transparent group-hover:border-royal-500 transition-all shrink-0">
+                                    {m.senderName.charAt(0)}
+                                  </div>
                                   <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-black text-gray-900 truncate uppercase tracking-tight">{m.senderName}</p>
-                                      <p className="text-xs text-gray-500 truncate mt-0.5 leading-relaxed">{m.text}</p>
+                                      <p className="text-[10px] md:text-sm font-black text-gray-900 truncate uppercase tracking-tight">{m.senderName}</p>
+                                      <p className="text-[10px] md:text-sm text-gray-500 truncate mt-1 font-medium leading-relaxed">{m.text}</p>
                                   </div>
                               </div>
                           ))}
                       </div>
-                      <button onClick={() => setInternalView('chat')} className="w-full mt-8 py-3 bg-royal-50 text-royal-800 text-xs font-black rounded-xl hover:bg-royal-100 uppercase tracking-widest transition-all">Open Comms Hub</button>
+                      <button onClick={() => setInternalView('chat')} className="w-full mt-6 md:mt-10 py-3 md:py-4 bg-royal-900 text-white text-[8px] md:text-[10px] font-black rounded-xl md:rounded-[1.5rem] hover:bg-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-royal-900/20 transform hover:-translate-y-1">OPEN COMMS HUB</button>
                   </div>
               </div>
           </div>
@@ -271,6 +369,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
       case 'users':
       case 'requests':
       case 'logs':
+      case 'invites':
+      case 'curated':
         return <AdminPanel 
             currentUser={user} 
             activeTab={internalView === 'dashboard' ? 'users' : internalView as any} 
@@ -299,13 +399,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
         return <PerformanceReport currentUser={user} onBack={() => setInternalView('dashboard')} />;
       case 'settings':
         return (
-          <div className="bg-white p-12 rounded-[3rem] shadow-xl border-2 border-gray-50 max-w-2xl mx-auto">
-            <h2 className="text-3xl font-serif font-black mb-8 border-b-4 border-royal-50 pb-4">Profile Settings</h2>
+          <div className="bg-white p-6 md:p-12 rounded-2xl md:rounded-[3rem] shadow-xl border-2 border-gray-50 max-w-2xl mx-auto">
+            <h2 className="text-2xl md:text-3xl font-serif font-black mb-6 md:mb-8 border-b-4 border-royal-50 pb-4">Profile Settings</h2>
             <div className="space-y-6">
-                <div className="p-6 bg-royal-50 rounded-2xl border-2 border-royal-100">
-                    <p className="text-xs font-black text-royal-800 uppercase tracking-widest mb-1">Security</p>
-                    <p className="text-sm text-royal-600 mb-4">Manage your credentials and access tokens.</p>
-                    <button onClick={onChangePasswordClick} className="w-full py-4 bg-royal-800 text-white font-black rounded-xl shadow-lg shadow-royal-900/20 hover:bg-royal-950 transition-all flex items-center justify-center gap-2 border-b-4 border-royal-950">
+                <div className="p-4 md:p-6 bg-royal-50 rounded-xl md:rounded-2xl border-2 border-royal-100">
+                    <p className="text-[10px] md:text-xs font-black text-royal-800 uppercase tracking-widest mb-1">Security</p>
+                    <p className="text-xs md:text-sm text-royal-600 mb-4">Manage your credentials and access tokens.</p>
+                    <button onClick={onChangePasswordClick} className="w-full py-3 md:py-4 bg-royal-800 text-white font-black rounded-lg md:rounded-xl shadow-lg shadow-royal-900/20 hover:bg-royal-950 transition-all flex items-center justify-center gap-2 border-b-4 border-royal-950 text-xs md:text-base">
                         <Key size={18}/> CHANGE SYSTEM PASSWORD
                     </button>
                 </div>
@@ -319,7 +419,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 relative">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 relative">
       <FrontendEngineerBadge />
       {renderView()}
     </div>

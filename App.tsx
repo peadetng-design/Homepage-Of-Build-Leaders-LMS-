@@ -135,8 +135,8 @@ const App: React.FC = () => {
           setActivePath={handleNavigation}
           onSignOut={handleSignOut}
         />
-        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-20'}`}>
-          <div className="p-4 md:p-8">
+        <main className={`flex-1 overflow-y-auto transition-all duration-300 ${sidebarOpen ? 'ml-32 md:ml-64' : 'ml-12 md:ml-20'}`}>
+          <div className="p-2 md:p-8">
             <DashboardWrapper 
                 user={user} 
                 onUpdateUser={handleUpdateUser}

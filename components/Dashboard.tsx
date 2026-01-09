@@ -20,9 +20,9 @@ import ChatPanel from './ChatPanel';
 import FrontendEngineerBadge from './FrontendEngineerBadge';
 import CertificatesPanel from './CertificatesPanel'; 
 import {
-  BookOpen, Trophy, Activity, CheckCircle, 
+  BookOpen, Trophy, Activity, CheckCircle, Heart,
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid
+  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck
 } from 'lucide-react';
 
 export type DashboardView = 
@@ -78,6 +78,7 @@ const CircularProgress = ({ percentage, color, size = 80, strokeWidth = 8, icon:
 const StatCard = ({ title, value, subtitle, icon: Icon, color, type = 'card', progress }: any) => {
   const colors = colorVariants[color] || colorVariants.blue;
 
+  // Fix: changed 'percentage' to 'progress' on line 84
   if (type === 'ring') {
     return (
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-6 w-full">
@@ -136,17 +137,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     else setQuizState('incorrect');
   };
 
-  // Helper for "Bordered White Font" styling
+  /**
+   * Helper for "Thick Framed White Font" styling
+   * Utilizing 16 shadow vectors for an ultra-bold 3px border effect
+   */
   const getOutlinedTextStyle = (outlineColor: string) => ({
     textShadow: `
-      2px 2px 0px ${outlineColor},
-      -2px -2px 0px ${outlineColor},
-      2px -2px 0px ${outlineColor},
-      -2px 2px 0px ${outlineColor},
-      2px 0px 0px ${outlineColor},
-      -2px 0px 0px ${outlineColor},
-      0px 2px 0px ${outlineColor},
-      0px -2px 0px ${outlineColor}
+      3px 3px 0 ${outlineColor},
+      -3px -3px 0 ${outlineColor},
+      3px -3px 0 ${outlineColor},
+      -3px 3px 0 ${outlineColor},
+      3px 0 0 ${outlineColor},
+      -3px 0 0 ${outlineColor},
+      0 3px 0 ${outlineColor},
+      0 -3px 0 ${outlineColor},
+      1.5px 1.5px 0 ${outlineColor},
+      -1.5px -1.5px 0 ${outlineColor},
+      1.5px -1.5px 0 ${outlineColor},
+      -1.5px 1.5px 0 ${outlineColor},
+      1.5px 0 0 ${outlineColor},
+      -1.5px 0 0 ${outlineColor},
+      0 1.5px 0 ${outlineColor},
+      0 -1.5px 0 ${outlineColor}
     `
   });
 
@@ -154,19 +166,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     const isAdmin = user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
     const isMentor = user.role === UserRole.MENTOR;
     const isOrg = user.role === UserRole.ORGANIZATION;
+    const isParent = user.role === UserRole.PARENT;
+    const isStudent = user.role === UserRole.STUDENT;
+    
     const canManageGroup = isAdmin || isMentor || isOrg;
 
     return (
       <div className="space-y-8 md:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
           {/* Welcome Header */}
-          <div className="bg-white p-6 md:p-10 rounded-3xl border border-gray-100 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="bg-white p-4 md:p-10 rounded-3xl border border-gray-100 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/20 to-transparent pointer-events-none"></div>
               <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 relative z-10 text-center md:text-left">
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-3xl md:text-4xl shadow-2xl ring-4 md:ring-8 ring-royal-50">
+                  <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-2xl md:text-4xl shadow-2xl ring-4 md:ring-8 ring-royal-50">
                       {user.name.charAt(0)}
                   </div>
                   <div>
-                      <h1 className="text-2xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-none">
+                      <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-none">
                         Shalom, <span className="text-royal-700">{user.name.split(' ')[0]}</span>
                       </h1>
                       <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
@@ -182,175 +197,217 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                     onClick={() => setInternalView('performance-report')} 
                     className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-lg transition-all transform hover:-translate-y-1 active:scale-95"
                   >
-                      <Activity size={18} /> ANALYTICS
+                      <Activity size={16} /> ANALYTICS
                   </button>
               </div>
           </div>
 
-          {/* MATURE ACTION CONSOLES - STACKED VERTICALLY - OPTIMIZED FOR MOBILE LABELS UNDER ICONS */}
-          <div className="flex flex-col gap-8 md:gap-10">
+          {/* MATURE ACTION CONSOLES - STACKED VERTICALLY */}
+          <div className="flex flex-col gap-6 md:gap-12">
               
-              {/* PERSONAL CONSOLE - TOP POSITION */}
-              <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-3xl p-6 md:p-10 shadow-xl relative group overflow-hidden border-b-8 border-indigo-950 w-full">
+              {/* PERSONAL CONSOLE */}
+              <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-[1.5rem] md:rounded-[3rem] p-4 md:p-12 shadow-2xl relative group overflow-hidden border-b-8 border-indigo-950 w-full">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
                   
-                  <div className="flex justify-between items-center mb-8 md:mb-10 relative z-10">
-                      <div className="flex items-center gap-3 md:gap-4">
-                          <div className="p-2 md:p-3 bg-white/10 text-white rounded-xl border border-white/20 shadow-lg backdrop-blur-md">
-                            <UserCircle size={20} className="md:w-7 md:h-7"/>
+                  <div className="flex flex-col mb-6 md:mb-10 relative z-10 gap-0">
+                      <div className="flex items-center gap-4 md:gap-6">
+                          {/* Corrected vertical alignment for the icon to match the text baseline/center */}
+                          <div className="p-3 md:p-5 bg-white/10 text-white rounded-2xl md:rounded-[1.5rem] border border-white/20 shadow-lg backdrop-blur-md relative -top-1 md:-top-3">
+                            <UserCircle size={24} className="md:w-10 md:h-10"/>
                           </div>
-                          <h3 className="font-serif font-black text-white uppercase text-xs md:text-lg tracking-widest">Personal Console</h3>
+                          <h3 className="font-serif font-black text-white uppercase text-lg md:text-4xl tracking-[0.1em] md:tracking-[0.2em] drop-shadow-lg">Personal Console</h3>
                       </div>
-                      <div className="h-px flex-1 mx-4 md:mx-6 bg-gradient-to-r from-white/20 to-transparent"></div>
+                      <p className="text-indigo-50 text-[11px] md:text-base font-medium max-w-3xl leading-relaxed animate-in fade-in slide-in-from-left duration-1000 delay-300 -mt-1 md:-mt-2 ml-1">
+                        Your private sanctuary for spiritual and leadership growth—track your progress, master new lessons, and manage your personal achievements.
+                      </p>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative z-10">
-                      <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-indigo-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6 relative z-10">
+                      <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-indigo-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
                           <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl shadow-inner group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-colors shrink-0">
-                            <Play size={24} className="md:w-6 md:h-6" fill="currentColor"/>
+                            <Play size={20} className="md:w-8 h-8" fill="currentColor"/>
                           </div>
-                          <span className="leading-tight">TAKE LESSONS</span>
+                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Take Lessons</span>
                       </button>
                       
                       {(isAdmin || isMentor || isOrg) && (
-                        <button onClick={() => setInternalView('upload')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-emerald-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                        <button onClick={() => setInternalView('upload')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-emerald-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
                             <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl shadow-inner group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors shrink-0">
-                              <Upload size={24} className="md:w-6 md:h-6"/>
+                              <Upload size={20} className="md:w-8 h-8"/>
                             </div>
-                            <span className="leading-tight">UPLOAD CONTENT</span>
+                            <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Upload Content</span>
                         </button>
                       )}
 
-                      <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-royal-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                      <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-royal-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
                           <div className="p-3 bg-royal-100 text-royal-600 rounded-xl shadow-inner group-hover/btn:bg-royal-500 group-hover/btn:text-white transition-colors shrink-0">
-                            <Trophy size={24} className="md:w-6 md:h-6"/>
+                            <Trophy size={20} className="md:w-8 h-8"/>
                           </div>
-                          <span className="leading-tight">MY PERFORMANCE</span>
+                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Performance</span>
                       </button>
 
-                      <button onClick={() => setInternalView('curated')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-white/95 text-purple-950 rounded-2xl font-black text-[10px] md:text-xs hover:bg-white hover:scale-[1.02] transition-all duration-300 shadow-lg text-center">
+                      <button onClick={() => setInternalView('curated')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-purple-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
                           <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-inner group-hover/btn:bg-purple-500 group-hover/btn:text-white transition-colors shrink-0">
-                            <Bookmark size={24} className="md:w-6 md:h-6" fill="currentColor"/>
+                            <Bookmark size={20} className="md:w-8 h-8" fill="currentColor"/>
                           </div>
-                          <span className="leading-tight">MY LIST</span>
+                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">My List</span>
+                      </button>
+
+                      <button onClick={() => setInternalView('certificates')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-gold-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
+                          <div className="p-3 bg-gold-100 text-gold-600 rounded-xl shadow-inner group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-colors shrink-0">
+                            <BadgeCheck size={20} className="md:w-8 h-8"/>
+                          </div>
+                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">My Certificates</span>
                       </button>
                   </div>
               </div>
 
-              {/* GROUP CONSOLE - BELOW PERSONAL CONSOLE - OPTIMIZED LABELS UNDER ICONS */}
-              <div className="bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-3xl p-6 md:p-10 border-t-4 border-gold-500 shadow-xl relative overflow-hidden group w-full">
-                  <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"></div>
-                  
-                  <div className="flex justify-between items-center mb-8 md:mb-10 relative z-10">
-                      <div className="flex items-center gap-3 md:gap-4">
-                          <div className="p-2 md:p-3 bg-white/5 text-gold-400 rounded-xl border border-white/10 shadow-lg backdrop-blur-md">
-                            <Users size={20} className="md:w-7 md:h-7"/>
-                          </div>
-                          <h3 className="font-serif font-black text-white uppercase text-xs md:text-lg tracking-widest">Group Console</h3>
-                      </div>
-                      <div className="h-px flex-1 mx-4 md:mx-6 bg-gradient-to-r from-gold-500/20 to-transparent"></div>
-                  </div>
-
-                  {canManageGroup ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-5 relative z-10">
-                        {(isAdmin || isMentor) && (
-                            <button onClick={() => setInternalView('requests')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                                <div className="p-3 bg-amber-500/10 text-amber-600 rounded-xl group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-all shrink-0">
-                                    <UserPlus size={22}/>
-                                </div>
-                                <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#92400e')}>REQUESTS</span>
-                            </button>
-                        )}
-                        
-                        <button onClick={() => setInternalView('users')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                            <div className="p-3 bg-royal-500/10 text-royal-600 rounded-xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0">
-                                <Users size={22}/>
+              {/* ROLE-AWARE SECOND CONSOLE (Hidden for Students) */}
+              {!isStudent && (
+                <div className={`bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-[1.5rem] md:rounded-[3rem] p-4 md:p-12 border-t-8 ${isParent ? 'border-indigo-400' : 'border-gold-500'} shadow-2xl relative overflow-hidden group w-full`}>
+                    <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"></div>
+                    
+                    <div className="flex flex-col mb-6 md:mb-10 relative z-10 gap-0">
+                        <div className="flex items-center gap-4 md:gap-6">
+                            {/* Corrected vertical alignment for the icon to match the text baseline/center */}
+                            <div className="p-3 md:p-5 bg-white/5 text-gold-400 rounded-2xl md:rounded-[1.5rem] border border-white/10 shadow-lg backdrop-blur-md relative -top-1 md:-top-3">
+                              {isParent ? <Heart size={24} className="text-rose-400 md:w-10 h-10"/> : <Users size={24} className="md:w-10 h-10"/>}
                             </div>
-                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#1e1b4b')}>USERS</span>
-                        </button>
-
-                        <button onClick={() => setInternalView('invites')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                            <div className="p-3 bg-blue-500/10 text-blue-600 rounded-xl group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-all shrink-0">
-                                <Mail size={22}/>
-                            </div>
-                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#1e3a8a')}>INVITES</span>
-                        </button>
-
-                        <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                            <div className="p-3 bg-gold-500/10 text-gold-600 rounded-xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0">
-                                <BarChart3 size={22}/>
-                            </div>
-                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#b45309')}>ANALYTICS</span>
-                        </button>
-
-                        <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                            <div className="p-3 bg-purple-500/10 text-purple-600 rounded-xl group-hover/btn:bg-purple-600 group-hover/btn:text-white transition-all shrink-0">
-                                <LayoutGrid size={22}/>
-                            </div>
-                            <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#581c87')}>CURRICULUM</span>
-                        </button>
-
-                        {isAdmin && (
-                            <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-4 bg-gold-50/95 text-slate-950 rounded-2xl hover:bg-white transition-all duration-300 shadow-lg border border-gold-200 text-center">
-                                <div className="p-3 bg-slate-500/10 text-slate-600 rounded-xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0">
-                                    <History size={22}/>
-                                </div>
-                                <span className="text-white font-black text-[9px] md:text-[11px] leading-tight" style={getOutlinedTextStyle('#0f172a')}>AUDIT LOGS</span>
-                            </button>
-                        )}
+                            <h3 className="font-serif font-black text-white uppercase text-lg md:text-4xl tracking-[0.1em] md:tracking-[0.2em] drop-shadow-lg">
+                                {isParent ? "My Child's Console" : "Group Console"}
+                            </h3>
+                        </div>
+                        <p className="text-amber-50 text-[11px] md:text-base font-medium max-w-3xl leading-relaxed animate-in fade-in slide-in-from-left duration-1000 delay-300 -mt-1 md:-mt-2 ml-1">
+                            {isParent 
+                                ? "Nurture their journey in the Word—a curated oversight of your child's lessons, activity logs, and earned credentials."
+                                : "The command center for community leadership—oversee your team, manage member requests, and analyze collective growth."
+                            }
+                        </p>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 md:py-12 text-center border-2 border-dashed border-white/10 rounded-2xl">
-                        <Shield size={32} className="text-white/20 mb-3" />
-                        <h4 className="text-white font-bold tracking-widest text-[10px] uppercase">Staff Console Protected</h4>
-                        <p className="text-royal-300 text-[10px] font-medium mt-1 max-w-[180px] mx-auto opacity-70">Management tools are active for verified mentors.</p>
-                    </div>
-                  )}
-              </div>
+
+                    {isParent ? (
+                        /* PARENT CONSOLE BUTTONS */
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-6 relative z-10">
+                            <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-royal-500/20 text-royal-400 rounded-2xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <BarChart3 size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e1b4b')}>Performance</span>
+                            </button>
+                            <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <LayoutGrid size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#312e81')}>Lessons List</span>
+                            </button>
+                            <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-slate-500/20 text-slate-400 rounded-2xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <History size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#0f172a')}>Audit Logs</span>
+                            </button>
+                            <button onClick={() => setInternalView('certificates')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-gold-500/20 text-gold-400 rounded-2xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <Award size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#92400e')}>Certificates</span>
+                            </button>
+                        </div>
+                    ) : (
+                        /* STAFF/GROUP CONSOLE BUTTONS */
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6 relative z-10">
+                            {(isAdmin || isMentor || isOrg) && (
+                                <button onClick={() => setInternalView('requests')} className="group/btn flex flex-col items-center justify-center gap-4 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                    <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                        <UserPlus size={20} className="md:w-7 h-7"/>
+                                    </div>
+                                    <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#78350f')}>Requests</span>
+                                </button>
+                            )}
+                            
+                            <button onClick={() => setInternalView('users')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-royal-500/20 text-royal-400 rounded-2xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <Users size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e1b4b')}>Users</span>
+                            </button>
+
+                            <button onClick={() => setInternalView('invites')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-blue-500/20 text-blue-400 rounded-2xl group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <Mail size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e3a8a')}>Invites</span>
+                            </button>
+
+                            <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-gold-500/20 text-gold-400 rounded-2xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <BarChart3 size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#92400e')}>Analytics</span>
+                            </button>
+
+                            <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                <div className="p-3 bg-purple-500/20 text-purple-400 rounded-2xl group-hover/btn:bg-purple-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                    <LayoutGrid size={20} className="md:w-7 h-7"/>
+                                </div>
+                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#581c87')}>Curriculum</span>
+                            </button>
+
+                            {(isAdmin || isMentor || isOrg) && (
+                                <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
+                                    <div className="p-3 bg-slate-500/20 text-slate-400 rounded-2xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
+                                        <History size={20} className="md:w-7 h-7"/>
+                                    </div>
+                                    <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#0f172a')}>Audit Logs</span>
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+              )}
           </div>
 
           {/* LOWER CONTENT GRID - STATS AND COMMS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-10">
-              <div className="lg:col-span-2 space-y-8 md:gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-12">
+              <div className="lg:col-span-2 space-y-6 md:space-y-12">
                   {/* Mastery Stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-10">
                       <StatCard title="Overall Mastery" value="84%" subtitle="+5% this week" icon={Trophy} color="gold" type="ring" progress={84} />
                       <StatCard title="Course Velocity" value="12" subtitle="3 pending modules" icon={CheckCircle} color="green" type="ring" progress={65} />
                   </div>
                   
                   {/* Learning Path */}
-                  <div className="p-8 bg-white rounded-3xl border-2 border-gray-50 shadow-sm flex flex-col sm:flex-row items-center gap-6">
-                      <div className="p-4 bg-royal-50 rounded-2xl text-royal-600 shrink-0">
-                          <Globe size={32}/>
+                  <div className="p-6 md:p-12 bg-white rounded-[2rem] md:rounded-[2.5rem] border-2 border-gray-50 shadow-xl flex flex-col sm:flex-row items-center gap-6 md:gap-8 group">
+                      <div className="p-4 md:p-6 bg-royal-50 rounded-[1.5rem] md:rounded-[2rem] text-royal-600 shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                          <Globe size={32} className="md:w-10 h-10"/>
                       </div>
                       <div className="text-center sm:text-left">
-                          <h4 className="font-serif font-black text-gray-900 text-lg uppercase tracking-tight">Active Learning Path</h4>
-                          <p className="text-sm text-gray-500 font-medium">Continue from where you left off in your biblical leadership journey.</p>
+                          <h4 className="font-serif font-black text-gray-900 text-lg md:text-2xl uppercase tracking-tight">Active Learning Path</h4>
+                          <p className="text-xs md:text-lg text-gray-500 font-medium mt-1">Continue from where you left off in your biblical leadership journey.</p>
                       </div>
                   </div>
               </div>
 
               {/* Sidebars - Comms Hub Only */}
-              <div className="space-y-8 md:space-y-10">
-                  {/* Comms Hub */}
-                  <div className="bg-white rounded-3xl p-6 md:p-10 border-2 border-gray-50 shadow-xl">
-                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-widest mb-6 md:mb-10 flex items-center gap-3 md:gap-4">
-                        <MessageSquare size={18} className="text-royal-600" /> RECENT INTEL
+              <div className="space-y-6 md:space-y-12">
+                  <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border-2 border-gray-50 shadow-xl">
+                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-[0.2em] mb-6 md:mb-8 flex items-center gap-4">
+                        <MessageSquare size={18} className="text-royal-600" /> Recent Intel
                       </h3>
                       <div className="space-y-6 md:space-y-8">
                           {recentChats.map(m => (
-                              <div key={m.id} className="flex gap-4 md:gap-5 group cursor-pointer" onClick={() => setInternalView('chat')}>
-                                  <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-royal-50 flex items-center justify-center font-black text-sm md:text-lg text-royal-700 border-2 border-transparent group-hover:border-royal-500 transition-all shrink-0">
+                              <div key={m.id} className="flex gap-4 md:gap-6 group cursor-pointer" onClick={() => setInternalView('chat')}>
+                                  <div className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-royal-50 flex items-center justify-center font-black text-sm md:text-2xl text-royal-700 border-2 border-transparent group-hover:border-royal-500 transition-all shrink-0 shadow-inner">
                                     {m.senderName.charAt(0)}
                                   </div>
                                   <div className="min-w-0 flex-1">
                                       <p className="text-[10px] md:text-sm font-black text-gray-900 truncate uppercase tracking-tight">{m.senderName}</p>
-                                      <p className="text-[10px] md:text-sm text-gray-500 truncate mt-1 font-medium leading-relaxed">{m.text}</p>
+                                      <p className="text-[9px] md:text-sm text-gray-500 truncate mt-1 font-medium leading-relaxed">{m.text}</p>
                                   </div>
                               </div>
                           ))}
                       </div>
-                      <button onClick={() => setInternalView('chat')} className="w-full mt-6 md:mt-10 py-3 md:py-4 bg-royal-900 text-white text-[8px] md:text-[10px] font-black rounded-xl md:rounded-[1.5rem] hover:bg-black uppercase tracking-[0.2em] transition-all shadow-xl shadow-royal-900/20 transform hover:-translate-y-1">OPEN COMMS HUB</button>
+                      <button onClick={() => setInternalView('chat')} className="w-full mt-6 md:mt-10 py-3 md:py-5 bg-royal-900 text-white text-[9px] md:text-[10px] font-black rounded-xl md:rounded-[1.5rem] hover:bg-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-royal-900/20 transform hover:-translate-y-1 active:scale-95">Open Comms Hub</button>
                   </div>
               </div>
           </div>
@@ -419,7 +476,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 relative">
+    <div className="max-w-7xl mx-auto space-y-4 md:space-y-8 relative">
       <FrontendEngineerBadge />
       {renderView()}
     </div>

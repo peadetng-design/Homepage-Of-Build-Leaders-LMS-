@@ -1,3 +1,4 @@
+
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent } from '../types';
 import { authService } from './authService';
 
@@ -128,7 +129,6 @@ class LessonService {
 
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
     if (storedHomepage) {
-      // Merge keys to avoid issues with older versions
       this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
     } else {
       this.homepage = DEFAULT_HOMEPAGE;
@@ -161,7 +161,6 @@ class LessonService {
             this.saveModules();
         }
     }
-    // Audit Log call (relying on author info in lesson)
     const author = { id: lesson.authorId, name: lesson.author } as User;
     authService.recordExternalAction(author, 'PUBLISH_LESSON', `Published lesson: ${lesson.title}`);
   }
@@ -170,13 +169,10 @@ class LessonService {
     const lesson = this.lessons.find(l => l.id === id);
     this.lessons = this.lessons.filter(l => l.id !== id);
     this.saveLessons();
-    
-    // Also remove from modules
     this.modules.forEach(m => {
       m.lessonIds = m.lessonIds.filter(lId => lId !== id);
     });
     this.saveModules();
-    
     if (lesson) {
         const author = { id: lesson.authorId, name: lesson.author } as User;
         authService.recordExternalAction(author, 'DELETE_LESSON', `Deleted lesson: ${lesson.title}`);
@@ -187,7 +183,6 @@ class LessonService {
   async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.saveHomepage(); }
 
   async getModules(): Promise<Module[]> { return this.modules; }
-  
   async createModule(module: Module): Promise<void> {
       const exists = this.modules.findIndex(m => m.id === module.id);
       if (exists >= 0) this.modules[exists] = module;
@@ -198,24 +193,16 @@ class LessonService {
   async getModuleProgress(userId: string, moduleId: string): Promise<{ completed: number, total: number, lessons: { title: string, done: boolean }[] }> {
       const mod = this.modules.find(m => m.id === moduleId);
       if (!mod) return { completed: 0, total: 0, lessons: [] };
-
       const details = [];
       let completedCount = 0;
-
       for (const lId of mod.lessonIds) {
           const lesson = this.lessons.find(l => l.id === lId);
           if (!lesson) continue;
-          
           const isDone = await this.hasUserAttemptedLesson(userId, lId);
           if (isDone) completedCount++;
           details.push({ title: lesson.title, done: isDone });
       }
-
-      return {
-          completed: completedCount,
-          total: Math.max(mod.totalLessonsRequired, mod.lessonIds.length),
-          lessons: details
-      };
+      return { completed: completedCount, total: Math.max(mod.totalLessonsRequired, mod.lessonIds.length), lessons: details };
   }
 
   async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
@@ -224,17 +211,13 @@ class LessonService {
           let lessonsProcessed = 0;
           let totalScore = 0;
           let lessonsDone = 0;
-
           const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
-
           for (const lId of mod.lessonIds) {
               const lesson = this.lessons.find(l => l.id === lId);
               if (!lesson) continue;
-              
               const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
               const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
               const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
-              
               if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
                   lessonsDone++;
                   const latestAttemptsPerQuiz = new Map<string, boolean>();
@@ -244,9 +227,7 @@ class LessonService {
                   lessonsProcessed++;
               }
           }
-
           if (lessonsDone < requiredCount || lessonsProcessed === 0) continue;
-
           const avgScore = totalScore / lessonsProcessed;
           if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
               const alreadyIssued = this.certificates.find(c => c.userId === userId && c.moduleId === mod.id);
@@ -261,91 +242,62 @@ class LessonService {
       if (!mod) throw new Error("Module not found");
       const cert: Certificate = {
           id: crypto.randomUUID(),
-          userId,
-          userName,
-          moduleId,
-          moduleTitle: mod.title,
+          userId, userName, moduleId, moduleTitle: mod.title,
           issueDate: new Date().toISOString(),
           issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders',
           uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
           design: design || {
               templateId: mod.certificateConfig.templateId as any || 'classic',
-              primaryColor: '#1e1b4b',
-              secondaryColor: '#d97706',
-              titleOverride: mod.certificateConfig.title,
-              messageOverride: mod.certificateConfig.description
+              primaryColor: '#1e1b4b', secondaryColor: '#d97706',
+              titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description
           }
       };
       this.certificates.unshift(cert);
       this.saveCertificates();
-      
       const user = { id: userId, name: userName } as User;
       authService.recordExternalAction(user, 'EARN_CERTIFICATE', `Earned certificate for module: ${mod.title}`);
-      
       return cert;
   }
 
   async getUserCertificates(userId: string): Promise<Certificate[]> { return this.certificates.filter(c => c.userId === userId); }
   async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
+  
+  // RESOURCES CRUD
   async getResources(): Promise<Resource[]> { return this.resources; }
-  async addResource(resource: Resource): Promise<void> { this.resources.unshift(resource); this.saveResources(); }
+  async addResource(resource: Resource, actor: User): Promise<void> { 
+      const existing = this.resources.findIndex(r => r.id === resource.id);
+      if (existing >= 0) this.resources[existing] = resource;
+      else this.resources.unshift(resource);
+      this.saveResources(); 
+      authService.recordExternalAction(actor, existing >= 0 ? 'UPDATE_RESOURCE' : 'ADD_RESOURCE', `Resource: ${resource.title}`);
+  }
+  async deleteResource(id: string, actor: User): Promise<void> {
+      this.resources = this.resources.filter(r => r.id !== id);
+      this.saveResources();
+      authService.recordExternalAction(actor, 'DELETE_RESOURCE', `Deleted resource ID ${id}`);
+  }
+
+  // NEWS CRUD
   async getNews(): Promise<NewsItem[]> { return this.news; }
-  async addNews(news: NewsItem): Promise<void> { this.news.unshift(news); this.saveNews(); }
+  async addNews(news: NewsItem, actor: User): Promise<void> { 
+      const existing = this.news.findIndex(n => n.id === news.id);
+      if (existing >= 0) this.news[existing] = news;
+      else this.news.unshift(news);
+      this.saveNews(); 
+      authService.recordExternalAction(actor, existing >= 0 ? 'UPDATE_NEWS' : 'ADD_NEWS', `News: ${news.title}`);
+  }
+  async deleteNews(id: string, actor: User): Promise<void> {
+      this.news = this.news.filter(n => n.id !== id);
+      this.saveNews();
+      authService.recordExternalAction(actor, 'DELETE_NEWS', `Deleted news item ID ${id}`);
+  }
 
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 1500));
     const mockDraft: LessonDraft = {
-      isValid: true,
-      errors: [],
-      moduleMetadata: {
-        id: "GENESIS-MOD-1",
-        title: "Foundations of Creation",
-        description: "A deep dive into Genesis 1-3",
-        lessonIds: [],
-        totalLessonsRequired: 1,
-        completionRule: { minimumCompletionPercentage: 100 },
-        certificateConfig: {
-          title: "Certificate of Creation Mastery",
-          description: "This certifies expertise in early Genesis leadership principles.",
-          templateId: "classic",
-          issuedBy: "Kingdom Academy"
-        }
-      },
-      lessons: [
-        {
-          metadata: {
-            lesson_id: "GEN-CH1",
-            module_id: "GENESIS-MOD-1",
-            title: "Genesis 1: Divine Order",
-            description: "God’s creative order and leadership",
-            book: "Genesis",
-            chapter: 1,
-            lesson_order: 1,
-            lesson_type: "Bible",
-            targetAudience: "All"
-          },
-          leadershipNote: {
-            title: "Leadership Lessons from Creation",
-            body: `<p>Leadership often starts in chaos (void and formless). It requires speaking light into darkness.</p>`
-          },
-          bibleQuizzes: [
-            {
-              question_id: "Q1",
-              reference: "Genesis 1:1",
-              text: "What did God create in the beginning?",
-              options: [
-                { label: "A", text: "Heaven and Earth", isCorrect: true, explanation: "Explicitly stated in the first verse." },
-                { label: "B", text: "Animals", isCorrect: false, explanation: "These were created later in the chapter." },
-                { label: "C", text: "The Sun", isCorrect: false, explanation: "Created on Day 4." },
-                { label: "D", text: "Plants", isCorrect: false, explanation: "Created on Day 3." }
-              ]
-            }
-          ],
-          noteQuizzes: []
-        }
-      ]
+      isValid: true, errors: [], moduleMetadata: { id: "GENESIS-MOD-1", title: "Foundations of Creation", description: "A deep dive into Genesis 1-3", lessonIds: [], totalLessonsRequired: 1, completionRule: { minimumCompletionPercentage: 100 }, certificateConfig: { title: "Certificate of Creation Mastery", description: "This certifies expertise in early Genesis leadership principles.", templateId: "classic", issuedBy: "Kingdom Academy" } },
+      lessons: [{ metadata: { lesson_id: "GEN-CH1", module_id: "GENESIS-MOD-1", title: "Genesis 1: Divine Order", description: "God’s creative order and leadership", book: "Genesis", chapter: 1, lesson_order: 1, lesson_type: "Bible", targetAudience: "All" }, leadershipNote: { title: "Leadership Lessons from Creation", body: `<p>Leadership often starts in chaos (void and formless). It requires speaking light into darkness.</p>` }, bibleQuizzes: [{ question_id: "Q1", reference: "Genesis 1:1", text: "What did God create in the beginning?", options: [{ label: "A", text: "Heaven and Earth", isCorrect: true, explanation: "Explicitly stated in the first verse." }, { label: "B", text: "Animals", isCorrect: false, explanation: "These were created later in the chapter." }, { label: "C", text: "The Sun", isCorrect: false, explanation: "Created on Day 4." }, { label: "D", text: "Plants", isCorrect: false, explanation: "Created on Day 3." }] }], noteQuizzes: [] }]
     };
-
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
         mockDraft.isValid = false;
         mockDraft.errors.push("Invalid file format. Please upload .xlsx or .csv.");
@@ -355,27 +307,15 @@ class LessonService {
 
   async commitDraft(draft: LessonDraft, author: User): Promise<void> {
     if (!draft.isValid || !draft.moduleMetadata) return;
-
     const moduleObj = { ...draft.moduleMetadata, lessonIds: draft.lessons.map(l => l.metadata.lesson_id) };
     await this.createModule(moduleObj);
-
     for (const dLesson of draft.lessons) {
         const sections: LessonSection[] = [];
         if (dLesson.leadershipNote?.body) {
-            sections.push({ 
-                id: crypto.randomUUID(), type: 'note', 
-                title: dLesson.leadershipNote.title, 
-                body: dLesson.leadershipNote.body, sequence: 1 
-            });
+            sections.push({ id: crypto.randomUUID(), type: 'note', title: dLesson.leadershipNote.title, body: dLesson.leadershipNote.body, sequence: 1 });
         }
         if (dLesson.bibleQuizzes.length > 0) {
-            sections.push({
-                id: crypto.randomUUID(), type: 'quiz_group', title: "Bible Knowledge Check", sequence: 2,
-                quizzes: dLesson.bibleQuizzes.map((q, idx) => ({
-                    id: q.question_id || crypto.randomUUID(), type: 'Bible Quiz', reference: q.reference, text: q.text, sequence: idx,
-                    options: q.options.map((o: any) => ({ ...o, id: crypto.randomUUID() }))
-                }))
-            });
+            sections.push({ id: crypto.randomUUID(), type: 'quiz_group', title: "Bible Knowledge Check", sequence: 2, quizzes: dLesson.bibleQuizzes.map((q, idx) => ({ id: q.question_id || crypto.randomUUID(), type: 'Bible Quiz', reference: q.reference, text: q.text, sequence: idx, options: q.options.map((o: any) => ({ ...o, id: crypto.randomUUID() })) })) });
         }
         const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, authorId: author.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
         await this.publishLesson(lesson);
@@ -387,8 +327,7 @@ class LessonService {
     const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
     this.attempts.push(attempt);
     this.saveAttempts();
-    
-    const user = { id: studentId, name: 'Student' } as User; // Minimal representation
+    const user = { id: studentId, name: 'Student' } as User;
     authService.recordExternalAction(user, 'SUBMIT_QUIZ', `Answered quiz ${quizId} in lesson ${lessonId} (${isCorrect ? 'Correct' : 'Incorrect'})`);
   }
 

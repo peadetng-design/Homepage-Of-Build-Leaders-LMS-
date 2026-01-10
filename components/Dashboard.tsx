@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
-import { UserRole, User, Lesson, ChatMessage } from '../types';
+import React, { useEffect, useState, useRef } from 'react';
+import { UserRole, User, Lesson, ChatMessage, NewsItem, Module, StudentAttempt } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
@@ -22,7 +22,7 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, Heart,
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck
+  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck, ChevronDown, Clock, Newspaper, Calendar, Target, Zap, PieChart, Layers
 } from 'lucide-react';
 
 export type DashboardView = 
@@ -37,377 +37,441 @@ interface DashboardProps {
   initialView?: DashboardView;
 }
 
-const colorVariants: Record<string, { bg: string, text: string, light: string, border: string, stroke: string }> = {
-  blue: { bg: 'bg-blue-100', text: 'text-blue-600', light: 'bg-blue-50', border: 'border-blue-100', stroke: '#2563eb' },
-  green: { bg: 'bg-green-100', text: 'text-green-600', light: 'bg-green-50', border: 'border-green-100', stroke: '#16a34a' },
-  purple: { bg: 'bg-purple-100', text: 'text-purple-600', light: 'bg-purple-50', border: 'border-purple-100', stroke: '#9333ea' },
-  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-600', light: 'bg-indigo-50', border: 'border-indigo-100', stroke: '#4f46e5' },
-  gold: { bg: 'bg-yellow-100', text: 'text-yellow-600', light: 'bg-yellow-50', border: 'border-yellow-100', stroke: '#ca8a04' },
-};
+// Utility component for scroll-triggered "Brighten & Move" animations
+// Ensured components are STABLE and VISIBLE initially but GROW "Bigger and Bolder"
+const ScrollReveal = ({ children, className = "", delay = 0 }: { children?: React.ReactNode, className?: string, delay?: number }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-const CircularProgress = ({ percentage, color, size = 80, strokeWidth = 8, icon: Icon }: any) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (percentage / 100) * circumference;
-  const variants = colorVariants[color] || colorVariants.blue;
-
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90 w-full h-full">
-        <circle cx={size / 2} cy={size / 2} r={radius} stroke="currentColor" strokeWidth={strokeWidth} fill="transparent" className="text-gray-100" />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={variants.stroke}
-          strokeWidth={strokeWidth}
-          fill="transparent"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-all duration-1000 ease-out"
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-700">
-        {Icon ? <Icon size={20} className={variants.text} /> : `${percentage}%`}
-      </div>
-    </div>
-  );
-};
-
-const StatCard = ({ title, value, subtitle, icon: Icon, color, type = 'card', progress }: any) => {
-  const colors = colorVariants[color] || colorVariants.blue;
-
-  // Fix: changed 'percentage' to 'progress' on line 84
-  if (type === 'ring') {
-    return (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-6 w-full">
-        <CircularProgress percentage={progress || 0} color={color} size={70} icon={Icon} />
-        <div className="min-w-0">
-          <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-wider mb-1 truncate">{title}</h3>
-          <div className="text-2xl font-black text-gray-900">{value}</div>
-          <div className={`text-[10px] font-black mt-1 ${colors.text} truncate`}>{subtitle}</div>
-        </div>
-      </div>
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.1 }
     );
-  }
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group w-full">
-      <div className={`absolute top-0 right-0 w-24 h-24 ${colors.light} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
-      <div className="relative z-10">
-        <div className={`w-12 h-12 rounded-xl ${colors.bg} ${colors.text} flex items-center justify-center mb-4`}>
-          <Icon size={24} />
-        </div>
-        <h3 className="text-gray-500 font-medium text-sm mb-1">{title}</h3>
-        <div className="flex items-end gap-2">
-          <span className="text-3xl font-bold text-gray-900">{value}</span>
-          <span className="text-xs text-green-500 font-medium mb-1.5 flex items-center">
-            <TrendingUp size={12} className="mr-0.5" /> {subtitle}
-          </span>
-        </div>
-      </div>
+    <div 
+      ref={ref} 
+      style={{ transitionDelay: `${delay}ms` }}
+      className={`${className} transition-all duration-1000 ease-out transform ${isVisible 
+        ? 'opacity-100 translate-y-0 scale-100 filter brightness-110 contrast-125 saturate-125' 
+        : 'opacity-100 translate-y-6 scale-95 filter brightness-100 contrast-100'}`}
+    >
+      {children}
     </div>
   );
 };
+
+// Utility SVG Components for metrics
+const MiniPieChart = ({ percent, color, bgColor }: { percent: number, color: string, bgColor: string }) => {
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percent / 100) * circumference;
+  return (
+    <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+      <svg className="w-full h-full transform -rotate-90">
+        <circle cx="32" cy="32" r={radius} stroke={bgColor} strokeWidth="6" fill="none" />
+        <circle cx="32" cy="32" r={radius} stroke={color} strokeWidth="6" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000" />
+      </svg>
+      <span className="absolute text-xs font-black" style={{ color }}>{Math.round(percent)}%</span>
+    </div>
+  );
+};
+
+const ConsoleDropdown = ({ 
+  label, 
+  items, 
+  primaryColorClass,
+  direction = 'down'
+}: { 
+  label: string, 
+  items: DropdownOption[], 
+  primaryColorClass: string,
+  direction?: 'up' | 'down'
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(!isOpen);
+  };
+
+  return (
+    <div className="relative inline-block">
+      <button 
+        onClick={handleToggle}
+        className={`flex items-center gap-3 px-8 py-3 rounded-2xl font-black text-xs md:text-sm tracking-[0.3em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-2xl border-b-[8px] ${primaryColorClass} text-white uppercase group overflow-hidden relative z-[101]`}
+      >
+        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-1000 ease-in-out -skew-x-12 -translate-x-full pointer-events-none"></div>
+        <span className="relative z-10">{label}</span>
+        <ChevronDown size={18} className={`relative z-10 transition-transform duration-500 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="fixed inset-0 z-[140] bg-transparent cursor-default" onClick={(e) => { e.stopPropagation(); setIsOpen(false); }} />
+      )}
+      {isOpen && (
+        <div className={`absolute left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 w-[16rem] md:w-[20rem] bg-white rounded-[2.2rem] shadow-[0_40px_100px_-15px_rgba(0,0,0,0.4)] border border-gray-100 p-2.5 md:p-3 z-[150] animate-in fade-in zoom-in-95 duration-300 ${direction === 'up' ? 'bottom-full mb-4 origin-bottom slide-in-from-bottom-4' : 'top-full mt-4 origin-top slide-in-from-top-4'}`}>
+          <div className="flex flex-col gap-1 md:gap-1.5">
+            {items.map((item, idx) => (
+              <button
+                key={idx}
+                onClick={(e) => { e.stopPropagation(); item.action(); setIsOpen(false); }}
+                className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 rounded-[1.4rem] md:rounded-[1.6rem] transition-all duration-300 group/item hover:scale-[1.03] ${item.hoverBg} text-left active:scale-95`}
+              >
+                <div className={`p-2 md:p-2.5 rounded-xl shadow-lg transition-all duration-500 ${item.color} group-hover/item:scale-110 group-hover/item:shadow-[0_0_20px_rgba(0,0,0,0.2)]`} style={{ filter: `drop-shadow(0 0 8px ${item.glowColor}90)` }}><item.icon size={16} className="md:w-[18px] md:h-[18px] transition-transform duration-500 group-hover/item:rotate-[12deg]" /></div>
+                <div className="flex flex-col"><span className="font-black text-[10px] md:text-sm uppercase tracking-[0.1em] text-gray-700 group-hover/item:text-gray-950 transition-colors leading-tight">{item.label}</span><div className="h-0.5 w-0 group-hover/item:w-full transition-all duration-500 rounded-full mt-0.5" style={{ backgroundColor: item.glowColor }}></div></div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface DropdownOption {
+  label: string;
+  icon: React.ElementType;
+  action: () => void;
+  color: string;
+  glowColor: string;
+  hoverBg: string;
+}
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePasswordClick, initialView = 'dashboard' }) => {
   const [internalView, setInternalView] = useState<DashboardView>(initialView);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
-  const [verse, setVerse] = useState<any>(null);
-  const [quizQuestion, setQuizQuestion] = useState<any>(null);
-  const [quizState, setQuizState] = useState<'idle' | 'correct' | 'incorrect'>('idle');
   const [recentChats, setRecentChats] = useState<ChatMessage[]>([]);
-  const [loadingVerse, setLoadingVerse] = useState(true);
+  const [recentNews, setRecentNews] = useState<NewsItem[]>([]);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  useEffect(() => {
-    setInternalView(initialView);
-  }, [initialView]);
+  // Performance Metrics State
+  const [learningMetrics, setLearningMetrics] = useState<{
+    lastLesson: Lesson | null;
+    lastModuleProgress: number;
+    lastLessonTime: number;
+    lastModuleTime: number;
+    completedModulesCount: number;
+    totalModulesCount: number;
+    lastLessonScore: number;
+  }>({
+    lastLesson: null,
+    lastModuleProgress: 0,
+    lastLessonTime: 0,
+    lastModuleTime: 0,
+    completedModulesCount: 0,
+    totalModulesCount: 1,
+    lastLessonScore: 0
+  });
+
+  useEffect(() => { setInternalView(initialView); }, [initialView]);
 
   useEffect(() => {
-    getDailyVerse().then(setVerse).finally(() => setLoadingVerse(false));
-    getAIQuizQuestion().then(setQuizQuestion);
-    authService.getRecentMessages(user, 3).then(setRecentChats);
+    authService.getRecentMessages(user, 4).then(setRecentChats);
+    lessonService.getNews().then(items => {
+        const sorted = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRecentNews(sorted.slice(0, 2));
+    });
+    calculateLearningPath();
   }, [user]);
 
-  const handleQuizAnswer = (answer: string) => {
-    if (quizState !== 'idle') return;
-    if (answer === quizQuestion.answer) setQuizState('correct');
-    else setQuizState('incorrect');
+  const calculateLearningPath = async () => {
+    const allLessons = await lessonService.getLessons();
+    const allModules = await lessonService.getModules();
+    
+    // Find last lesson user interacted with (by attempts or timer)
+    let lastLId = null;
+    const history = localStorage.getItem('bbl_db_attempts') ? JSON.parse(localStorage.getItem('bbl_db_attempts')!) : [];
+    const userHistory = history.filter((h: StudentAttempt) => h.studentId === user.id).sort((a: any, b: any) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
+    
+    if (userHistory.length > 0) {
+      lastLId = userHistory[0].lessonId;
+    } else {
+      // Fallback: check timers
+      const timers = localStorage.getItem('bbl_db_timers') ? JSON.parse(localStorage.getItem('bbl_db_timers')!) : {};
+      const userTimers = Object.entries(timers).filter(([k]) => k.startsWith(user.id)).sort((a: any, b: any) => b[1] - a[1]);
+      if (userTimers.length > 0) lastLId = userTimers[0][0].split('_')[1];
+    }
+
+    if (lastLId) {
+      const lastLesson = allLessons.find(l => l.id === lastLId);
+      if (lastLesson) {
+        const progress = await lessonService.getModuleProgress(user.id, lastLesson.moduleId);
+        const lastLessonTime = await lessonService.getQuizTimer(user.id, lastLesson.id);
+        
+        // Module time sum
+        const moduleLessons = allLessons.filter(l => l.moduleId === lastLesson.moduleId);
+        let modTime = 0;
+        for(const ml of moduleLessons) modTime += await lessonService.getQuizTimer(user.id, ml.id);
+
+        // Completed modules
+        let completedCount = 0;
+        for(const m of allModules) {
+          const mProg = await lessonService.getModuleProgress(user.id, m.id);
+          if (mProg.completed >= mProg.total && mProg.total > 0) completedCount++;
+        }
+
+        // Score performance of last lesson
+        const lastLessonAttempts = userHistory.filter((h: any) => h.lessonId === lastLId);
+        const uniqueQInLastLesson = lastLesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+        const uniqueCorrect = new Set(lastLessonAttempts.filter((a: any) => a.isCorrect).map((a: any) => a.quizId)).size;
+        const scorePerc = uniqueQInLastLesson > 0 ? (uniqueCorrect / uniqueQInLastLesson) * 100 : 0;
+
+        setLearningMetrics({
+          lastLesson,
+          lastModuleProgress: Math.round((progress.completed / progress.total) * 100) || 0,
+          lastLessonTime,
+          lastModuleTime: modTime,
+          completedModulesCount: completedCount,
+          totalModulesCount: allModules.length || 1,
+          lastLessonScore: scorePerc
+        });
+      }
+    } else if (allLessons.length > 0) {
+      // First timer - use first lesson available
+      setLearningMetrics(prev => ({ ...prev, lastLesson: allLessons[0], totalModulesCount: allModules.length }));
+    }
   };
 
-  /**
-   * Helper for "Thick Framed White Font" styling
-   * Utilizing 16 shadow vectors for an ultra-bold 3px border effect
-   */
-  const getOutlinedTextStyle = (outlineColor: string) => ({
-    textShadow: `
-      3px 3px 0 ${outlineColor},
-      -3px -3px 0 ${outlineColor},
-      3px -3px 0 ${outlineColor},
-      -3px 3px 0 ${outlineColor},
-      3px 0 0 ${outlineColor},
-      -3px 0 0 ${outlineColor},
-      0 3px 0 ${outlineColor},
-      0 -3px 0 ${outlineColor},
-      1.5px 1.5px 0 ${outlineColor},
-      -1.5px -1.5px 0 ${outlineColor},
-      1.5px -1.5px 0 ${outlineColor},
-      -1.5px 1.5px 0 ${outlineColor},
-      1.5px 0 0 ${outlineColor},
-      -1.5px 0 0 ${outlineColor},
-      0 1.5px 0 ${outlineColor},
-      0 -1.5px 0 ${outlineColor}
-    `
-  });
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
+  };
 
   const renderHomeDashboard = () => {
     const isAdmin = user.role === UserRole.ADMIN || user.role === UserRole.CO_ADMIN;
     const isMentor = user.role === UserRole.MENTOR;
     const isOrg = user.role === UserRole.ORGANIZATION;
-    const isParent = user.role === UserRole.PARENT;
     const isStudent = user.role === UserRole.STUDENT;
-    
-    const canManageGroup = isAdmin || isMentor || isOrg;
+    const isParent = user.role === UserRole.PARENT;
+    const canManageContent = isAdmin || isMentor || isOrg;
+
+    const personalItems: DropdownOption[] = [
+      { label: "TAKE LESSONS", icon: Play, action: () => setInternalView('lessons'), color: "bg-indigo-600 text-white", glowColor: "#4f46e5", hoverBg: "hover:bg-indigo-50" },
+    ];
+    if (canManageContent) {
+      personalItems.push({ label: "UPLOAD CONTENT", icon: Upload, action: () => setInternalView('upload'), color: "bg-emerald-500 text-white", glowColor: "#10b981", hoverBg: "hover:bg-emerald-50" });
+    }
+    personalItems.push(
+      { label: "PERFORMANCE", icon: Trophy, action: () => setInternalView('performance-report'), color: "bg-indigo-700 text-white", glowColor: "#4338ca", hoverBg: "hover:bg-indigo-50" },
+      { label: "MY LIST", icon: Bookmark, action: () => setInternalView('curated'), color: "bg-purple-600 text-white", glowColor: "#9333ea", hoverBg: "hover:bg-purple-50" },
+      { label: "MY CERTIFICATES", icon: BadgeCheck, action: () => setInternalView('certificates'), color: "bg-gold-500 text-white", glowColor: "#f59e0b", hoverBg: "hover:bg-yellow-50" }
+    );
+
+    const groupItems: DropdownOption[] = [];
+    if (canManageContent) { groupItems.push({ label: "REQUESTS", icon: UserPlus, action: () => setInternalView('requests'), color: "bg-amber-500 text-white", glowColor: "#f59e0b", hoverBg: "hover:bg-amber-50" }); }
+    groupItems.push(
+      { label: "MEMBERS", icon: Users, action: () => setInternalView('users'), color: "bg-indigo-700 text-white", glowColor: "#4338ca", hoverBg: "hover:bg-indigo-50" },
+      { label: "INVITES", icon: Mail, action: () => setInternalView('invites'), color: "bg-blue-600 text-white", glowColor: "#2563eb", hoverBg: "hover:bg-blue-50" },
+      { label: "ANALYTICS", icon: BarChart3, action: () => setInternalView('performance-report'), color: "bg-gold-500 text-white", glowColor: "#f59e0b", hoverBg: "hover:bg-yellow-50" },
+      { label: "CURRICULUM", icon: LayoutGrid, action: () => setInternalView('lessons'), color: "bg-purple-600 text-white", glowColor: "#9333ea", hoverBg: "hover:bg-purple-50" }
+    );
+    if (canManageContent || isParent) { groupItems.push({ label: "AUDIT LOGS", icon: History, action: () => setInternalView('logs'), color: "bg-slate-600 text-white", glowColor: "#475569", hoverBg: "hover:bg-slate-50" }); }
 
     return (
-      <div className="space-y-8 md:space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-32">
           {/* Welcome Header */}
-          <div className="bg-white p-4 md:p-10 rounded-3xl border border-gray-100 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/20 to-transparent pointer-events-none"></div>
-              <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8 relative z-10 text-center md:text-left">
-                  <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-2xl md:text-4xl shadow-2xl ring-4 md:ring-8 ring-royal-50">
-                      {user.name.charAt(0)}
-                  </div>
+          <div className="bg-white p-5 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 lg:max-w-[70%] lg:mx-auto">
+              <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/30 to-transparent pointer-events-none"></div>
+              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10 text-center md:text-left">
+                  <div className="w-16 h-16 md:w-24 md:h-24 rounded-3xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-2xl md:text-4xl shadow-2xl ring-6 md:ring-8 ring-royal-50/50">{user.name.charAt(0)}</div>
                   <div>
-                      <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-none">
-                        Shalom, <span className="text-royal-700">{user.name.split(' ')[0]}</span>
-                      </h1>
-                      <div className="flex items-center justify-center md:justify-start gap-2 mt-3">
-                          <div className="flex items-center gap-2 px-3 py-1 bg-royal-900 text-white rounded-lg shadow-md shrink-0">
-                             <Shield size={12} className="text-gold-400" />
-                             <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{user.role.replace('_', ' ')}</span>
-                          </div>
-                      </div>
+                      <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-tight">Shalom, <span className="text-royal-700">{user.name.split(' ')[0]}</span></h1>
+                      <div className="flex items-center justify-center md:justify-start gap-3 mt-3"><div className="flex items-center gap-2 px-3 py-1.5 bg-royal-950 text-white rounded-xl shadow-xl shrink-0 border border-white/10"><Shield size={12} className="text-gold-400" /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">{user.role.replace('_', ' ')}</span></div></div>
                   </div>
               </div>
-              <div className="relative z-10 w-full md:w-auto">
-                  <button 
-                    onClick={() => setInternalView('performance-report')} 
-                    className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3.5 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-lg transition-all transform hover:-translate-y-1 active:scale-95"
-                  >
-                      <Activity size={16} /> ANALYTICS
-                  </button>
-              </div>
+              <div className="relative z-10 w-full md:w-auto"><button onClick={() => setInternalView('performance-report')} className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 border-b-[4px] border-indigo-900"><Activity size={18} /> ANALYTICS</button></div>
           </div>
 
-          {/* MATURE ACTION CONSOLES - STACKED VERTICALLY */}
-          <div className="flex flex-col gap-6 md:gap-12">
-              
-              {/* PERSONAL CONSOLE */}
-              <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-[1.5rem] md:rounded-[3rem] p-4 md:p-12 shadow-2xl relative group overflow-hidden border-b-8 border-indigo-950 w-full">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                  
-                  <div className="flex flex-col mb-6 md:mb-10 relative z-10 gap-0">
-                      <div className="flex items-center gap-4 md:gap-6">
-                          {/* Corrected vertical alignment for the icon to match the text baseline/center */}
-                          <div className="p-3 md:p-5 bg-white/10 text-white rounded-2xl md:rounded-[1.5rem] border border-white/20 shadow-lg backdrop-blur-md relative -top-1 md:-top-3">
-                            <UserCircle size={24} className="md:w-10 md:h-10"/>
-                          </div>
-                          <h3 className="font-serif font-black text-white uppercase text-lg md:text-4xl tracking-[0.1em] md:tracking-[0.2em] drop-shadow-lg">Personal Console</h3>
-                      </div>
-                      <p className="text-indigo-50 text-[11px] md:text-base font-medium max-w-3xl leading-relaxed animate-in fade-in slide-in-from-left duration-1000 delay-300 -mt-1 md:-mt-2 ml-1">
-                        Your private sanctuary for spiritual and leadership growth—track your progress, master new lessons, and manage your personal achievements.
-                      </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6 relative z-10">
-                      <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-indigo-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
-                          <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl shadow-inner group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-colors shrink-0">
-                            <Play size={20} className="md:w-8 h-8" fill="currentColor"/>
-                          </div>
-                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Take Lessons</span>
-                      </button>
-                      
-                      {(isAdmin || isMentor || isOrg) && (
-                        <button onClick={() => setInternalView('upload')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-emerald-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
-                            <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl shadow-inner group-hover/btn:bg-emerald-500 group-hover/btn:text-white transition-colors shrink-0">
-                              <Upload size={20} className="md:w-8 h-8"/>
-                            </div>
-                            <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Upload Content</span>
-                        </button>
-                      )}
-
-                      <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-royal-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
-                          <div className="p-3 bg-royal-100 text-royal-600 rounded-xl shadow-inner group-hover/btn:bg-royal-500 group-hover/btn:text-white transition-colors shrink-0">
-                            <Trophy size={20} className="md:w-8 h-8"/>
-                          </div>
-                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">Performance</span>
-                      </button>
-
-                      <button onClick={() => setInternalView('curated')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-purple-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
-                          <div className="p-3 bg-purple-100 text-purple-600 rounded-xl shadow-inner group-hover/btn:bg-purple-500 group-hover/btn:text-white transition-colors shrink-0">
-                            <Bookmark size={20} className="md:w-8 h-8" fill="currentColor"/>
-                          </div>
-                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">My List</span>
-                      </button>
-
-                      <button onClick={() => setInternalView('certificates')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 md:p-6 bg-white/95 text-gold-950 rounded-2xl md:rounded-[2.5rem] hover:bg-white hover:scale-[1.03] transition-all duration-300 shadow-xl text-center min-h-[120px] md:min-h-[140px]">
-                          <div className="p-3 bg-gold-100 text-gold-600 rounded-xl shadow-inner group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-colors shrink-0">
-                            <BadgeCheck size={20} className="md:w-8 h-8"/>
-                          </div>
-                          <span className="font-black text-[9px] md:text-sm uppercase tracking-widest leading-tight">My Certificates</span>
-                      </button>
-                  </div>
+          {/* ACTION CONSOLES */}
+          <div className="flex flex-col gap-6 md:gap-10 relative">
+              <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-[2.2rem] md:rounded-[2.8rem] p-5 md:p-8 shadow-[0_30px_80px_-20px_rgba(30,27,75,0.4)] relative border-b-[10px] border-indigo-950 w-full lg:max-w-[60%] lg:mx-auto">
+                  <div className="absolute top-0 right-0 w-[20rem] h-[20rem] bg-white/5 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none"></div>
+                  <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-4"><div className="p-3 bg-white/10 text-white rounded-xl border border-white/20 shadow-2xl backdrop-blur-2xl"><UserCircle size={28} /></div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">Personal Console</h3></div><div className="max-w-3xl"><p className="text-indigo-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">Your inner sanctuary for growth. Track transformations, curate your library, and verify achievements.</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={personalItems} direction="up" primaryColorClass="bg-indigo-600 hover:bg-indigo-500 border-indigo-900 shadow-indigo-950/60" /></div></div>
               </div>
-
-              {/* ROLE-AWARE SECOND CONSOLE (Hidden for Students) */}
               {!isStudent && (
-                <div className={`bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-[1.5rem] md:rounded-[3rem] p-4 md:p-12 border-t-8 ${isParent ? 'border-indigo-400' : 'border-gold-500'} shadow-2xl relative overflow-hidden group w-full`}>
-                    <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"></div>
-                    
-                    <div className="flex flex-col mb-6 md:mb-10 relative z-10 gap-0">
-                        <div className="flex items-center gap-4 md:gap-6">
-                            {/* Corrected vertical alignment for the icon to match the text baseline/center */}
-                            <div className="p-3 md:p-5 bg-white/5 text-gold-400 rounded-2xl md:rounded-[1.5rem] border border-white/10 shadow-lg backdrop-blur-md relative -top-1 md:-top-3">
-                              {isParent ? <Heart size={24} className="text-rose-400 md:w-10 h-10"/> : <Users size={24} className="md:w-10 h-10"/>}
-                            </div>
-                            <h3 className="font-serif font-black text-white uppercase text-lg md:text-4xl tracking-[0.1em] md:tracking-[0.2em] drop-shadow-lg">
-                                {isParent ? "My Child's Console" : "Group Console"}
-                            </h3>
-                        </div>
-                        <p className="text-amber-50 text-[11px] md:text-base font-medium max-w-3xl leading-relaxed animate-in fade-in slide-in-from-left duration-1000 delay-300 -mt-1 md:-mt-2 ml-1">
-                            {isParent 
-                                ? "Nurture their journey in the Word—a curated oversight of your child's lessons, activity logs, and earned credentials."
-                                : "The command center for community leadership—oversee your team, manage member requests, and analyze collective growth."
-                            }
-                        </p>
-                    </div>
-
-                    {isParent ? (
-                        /* PARENT CONSOLE BUTTONS */
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-6 relative z-10">
-                            <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-royal-500/20 text-royal-400 rounded-2xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <BarChart3 size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e1b4b')}>Performance</span>
-                            </button>
-                            <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-2xl group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <LayoutGrid size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#312e81')}>Lessons List</span>
-                            </button>
-                            <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-slate-500/20 text-slate-400 rounded-2xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <History size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#0f172a')}>Audit Logs</span>
-                            </button>
-                            <button onClick={() => setInternalView('certificates')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-gold-500/20 text-gold-400 rounded-2xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <Award size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#92400e')}>Certificates</span>
-                            </button>
-                        </div>
-                    ) : (
-                        /* STAFF/GROUP CONSOLE BUTTONS */
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6 relative z-10">
-                            {(isAdmin || isMentor || isOrg) && (
-                                <button onClick={() => setInternalView('requests')} className="group/btn flex flex-col items-center justify-center gap-4 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                    <div className="p-3 bg-amber-500/20 text-amber-400 rounded-2xl group-hover/btn:bg-amber-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                        <UserPlus size={20} className="md:w-7 h-7"/>
-                                    </div>
-                                    <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#78350f')}>Requests</span>
-                                </button>
-                            )}
-                            
-                            <button onClick={() => setInternalView('users')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-royal-500/20 text-royal-400 rounded-2xl group-hover/btn:bg-royal-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <Users size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e1b4b')}>Users</span>
-                            </button>
-
-                            <button onClick={() => setInternalView('invites')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-blue-500/20 text-blue-400 rounded-2xl group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <Mail size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#1e3a8a')}>Invites</span>
-                            </button>
-
-                            <button onClick={() => setInternalView('performance-report')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-gold-500/20 text-gold-400 rounded-2xl group-hover/btn:bg-gold-500 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <BarChart3 size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#92400e')}>Analytics</span>
-                            </button>
-
-                            <button onClick={() => setInternalView('lessons')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                <div className="p-3 bg-purple-500/20 text-purple-400 rounded-2xl group-hover/btn:bg-purple-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                    <LayoutGrid size={20} className="md:w-7 h-7"/>
-                                </div>
-                                <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#581c87')}>Curriculum</span>
-                            </button>
-
-                            {(isAdmin || isMentor || isOrg) && (
-                                <button onClick={() => setInternalView('logs')} className="group/btn flex flex-col items-center justify-center gap-3 p-3 bg-royal-800/40 text-white rounded-2xl md:rounded-[2rem] hover:bg-royal-700/60 transition-all duration-300 shadow-xl border border-white/10 text-center min-h-[110px] md:min-h-[130px]">
-                                    <div className="p-3 bg-slate-500/20 text-slate-400 rounded-2xl group-hover/btn:bg-slate-600 group-hover/btn:text-white transition-all shrink-0 shadow-lg">
-                                        <History size={20} className="md:w-7 h-7"/>
-                                    </div>
-                                    <span className="text-white font-black text-[8px] md:text-[11px] leading-tight tracking-widest uppercase" style={getOutlinedTextStyle('#0f172a')}>Audit Logs</span>
-                                </button>
-                            )}
-                        </div>
-                    )}
+                <div className={`bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-[2.2rem] md:rounded-[2.8rem] p-5 md:p-8 border-t-[10px] ${isParent ? 'border-indigo-400' : 'border-gold-500'} shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] relative w-full lg:max-w-[60%] lg:mx-auto`}>
+                    <div className="absolute top-0 left-0 w-full h-full opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                    <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-4"><div className="p-3 bg-white/5 text-gold-400 rounded-xl border border-white/10 shadow-2xl backdrop-blur-2xl">{isParent ? <Heart size={28} className="text-rose-400"/> : <Users size={28}/>}</div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">{isParent ? "My Child's Console" : "Group Console"}</h3></div><div className="max-w-3xl"><p className="text-amber-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">{isParent ? "Oversee spiritual foundations. Audit logs, track modules, and manage their earned credentials." : "Command center for community oversight. Manage invites, validate requests, and analyze performance."}</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={groupItems} direction="down" primaryColorClass={isParent ? "bg-indigo-500 hover:bg-indigo-400 border-indigo-900 shadow-black/70" : "bg-gold-500 hover:bg-gold-400 border-gold-800 shadow-black/70"} /></div></div>
                 </div>
               )}
           </div>
 
-          {/* LOWER CONTENT GRID - STATS AND COMMS */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-12">
-              <div className="lg:col-span-2 space-y-6 md:space-y-12">
-                  {/* Mastery Stats */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-10">
-                      <StatCard title="Overall Mastery" value="84%" subtitle="+5% this week" icon={Trophy} color="gold" type="ring" progress={84} />
-                      <StatCard title="Course Velocity" value="12" subtitle="3 pending modules" icon={CheckCircle} color="green" type="ring" progress={65} />
+          {/* LOWER CONTENT GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-14 relative z-0 lg:max-w-[90%] lg:mx-auto">
+              <div className="lg:col-span-2 space-y-8 md:space-y-14">
+                  {/* --- BEAUTIFUL BOLD NEWS PANEL --- */}
+                  <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border-2 border-gray-50 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 p-8 opacity-[0.03] transition-opacity group-hover:opacity-[0.08]"><Newspaper size={200} /></div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 border-b-4 border-royal-50 pb-6 gap-4">
+                         <div className="flex items-center gap-4">
+                            <div className="p-3 bg-royal-900 text-gold-400 rounded-2xl shadow-xl"><Newspaper size={28} /></div>
+                            <h3 className="font-serif font-black text-gray-900 text-xl md:text-3xl uppercase tracking-tighter">News & Updates</h3>
+                         </div>
+                         <button 
+                            onClick={() => setInternalView('news')} 
+                            className="px-6 py-2.5 bg-royal-800 hover:bg-royal-950 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-xl shadow-royal-900/20 flex items-center gap-2 transform hover:-translate-y-1 active:scale-95 border-b-4 border-royal-950"
+                         >
+                            VIEW ARCHIVE <ArrowRight size={14} strokeWidth={3} />
+                         </button>
+                      </div>
+                      
+                      <div className="space-y-8">
+                         {recentNews.length > 0 ? recentNews.map(item => {
+                             const d = new Date(item.date);
+                             return (
+                                 <div key={item.id} className="relative pl-10 border-l-4 border-royal-100 hover:border-royal-600 transition-colors group/news">
+                                     <div className="absolute -left-[10px] top-0 w-4 h-4 rounded-full bg-white border-4 border-royal-100 group-hover/news:border-royal-600 transition-all"></div>
+                                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-2">
+                                         <span className="px-3 py-1 bg-royal-50 text-royal-700 text-[9px] font-black rounded-full uppercase tracking-widest">{item.category}</span>
+                                         <div className="flex items-center gap-3 text-[9px] font-bold text-gray-400 uppercase">
+                                             <span className="flex items-center gap-1"><Calendar size={12}/> {d.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                             <span className="flex items-center gap-1"><Clock size={12}/> {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                         </div>
+                                     </div>
+                                     <h4 className="font-serif font-black text-xl md:text-2xl text-gray-900 leading-tight group-hover/news:text-royal-600 transition-colors">{item.title}</h4>
+                                     <p className="mt-2 text-gray-500 text-sm md:text-base font-medium line-clamp-1 opacity-80">{item.content}</p>
+                                 </div>
+                             );
+                         }) : (
+                             <div className="text-center py-10 opacity-40 italic font-medium">Waiting for system updates...</div>
+                         )}
+                      </div>
                   </div>
                   
-                  {/* Learning Path */}
-                  <div className="p-6 md:p-12 bg-white rounded-[2rem] md:rounded-[2.5rem] border-2 border-gray-50 shadow-xl flex flex-col sm:flex-row items-center gap-6 md:gap-8 group">
-                      <div className="p-4 md:p-6 bg-royal-50 rounded-[1.5rem] md:rounded-[2rem] text-royal-600 shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                          <Globe size={32} className="md:w-10 h-10"/>
+                  {/* --- REDESIGNED ACTIVE LEARNING PATH WITH INFORMATICS & ANIMATIONS --- */}
+                  <div className="p-8 md:p-12 bg-white rounded-[2.5rem] md:rounded-[3.5rem] border-4 border-royal-100 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col gap-10 group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-64 h-64 bg-royal-50/50 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                      
+                      <div className="flex flex-col md:flex-row items-center gap-8 md:gap-10 relative z-10">
+                          <div className="p-6 md:p-8 bg-royal-900 rounded-[2.2rem] text-gold-400 shrink-0 group-hover:scale-105 transition-transform shadow-2xl border-b-[8px] border-royal-950">
+                             <Globe size={40} className="md:w-12 md:h-12"/>
+                          </div>
+                          <div className="text-center md:text-left flex-1">
+                              <h4 className="font-serif font-black text-gray-950 text-xl md:text-3xl uppercase tracking-tighter mb-2">Active Learning Path</h4>
+                              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
+                                <p className="text-sm md:text-lg text-gray-500 font-bold leading-relaxed opacity-80">
+                                  Continue from where you left off. Your next milestone is just a few minutes away.
+                                </p>
+                                <button 
+                                  onClick={() => learningMetrics.lastLesson && setSelectedLessonId(learningMetrics.lastLesson.id)}
+                                  className="px-8 py-3 bg-royal-800 hover:bg-black text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-xl border-b-4 border-royal-950 flex items-center gap-2"
+                                >
+                                  CONTINUE <ArrowRight size={14} />
+                                </button>
+                              </div>
+                          </div>
                       </div>
-                      <div className="text-center sm:text-left">
-                          <h4 className="font-serif font-black text-gray-900 text-lg md:text-2xl uppercase tracking-tight">Active Learning Path</h4>
-                          <p className="text-xs md:text-lg text-gray-500 font-medium mt-1">Continue from where you left off in your biblical leadership journey.</p>
+
+                      {/* --- PERFORMANCE METRICS & STATISTICS TOOLS WITH ANIMATIONS --- */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4 border-t border-gray-100 relative z-10">
+                          {/* (a) Current Module Progress Bar */}
+                          <ScrollReveal className="lg:col-span-2" delay={100}>
+                            <div className="space-y-4 bg-white p-6 rounded-[2rem] border-4 border-indigo-400 shadow-sm group/stat hover:border-indigo-600 transition-all hover:shadow-xl hover:scale-[1.02]">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-indigo-50 text-indigo-700 rounded-2xl group-hover/stat:bg-indigo-600 group-hover/stat:text-white transition-colors shadow-sm"><Layers size={24} /></div>
+                                        <div>
+                                            <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest">Current Module</h5>
+                                            <p className="text-xs font-bold text-gray-400 truncate max-w-[120px]">{learningMetrics.lastLesson?.moduleId || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-5xl font-black text-royal-950">{learningMetrics.lastModuleProgress}%</span>
+                                </div>
+                                <div className="h-6 w-full bg-gray-50 rounded-full border-2 border-royal-50 overflow-hidden p-1">
+                                    <div 
+                                      className="h-full bg-gradient-to-r from-royal-600 to-royal-400 rounded-full transition-all duration-1000 shadow-sm"
+                                      style={{ width: `${learningMetrics.lastModuleProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                          </ScrollReveal>
+
+                          {/* (d) Modules Completed */}
+                          <ScrollReveal delay={200}>
+                            <div className="bg-white p-6 rounded-[2rem] border-4 border-gold-400 flex flex-col justify-between items-center text-center shadow-sm group/stat hover:border-gold-600 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
+                                <div className="p-3 bg-gold-50 text-gold-600 rounded-2xl group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm mb-3"><Award size={24} /></div>
+                                <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest mb-1">Modules Mastered</h5>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-5xl font-black text-royal-950">{learningMetrics.completedModulesCount}</span>
+                                    <span className="text-lg text-gray-300 font-bold">/ {learningMetrics.totalModulesCount}</span>
+                                </div>
+                                <div className="px-3 py-1 bg-royal-100 text-royal-700 rounded-full text-[9px] font-black uppercase tracking-tighter">
+                                   {Math.round((learningMetrics.completedModulesCount/learningMetrics.totalModulesCount)*100)}% GLOBAL TARGET
+                                </div>
+                            </div>
+                          </ScrollReveal>
+
+                          {/* (e) Last Lesson Score Pie Chart */}
+                          <ScrollReveal delay={300}>
+                            <div className="bg-white p-6 rounded-[2rem] border-4 border-royal-500 flex flex-col justify-between items-center text-center shadow-sm group/stat hover:border-royal-700 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
+                                <div className="p-3 bg-royal-50 text-royal-600 rounded-2xl group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm mb-3"><Target size={24} /></div>
+                                <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest mb-3">Last Precision</h5>
+                                <div className="flex items-center gap-3">
+                                  <MiniPieChart percent={learningMetrics.lastLessonScore} color="#4f46e5" bgColor="#e0e7ff" />
+                                  <span className="text-5xl font-black text-royal-950 leading-none">{Math.round(learningMetrics.lastLessonScore)}%</span>
+                                </div>
+                            </div>
+                          </ScrollReveal>
+                      </div>
+
+                      {/* (b) & (c) Time Stats */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                          <ScrollReveal delay={400} className="w-full">
+                            <div className="flex items-center gap-5 p-6 bg-white border-4 border-amber-400 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-amber-600 transition-all group/time">
+                                <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl group-hover/time:bg-amber-500 group-hover/time:text-white transition-colors shadow-md"><Clock size={28} /></div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Lesson Time</p>
+                                    <p className="text-5xl font-black text-gray-900">{formatTime(learningMetrics.lastLessonTime)}</p>
+                                </div>
+                            </div>
+                          </ScrollReveal>
+                          <ScrollReveal delay={500} className="w-full">
+                            <div className="flex items-center gap-5 p-6 bg-white border-4 border-emerald-400 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-emerald-600 transition-all group/time">
+                                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover/time:bg-emerald-500 group-hover/time:text-white transition-colors shadow-md"><History size={28} /></div>
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Module Effort</p>
+                                    <p className="text-5xl font-black text-gray-900">{formatTime(learningMetrics.lastModuleTime)}</p>
+                                </div>
+                            </div>
+                          </ScrollReveal>
                       </div>
                   </div>
               </div>
 
-              {/* Sidebars - Comms Hub Only */}
-              <div className="space-y-6 md:space-y-12">
-                  <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border-2 border-gray-50 shadow-xl">
-                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-[0.2em] mb-6 md:mb-8 flex items-center gap-4">
-                        <MessageSquare size={18} className="text-royal-600" /> Recent Intel
-                      </h3>
-                      <div className="space-y-6 md:space-y-8">
-                          {recentChats.map(m => (
-                              <div key={m.id} className="flex gap-4 md:gap-6 group cursor-pointer" onClick={() => setInternalView('chat')}>
-                                  <div className="w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-royal-50 flex items-center justify-center font-black text-sm md:text-2xl text-royal-700 border-2 border-transparent group-hover:border-royal-500 transition-all shrink-0 shadow-inner">
-                                    {m.senderName.charAt(0)}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                      <p className="text-[10px] md:text-sm font-black text-gray-900 truncate uppercase tracking-tight">{m.senderName}</p>
-                                      <p className="text-[9px] md:text-sm text-gray-500 truncate mt-1 font-medium leading-relaxed">{m.text}</p>
-                                  </div>
-                              </div>
-                          ))}
+              {/* Sidebars - Recent Chats Section */}
+              <div className="space-y-8 md:space-y-14">
+                  <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border-2 border-gray-50 shadow-2xl">
+                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-[0.3em] mb-8 flex items-center gap-4"><div className="p-2 bg-royal-900 text-white rounded-lg shadow-lg"><MessageSquare size={16} /></div> RECENT CHATS</h3>
+                      <div className="space-y-6">
+                          {recentChats.map(m => {
+                              const d = new Date(m.timestamp);
+                              const dayName = d.toLocaleDateString([], { weekday: 'short' });
+                              const dateString = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+                              const timeString = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                              return (
+                                <div key={m.id} className="p-4 rounded-3xl bg-gray-50/50 hover:bg-white border-2 border-transparent hover:border-royal-100 hover:shadow-xl transition-all group cursor-pointer" onClick={() => setInternalView('chat')}>
+                                    <div className="flex gap-4 items-start">
+                                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white flex items-center justify-center font-black text-xs md:text-xl text-royal-700 border border-royal-100 shrink-0 shadow-sm relative group-hover:scale-110 transition-transform">{m.senderName.charAt(0)}<div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div></div>
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex justify-between items-center mb-1.5"><span className="text-[10px] font-black text-royal-600 uppercase tracking-[0.2em]">{m.senderName}</span><div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400"><Clock size={10} /> <span>{dayName} ({dateString})</span></div></div>
+                                            <p className="text-sm md:text-base font-serif font-black text-royal-950 leading-snug line-clamp-2 tracking-tight">"{m.text}"</p>
+                                            <div className="mt-2 flex items-center justify-between"><span className="bg-gray-100 px-2 py-0.5 rounded text-[9px] font-black text-gray-500 uppercase">{timeString}</span><span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-black text-royal-500 uppercase tracking-widest flex items-center gap-1">Open <ArrowRight size={10}/></span></div>
+                                        </div>
+                                    </div>
+                                </div>
+                              );
+                          })}
                       </div>
-                      <button onClick={() => setInternalView('chat')} className="w-full mt-6 md:mt-10 py-3 md:py-5 bg-royal-900 text-white text-[9px] md:text-[10px] font-black rounded-xl md:rounded-[1.5rem] hover:bg-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-royal-900/20 transform hover:-translate-y-1 active:scale-95">Open Comms Hub</button>
+                      <button onClick={() => setInternalView('chat')} className="w-full mt-10 py-5 bg-royal-900 text-white text-[10px] font-black rounded-[1.5rem] hover:bg-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-royal-900/30 transform hover:-translate-y-1 active:scale-95 border-b-[5px] border-black">OPEN CHATS APP</button>
                   </div>
               </div>
           </div>
@@ -418,77 +482,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
   const renderView = () => {
     if (selectedLessonId) return <LessonViewWrapper lessonId={selectedLessonId} user={user} onBack={() => setSelectedLessonId(null)} />;
-
     switch (internalView) {
-      case 'upload':
-        return <LessonUpload currentUser={user} onSuccess={() => setInternalView('lessons')} onCancel={() => setInternalView('dashboard')} />;
-      case 'admin':
-      case 'users':
-      case 'requests':
-      case 'logs':
-      case 'invites':
-      case 'curated':
-        return <AdminPanel 
-            currentUser={user} 
-            activeTab={internalView === 'dashboard' ? 'users' : internalView as any} 
-            onTabChange={(tab: any) => setInternalView(tab)}
-        />;
-      case 'org-panel':
-      case 'staff':
-        return <OrganizationPanel currentUser={user} />;
-      case 'lessons':
-      case 'progress':
-        return user.role === UserRole.STUDENT 
-          ? <StudentPanel currentUser={user} activeTab={internalView === 'lessons' ? 'lessons' : 'browse'} onTakeLesson={setSelectedLessonId} />
-          : <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => setInternalView(tab)} />;
-      case 'group':
-      case 'assignments':
-        return <AdminPanel currentUser={user} activeTab={internalView === 'group' ? 'requests' : 'lessons'} onTabChange={(tab: any) => setInternalView(tab)} />;
-      case 'resources':
-        return <ResourceView />;
-      case 'news':
-        return <NewsView />;
-      case 'chat':
-        return <ChatPanel currentUser={user} />;
-      case 'certificates':
-        return <CertificatesPanel currentUser={user} />;
-      case 'performance-report':
-        return <PerformanceReport currentUser={user} onBack={() => setInternalView('dashboard')} />;
-      case 'settings':
-        return (
-          <div className="bg-white p-6 md:p-12 rounded-2xl md:rounded-[3rem] shadow-xl border-2 border-gray-50 max-w-2xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-serif font-black mb-6 md:mb-8 border-b-4 border-royal-50 pb-4">Profile Settings</h2>
-            <div className="space-y-6">
-                <div className="p-4 md:p-6 bg-royal-50 rounded-xl md:rounded-2xl border-2 border-royal-100">
-                    <p className="text-[10px] md:text-xs font-black text-royal-800 uppercase tracking-widest mb-1">Security</p>
-                    <p className="text-xs md:text-sm text-royal-600 mb-4">Manage your credentials and access tokens.</p>
-                    <button onClick={onChangePasswordClick} className="w-full py-3 md:py-4 bg-royal-800 text-white font-black rounded-lg md:rounded-xl shadow-lg shadow-royal-900/20 hover:bg-royal-950 transition-all flex items-center justify-center gap-2 border-b-4 border-royal-950 text-xs md:text-base">
-                        <Key size={18}/> CHANGE SYSTEM PASSWORD
-                    </button>
-                </div>
-            </div>
-          </div>
-        );
-      case 'dashboard':
-      default:
-        return renderHomeDashboard();
+      case 'upload': return <LessonUpload currentUser={user} onSuccess={() => setInternalView('dashboard')} onCancel={() => setInternalView('dashboard')} />;
+      case 'admin': case 'users': case 'requests': case 'logs': case 'invites': case 'curated': case 'news': case 'resources':
+        return <AdminPanel currentUser={user} activeTab={internalView === 'dashboard' ? 'users' : internalView as any} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
+      case 'org-panel': case 'staff': return <OrganizationPanel currentUser={user} />;
+      case 'lessons': case 'progress': return user.role === UserRole.STUDENT ? <StudentPanel currentUser={user} activeTab={internalView === 'lessons' ? 'lessons' : 'browse'} onTakeLesson={setSelectedLessonId} /> : <AdminPanel currentUser={user} activeTab="lessons" onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
+      case 'group' : case 'assignments': return <AdminPanel currentUser={user} activeTab={internalView === 'group' ? 'requests' : 'lessons'} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
+      case 'resources': return <ResourceView />;
+      case 'news': return <NewsView />;
+      case 'chat': return <ChatPanel currentUser={user} />;
+      case 'certificates': return <CertificatesPanel currentUser={user} />;
+      case 'performance-report': return <PerformanceReport currentUser={user} onBack={() => setInternalView('dashboard')} />;
+      case 'settings': return (<div className="bg-white p-6 md:p-12 rounded-2xl md:rounded-[3rem] shadow-xl border-2 border-gray-50 max-w-2xl mx-auto"><h2 className="text-2xl md:text-3xl font-serif font-black mb-6 md:mb-8 border-b-4 border-royal-50 pb-4">Profile Settings</h2><div className="space-y-6"><div className="p-4 md:p-6 bg-royal-50 rounded-xl md:rounded-2xl border-2 border-royal-100"><p className="text-[10px] md:text-xs font-black text-royal-800 uppercase tracking-widest mb-1">Security</p><p className="text-xs md:text-sm text-royal-600 mb-4">Manage your credentials and access tokens.</p><button onClick={onChangePasswordClick} className="w-full py-3 md:py-4 bg-royal-800 text-white font-black rounded-lg md:rounded-xl shadow-lg shadow-royal-900/20 hover:bg-royal-950 transition-all flex items-center justify-center gap-2 border-b-4 border-royal-950 text-xs md:text-base"><Key size={18}/> CHANGE SYSTEM PASSWORD</button></div></div></div>);
+      case 'dashboard': default: return renderHomeDashboard();
     }
   };
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-4 md:space-y-8 relative">
-      <FrontendEngineerBadge />
-      {renderView()}
-    </div>
-  );
+  return (<div className="max-w-7xl mx-auto space-y-4 md:space-y-8 relative"><FrontendEngineerBadge />{renderView()}</div>);
 };
 
 const LessonViewWrapper = ({ lessonId, user, onBack }: any) => {
   const [lesson, setLesson] = useState<Lesson | null>(null);
-  useEffect(() => {
-    lessonService.getLessonById(lessonId).then(l => setLesson(l || null));
-  }, [lessonId]);
-  
+  useEffect(() => { lessonService.getLessonById(lessonId).then(l => setLesson(l || null)); }, [lessonId]);
   if (!lesson) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-royal-600" size={48} /></div>;
   return <LessonView lesson={lesson} currentUser={user} onBack={onBack} />;
 };

@@ -1,7 +1,8 @@
+
 import { GoogleGenAI } from "@google/genai";
 
-// Fix: Initialized the GoogleGenAI client according to the coding guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// Fix: Initialized the GoogleGenAI client according to the coding guidelines by using process.env.API_KEY directly
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 // Cache Keys
 const CACHE_KEY_VERSE = 'bbl_daily_verse_cache';

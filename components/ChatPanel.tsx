@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, ChatChannel, ChatMessage, ChatAttachment } from '../types';
 import { authService } from '../services/authService';
-import { MessageSquare, Plus, Hash, Users, Globe, Building2, UserPlus, X, Loader2, Send, Shield, User as UserIcon, Edit2, Check, FileText, Download, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Plus, Hash, Users, Globe, Building2, UserPlus, X, Loader2, Send, Shield, User as UserIcon, Edit2, Check, FileText, Download, Image as ImageIcon, Clock } from 'lucide-react';
 import Tooltip from './Tooltip';
 
 interface ChatPanelProps {
@@ -299,7 +299,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser }) => {
                                     </div>
                                 ))}
                             </div>
-                            <span className="text-xs text-gray-400 font-medium whitespace-nowrap">Rocket.Chat Secure</span>
+                            <span className="text-xs text-gray-400 font-medium whitespace-nowrap uppercase tracking-widest">Secure Collective</span>
                         </div>
                     </div>
 
@@ -326,31 +326,35 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser }) => {
                                             )}
                                             <div>
                                                 {!isSelf && (
-                                                    <div className="flex items-center gap-2 mb-1 ml-1">
-                                                        <span className="text-xs font-bold text-gray-900">{msg.senderName}</span>
-                                                        <span className="text-[10px] font-bold text-royal-500 uppercase bg-royal-50 px-1.5 py-0.5 rounded">{msg.senderRole}</span>
+                                                    <div className="flex items-center gap-2 mb-1.5 ml-1">
+                                                        <span className="text-xs font-black text-royal-600 uppercase tracking-widest">{msg.senderName}</span>
+                                                        <span className="text-[9px] font-bold text-gray-400 uppercase">{msg.senderRole}</span>
                                                     </div>
                                                 )}
                                                 <div 
-                                                    className={`p-4 rounded-2xl shadow-sm text-sm leading-relaxed ${isSelf 
-                                                        ? 'bg-royal-800 text-white rounded-tr-none' 
-                                                        : 'bg-white text-gray-700 rounded-tl-none border border-royal-50'}`}
+                                                    className={`p-5 rounded-[2rem] shadow-md ${isSelf 
+                                                        ? 'bg-royal-900 text-white rounded-tr-none' 
+                                                        : 'bg-white text-royal-950 rounded-tl-none border border-royal-50'}`}
                                                 >
-                                                    {msg.text}
+                                                    {/* Mature, Prominent Chat Text */}
+                                                    <p className="font-serif font-black text-sm md:text-base leading-snug tracking-tight">
+                                                        {msg.text}
+                                                    </p>
+
                                                     {msg.attachment && (
-                                                        <div className={`mt-3 p-3 rounded-xl border flex flex-col gap-2 ${isSelf ? 'bg-royal-900/50 border-royal-700' : 'bg-gray-50 border-gray-100'}`}>
+                                                        <div className={`mt-4 p-3 rounded-xl border flex flex-col gap-2 ${isSelf ? 'bg-royal-950/50 border-royal-800' : 'bg-gray-50 border-gray-100'}`}>
                                                             {msg.attachment.type.startsWith('image/') ? (
                                                                 <img src={msg.attachment.data} alt={msg.attachment.name} className="max-w-full rounded-lg max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.attachment?.data)} />
                                                             ) : (
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className={`p-2 rounded-lg ${isSelf ? 'bg-royal-700' : 'bg-white shadow-sm'}`}>
+                                                                    <div className={`p-2 rounded-lg ${isSelf ? 'bg-royal-800' : 'bg-white shadow-sm'}`}>
                                                                         <FileText size={24} className={isSelf ? 'text-royal-100' : 'text-royal-500'} />
                                                                     </div>
                                                                     <div className="flex-1 min-w-0">
                                                                         <p className={`text-xs font-bold truncate ${isSelf ? 'text-white' : 'text-gray-900'}`}>{msg.attachment.name}</p>
                                                                         <p className={`text-[10px] font-medium ${isSelf ? 'text-royal-300' : 'text-gray-400'}`}>{formatFileSize(msg.attachment.size)}</p>
                                                                     </div>
-                                                                    <a href={msg.attachment.data} download={msg.attachment.name} className={`p-2 rounded-lg transition-colors ${isSelf ? 'hover:bg-royal-700 text-royal-200' : 'hover:bg-gray-200 text-gray-500'}`}>
+                                                                    <a href={msg.attachment.data} download={msg.attachment.name} className={`p-2 rounded-lg transition-colors ${isSelf ? 'hover:bg-royal-800 text-royal-200' : 'hover:bg-gray-200 text-gray-500'}`}>
                                                                         <Download size={18} />
                                                                     </a>
                                                                 </div>
@@ -358,8 +362,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser }) => {
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className={`text-[10px] text-gray-400 mt-1 ${isSelf ? 'text-right mr-1' : 'ml-1'}`}>
-                                                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                <div className={`text-[9px] font-bold text-gray-400 mt-1.5 flex items-center gap-1.5 ${isSelf ? 'flex-row-reverse mr-2' : 'ml-2'}`}>
+                                                    <Clock size={10} />
+                                                    <span>{new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <span className="opacity-60">•</span>
+                                                    <span>{new Date(msg.timestamp).toLocaleDateString([], { weekday: 'short' })}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -402,7 +409,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({ currentUser }) => {
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
-                                    placeholder={selectedFile ? "Add a comment..." : `Message #${activeChannel.name}...`}
+                                    placeholder={selectedFile ? "Add a comment..." : `Type your message here...`}
                                     className="w-full pl-6 pr-12 py-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-royal-500 focus:ring-4 focus:ring-royal-500/10 outline-none transition-all font-medium text-gray-900 placeholder-gray-400"
                                 />
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-gray-400">

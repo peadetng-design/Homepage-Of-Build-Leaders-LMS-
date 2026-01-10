@@ -22,7 +22,7 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, Heart,
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck, ChevronDown, Clock, Newspaper, Calendar, Target, Zap, PieChart, Layers
+  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck, ChevronDown, Clock, Newspaper, Calendar, Target, Zap, PieChart, Layers, Sparkles, LayoutDashboard
 } from 'lucide-react';
 
 export type DashboardView = 
@@ -62,7 +62,7 @@ const ScrollReveal = ({ children, className = "", delay = 0 }: { children?: Reac
       style={{ transitionDelay: `${delay}ms` }}
       className={`${className} transition-all duration-1000 ease-out transform ${isVisible 
         ? 'opacity-100 translate-y-0 scale-100 filter brightness-110 contrast-125 saturate-125' 
-        : 'opacity-100 translate-y-6 scale-95 filter brightness-100 contrast-100'}`}
+        : 'opacity-100 translate-y-4 scale-95 filter brightness-100 contrast-100'}`}
     >
       {children}
     </div>
@@ -71,16 +71,16 @@ const ScrollReveal = ({ children, className = "", delay = 0 }: { children?: Reac
 
 // Utility SVG Components for metrics
 const MiniPieChart = ({ percent, color, bgColor }: { percent: number, color: string, bgColor: string }) => {
-  const radius = 20;
+  const radius = 12;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percent / 100) * circumference;
   return (
-    <div className="relative w-16 h-16 flex items-center justify-center shrink-0">
+    <div className="relative w-10 h-10 flex items-center justify-center shrink-0">
       <svg className="w-full h-full transform -rotate-90">
-        <circle cx="32" cy="32" r={radius} stroke={bgColor} strokeWidth="6" fill="none" />
-        <circle cx="32" cy="32" r={radius} stroke={color} strokeWidth="6" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000" />
+        <circle cx="20" cy="20" r={radius} stroke={bgColor} strokeWidth="3" fill="none" />
+        <circle cx="20" cy="20" r={radius} stroke={color} strokeWidth="3" fill="none" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000" />
       </svg>
-      <span className="absolute text-xs font-black" style={{ color }}>{Math.round(percent)}%</span>
+      <span className="absolute text-[8px] font-black" style={{ color }}>{Math.round(percent)}%</span>
     </div>
   );
 };
@@ -151,6 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const [recentChats, setRecentChats] = useState<ChatMessage[]>([]);
   const [recentNews, setRecentNews] = useState<NewsItem[]>([]);
   const [showExportModal, setShowExportModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Performance Metrics State
   const [learningMetrics, setLearningMetrics] = useState<{
@@ -181,6 +182,29 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     });
     calculateLearningPath();
   }, [user]);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        if (ev.target?.result) {
+            const base64 = ev.target.result as string;
+            try {
+                const updatedUser = await authService.updateProfile(user.id, { avatarUrl: base64 });
+                onUpdateUser(updatedUser);
+            } catch (err) {
+                console.error("Avatar upload failed", err);
+            }
+        }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const calculateLearningPath = async () => {
     const allLessons = await lessonService.getLessons();
@@ -253,6 +277,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     const isStudent = user.role === UserRole.STUDENT;
     const isParent = user.role === UserRole.PARENT;
     const canManageContent = isAdmin || isMentor || isOrg;
+    const firstName = user.name.split(' ')[0];
 
     const personalItems: DropdownOption[] = [
       { label: "TAKE LESSONS", icon: Play, action: () => setInternalView('lessons'), color: "bg-indigo-600 text-white", glowColor: "#4f46e5", hoverBg: "hover:bg-indigo-50" },
@@ -282,13 +307,45 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
           <div className="bg-white p-5 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 lg:max-w-[70%] lg:mx-auto">
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/30 to-transparent pointer-events-none"></div>
               <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10 text-center md:text-left">
-                  <div className="w-16 h-16 md:w-24 md:h-24 rounded-3xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-2xl md:text-4xl shadow-2xl ring-6 md:ring-8 ring-royal-50/50">{user.name.charAt(0)}</div>
+                  {/* (2) Customizable Profile Picture Icon */}
+                  <div className="relative group/avatar">
+                    <button 
+                      onClick={handleAvatarClick}
+                      className="w-16 h-16 md:w-24 md:h-24 rounded-3xl md:rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black text-2xl md:text-4xl shadow-2xl ring-6 md:ring-8 ring-royal-50/50 overflow-hidden relative"
+                    >
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <UserCircle size={48} className="md:w-16 md:h-16" />
+                      )}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+                        <Camera size={24} className="text-white" />
+                      </div>
+                    </button>
+                    <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                  </div>
+                  
                   <div>
-                      <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-tight">Shalom, <span className="text-royal-700">{user.name.split(' ')[0]}</span></h1>
-                      <div className="flex items-center justify-center md:justify-start gap-3 mt-3"><div className="flex items-center gap-2 px-3 py-1.5 bg-royal-950 text-white rounded-xl shadow-xl shrink-0 border border-white/10"><Shield size={12} className="text-gold-400" /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">{user.role.replace('_', ' ')}</span></div></div>
+                      {/* (1) WELCOME BACK [NAME] */}
+                      <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-tight uppercase">WELCOME BACK, <span className="text-royal-700">{firstName}</span></h1>
+                      <div className="flex items-center justify-center md:justify-start gap-3 mt-3">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-royal-950 text-white rounded-xl shadow-xl shrink-0 border border-white/10">
+                          {/* (4) More befitting welcome icon + 100% size increase (12px -> 24px) */}
+                          <Sparkles size={24} className="text-gold-400 animate-pulse" />
+                          <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">{user.role.replace('_', ' ')}</span>
+                        </div>
+                      </div>
                   </div>
               </div>
-              <div className="relative z-10 w-full md:w-auto"><button onClick={() => setInternalView('performance-report')} className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 border-b-[4px] border-indigo-900"><Activity size={18} /> ANALYTICS</button></div>
+              <div className="relative z-10 w-full md:w-auto">
+                {/* (3) ROLE DASHBOARD Label and Icon Update */}
+                <button 
+                  onClick={() => setInternalView('performance-report')} 
+                  className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 border-b-[4px] border-indigo-900 uppercase"
+                >
+                  <LayoutDashboard size={18} /> {user.role.replace('_', ' ')} DASHBOARD
+                </button>
+              </div>
           </div>
 
           {/* ACTION CONSOLES */}
@@ -347,23 +404,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                       </div>
                   </div>
                   
-                  {/* --- REDESIGNED ACTIVE LEARNING PATH WITH INFORMATICS & ANIMATIONS --- */}
-                  <div className="p-8 md:p-12 bg-white rounded-[2.5rem] md:rounded-[3.5rem] border-4 border-royal-100 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col gap-10 group relative overflow-hidden">
-                      <div className="absolute top-0 right-0 w-64 h-64 bg-royal-50/50 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+                  {/* --- REDESIGNED ACTIVE LEARNING PATH WITH INFORMATICS & ANIMATIONS (COMPACT HEIGHT) --- */}
+                  <div className="p-3 md:p-4 bg-white rounded-[2rem] md:rounded-[2.5rem] border-4 border-royal-100 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col gap-3 group relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-48 h-48 bg-royal-50/50 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
                       
-                      <div className="flex flex-col md:flex-row items-center gap-8 md:gap-10 relative z-10">
-                          <div className="p-6 md:p-8 bg-royal-900 rounded-[2.2rem] text-gold-400 shrink-0 group-hover:scale-105 transition-transform shadow-2xl border-b-[8px] border-royal-950">
-                             <Globe size={40} className="md:w-12 md:h-12"/>
+                      <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 relative z-10">
+                          <div className="p-2.5 md:p-3.5 bg-royal-900 rounded-[1.4rem] text-gold-400 shrink-0 group-hover:scale-105 transition-transform shadow-2xl border-b-[5px] border-royal-950">
+                             <Globe size={24} className="md:w-6 md:h-6"/>
                           </div>
                           <div className="text-center md:text-left flex-1">
-                              <h4 className="font-serif font-black text-gray-950 text-xl md:text-3xl uppercase tracking-tighter mb-2">Active Learning Path</h4>
-                              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-                                <p className="text-sm md:text-lg text-gray-500 font-bold leading-relaxed opacity-80">
+                              <h4 className="font-serif font-black text-gray-950 text-base md:text-xl uppercase tracking-tighter">Active Learning Path</h4>
+                              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                <p className="text-[10px] md:text-xs text-gray-500 font-bold opacity-80">
                                   Continue from where you left off. Your next milestone is just a few minutes away.
                                 </p>
                                 <button 
                                   onClick={() => learningMetrics.lastLesson && setSelectedLessonId(learningMetrics.lastLesson.id)}
-                                  className="px-8 py-3 bg-royal-800 hover:bg-black text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-xl border-b-4 border-royal-950 flex items-center gap-2"
+                                  className="px-7 py-2.5 bg-royal-800 hover:bg-black text-white font-black rounded-xl text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 active:scale-95 shadow-xl border-b-2 border-royal-950 flex items-center gap-1.5"
                                 >
                                   CONTINUE <ArrowRight size={14} />
                                 </button>
@@ -372,21 +429,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                       </div>
 
                       {/* --- PERFORMANCE METRICS & STATISTICS TOOLS WITH ANIMATIONS --- */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4 border-t border-gray-100 relative z-10">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-gray-100 relative z-10">
                           {/* (a) Current Module Progress Bar */}
                           <ScrollReveal className="lg:col-span-2" delay={100}>
-                            <div className="space-y-4 bg-white p-6 rounded-[2rem] border-4 border-indigo-400 shadow-sm group/stat hover:border-indigo-600 transition-all hover:shadow-xl hover:scale-[1.02]">
+                            <div className="space-y-2 bg-white p-2.5 rounded-2xl border-4 border-indigo-400 shadow-sm group/stat hover:border-indigo-600 transition-all hover:shadow-xl hover:scale-[1.02]">
                                 <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-indigo-50 text-indigo-700 rounded-2xl group-hover/stat:bg-indigo-600 group-hover/stat:text-white transition-colors shadow-sm"><Layers size={24} /></div>
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 bg-royal-100 text-royal-700 rounded-lg group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm"><Layers size={16} /></div>
                                         <div>
-                                            <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest">Current Module</h5>
-                                            <p className="text-xs font-bold text-gray-400 truncate max-w-[120px]">{learningMetrics.lastLesson?.moduleId || 'N/A'}</p>
+                                            <h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none">Current Module</h5>
+                                            <p className="text-[9px] font-bold text-gray-400 truncate max-w-[80px]">{learningMetrics.lastLesson?.moduleId || 'N/A'}</p>
                                         </div>
                                     </div>
-                                    <span className="text-5xl font-black text-royal-950">{learningMetrics.lastModuleProgress}%</span>
+                                    <span className="text-xl font-black text-royal-950 leading-none">{learningMetrics.lastModuleProgress}%</span>
                                 </div>
-                                <div className="h-6 w-full bg-gray-50 rounded-full border-2 border-royal-50 overflow-hidden p-1">
+                                <div className="h-2.5 w-full bg-gray-50 rounded-full border border-royal-50 overflow-hidden p-0.5">
                                     <div 
                                       className="h-full bg-gradient-to-r from-royal-600 to-royal-400 rounded-full transition-all duration-1000 shadow-sm"
                                       style={{ width: `${learningMetrics.lastModuleProgress}%` }}
@@ -397,49 +454,50 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
                           {/* (d) Modules Completed */}
                           <ScrollReveal delay={200}>
-                            <div className="bg-white p-6 rounded-[2rem] border-4 border-gold-400 flex flex-col justify-between items-center text-center shadow-sm group/stat hover:border-gold-600 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
-                                <div className="p-3 bg-gold-50 text-gold-600 rounded-2xl group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm mb-3"><Award size={24} /></div>
-                                <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest mb-1">Modules Mastered</h5>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-5xl font-black text-royal-950">{learningMetrics.completedModulesCount}</span>
-                                    <span className="text-lg text-gray-300 font-bold">/ {learningMetrics.totalModulesCount}</span>
-                                </div>
-                                <div className="px-3 py-1 bg-royal-100 text-royal-700 rounded-full text-[9px] font-black uppercase tracking-tighter">
-                                   {Math.round((learningMetrics.completedModulesCount/learningMetrics.totalModulesCount)*100)}% GLOBAL TARGET
+                            <div className="bg-white p-2.5 rounded-2xl border-4 border-gold-400 flex items-center gap-2.5 shadow-sm group/stat hover:border-gold-600 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
+                                <div className="p-2 bg-gold-50 text-gold-600 rounded-lg group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Award size={16} /></div>
+                                <div className="min-w-0">
+                                    <h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Mastered</h5>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className="text-xl font-black text-royal-950 leading-none">{learningMetrics.completedModulesCount}</span>
+                                        <span className="text-[10px] text-gray-300 font-bold">/ {learningMetrics.totalModulesCount}</span>
+                                    </div>
                                 </div>
                             </div>
                           </ScrollReveal>
 
                           {/* (e) Last Lesson Score Pie Chart */}
                           <ScrollReveal delay={300}>
-                            <div className="bg-white p-6 rounded-[2rem] border-4 border-royal-500 flex flex-col justify-between items-center text-center shadow-sm group/stat hover:border-royal-700 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
-                                <div className="p-3 bg-royal-50 text-royal-600 rounded-2xl group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm mb-3"><Target size={24} /></div>
-                                <h5 className="text-[10px] font-black text-royal-600 uppercase tracking-widest mb-3">Last Precision</h5>
-                                <div className="flex items-center gap-3">
+                            <div className="bg-white p-2.5 rounded-2xl border-4 border-royal-500 flex items-center gap-2.5 shadow-sm group/stat hover:border-royal-700 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
+                                <div className="p-1 bg-royal-50 text-royal-600 rounded-lg group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Target size={16} /></div>
+                                <div className="min-w-0 flex items-center gap-1.5">
                                   <MiniPieChart percent={learningMetrics.lastLessonScore} color="#4f46e5" bgColor="#e0e7ff" />
-                                  <span className="text-5xl font-black text-royal-950 leading-none">{Math.round(learningMetrics.lastLessonScore)}%</span>
+                                  <div>
+                                     <h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Precision</h5>
+                                     <span className="text-xl font-black text-royal-950 leading-none">{Math.round(learningMetrics.lastLessonScore)}%</span>
+                                  </div>
                                 </div>
                             </div>
                           </ScrollReveal>
                       </div>
 
                       {/* (b) & (c) Time Stats */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
                           <ScrollReveal delay={400} className="w-full">
-                            <div className="flex items-center gap-5 p-6 bg-white border-4 border-amber-400 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-amber-600 transition-all group/time">
-                                <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl group-hover/time:bg-amber-500 group-hover/time:text-white transition-colors shadow-md"><Clock size={28} /></div>
+                            <div className="flex items-center gap-3 p-2.5 bg-white border-4 border-amber-400 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500 transition-all group/time">
+                                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover/time:bg-amber-500 group-hover/time:text-white transition-colors shadow-sm"><Clock size={20} /></div>
                                 <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Last Lesson Time</p>
-                                    <p className="text-5xl font-black text-gray-900">{formatTime(learningMetrics.lastLessonTime)}</p>
+                                    <h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Last Lesson</h5>
+                                    <p className="text-xl font-black text-gray-900 leading-none">{formatTime(learningMetrics.lastLessonTime)}</p>
                                 </div>
                             </div>
                           </ScrollReveal>
                           <ScrollReveal delay={500} className="w-full">
-                            <div className="flex items-center gap-5 p-6 bg-white border-4 border-emerald-400 rounded-[2rem] shadow-sm hover:shadow-xl hover:border-emerald-600 transition-all group/time">
-                                <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover/time:bg-emerald-500 group-hover/time:text-white transition-colors shadow-md"><History size={28} /></div>
+                            <div className="flex items-center gap-3 p-2.5 bg-white border-4 border-emerald-400 rounded-2xl shadow-sm hover:shadow-xl hover:border-emerald-500 transition-all group/time">
+                                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover/time:bg-emerald-500 group-hover/time:text-white transition-colors shadow-sm"><History size={20} /></div>
                                 <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Module Effort</p>
-                                    <p className="text-5xl font-black text-gray-900">{formatTime(learningMetrics.lastModuleTime)}</p>
+                                    <h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Total Effort</h5>
+                                    <p className="text-xl font-black text-gray-900 leading-none">{formatTime(learningMetrics.lastModuleTime)}</p>
                                 </div>
                             </div>
                           </ScrollReveal>
@@ -450,7 +508,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
               {/* Sidebars - Recent Chats Section */}
               <div className="space-y-8 md:space-y-14">
                   <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border-2 border-gray-50 shadow-2xl">
-                      <h3 className="font-serif font-black text-gray-900 text-[10px] md:text-sm uppercase tracking-[0.3em] mb-8 flex items-center gap-4"><div className="p-2 bg-royal-900 text-white rounded-lg shadow-lg"><MessageSquare size={16} /></div> RECENT CHATS</h3>
+                      <h3 className="font-serif font-black text-gray-900 text-base md:text-2xl uppercase tracking-[0.3em] mb-8 flex items-center gap-5">
+                        <div className="p-3 bg-royal-900 text-white rounded-2xl shadow-lg">
+                            <MessageSquare size={26} />
+                        </div> 
+                        RECENT CHATS
+                      </h3>
                       <div className="space-y-6">
                           {recentChats.map(m => {
                               const d = new Date(m.timestamp);

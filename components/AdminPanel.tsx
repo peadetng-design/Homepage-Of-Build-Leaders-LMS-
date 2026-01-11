@@ -145,7 +145,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   return (
     <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden min-h-[700px] animate-in fade-in slide-in-from-bottom-4">
       <div className="bg-royal-900 px-8 pt-16 pb-12 text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 border-b-8 border-gold-500">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
            {onBack && (
              <button 
                onClick={onBack}

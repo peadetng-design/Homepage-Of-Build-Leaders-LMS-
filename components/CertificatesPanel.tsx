@@ -143,7 +143,7 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
     <div className="space-y-6">
        {/* Header */}
        <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5 md:gap-4">
              {onBack && (
                  <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
                      <ArrowLeft size={24} />

@@ -27,27 +27,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
     { label: 'Certificates', icon: BadgeCheck, path: 'certificates' },
   ];
 
-  // Specific items per role
-  const roleItems = {
+  // Specific items per role - UPDATED to remove requested headers
+  const roleItems: Record<string, { label: string, icon: any, path: string }[]> = {
     [UserRole.STUDENT]: [
-      { label: 'My Lessons', icon: Book, path: 'lessons' },
       { label: 'Progress', icon: Award, path: 'progress' },
     ],
     [UserRole.MENTOR]: [
       { label: 'My Group', icon: Users, path: 'group' },
-      { label: 'Assignments', icon: Book, path: 'assignments' },
     ],
-    [UserRole.ADMIN]: [
-      { label: 'Admin Panel', icon: Shield, path: 'admin' },
-      { label: 'User Mgmt', icon: Users, path: 'users' },
-    ],
-    [UserRole.ORGANIZATION]: [
-      { label: 'Ministry Panel', icon: Building2, path: 'org-panel' },
-      { label: 'Staff Mgmt', icon: UserPlus, path: 'staff' },
-    ],
-    [UserRole.PARENT]: [
-      { label: 'Child Progress', icon: Heart, path: 'child-progress' },
-    ],
+    [UserRole.ADMIN]: [],
+    [UserRole.CO_ADMIN]: [],
+    [UserRole.ORGANIZATION]: [],
+    [UserRole.PARENT]: [],
     [UserRole.GUEST]: []
   };
 
@@ -71,7 +62,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
               `}
             >
               <Icon size={isActive ? 22 : 20} className={`md:w-6 md:h-6 ${isActive ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-              <span className={`ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+              <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
                 {item.label}
               </span>
             </button>
@@ -89,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
             `}
           >
             <Settings size={20} className={`md:w-6 md:h-6 ${activePath === 'settings' ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-            <span className={`ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+            <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
               Settings
             </span>
         </button>
@@ -99,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
             className={`w-full flex items-center p-2 md:p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all group`}
           >
             <LogOut size={20} className="md:w-6 md:h-6 group-hover:text-red-500" />
-            <span className={`ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+            <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
               Sign Out
             </span>
         </button>

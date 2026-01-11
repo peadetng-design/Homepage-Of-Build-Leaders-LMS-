@@ -306,8 +306,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
           {/* Welcome Header */}
           <div className="bg-white p-5 md:p-10 rounded-[2.5rem] border border-gray-100 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-8 lg:max-w-[70%] lg:mx-auto">
               <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-royal-50/30 to-transparent pointer-events-none"></div>
-              <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 relative z-10 text-center md:text-left">
-                  {/* (2) Customizable Profile Picture Icon */}
+              <div className="flex flex-col md:flex-row items-center gap-2.5 md:gap-8 relative z-10 text-center md:text-left">
+                  {/* Customizable Profile Picture Icon */}
                   <div className="relative group/avatar">
                     <button 
                       onClick={handleAvatarClick}
@@ -326,11 +326,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                   </div>
                   
                   <div>
-                      {/* (1) WELCOME BACK [NAME] */}
+                      {/* WELCOME BACK [NAME] */}
                       <h1 className="text-xl md:text-4xl font-serif font-black text-gray-900 tracking-tight leading-tight uppercase">WELCOME BACK, <span className="text-royal-700">{firstName}</span></h1>
                       <div className="flex items-center justify-center md:justify-start gap-3 mt-3">
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-royal-950 text-white rounded-xl shadow-xl shrink-0 border border-white/10">
-                          {/* (4) More befitting welcome icon + 100% size increase (12px -> 24px) */}
+                          {/* More befitting welcome icon + 100% size increase (12px -> 24px) */}
                           <Sparkles size={24} className="text-gold-400 animate-pulse" />
                           <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em]">{user.role.replace('_', ' ')}</span>
                         </div>
@@ -338,7 +338,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                   </div>
               </div>
               <div className="relative z-10 w-full md:w-auto">
-                {/* (3) ROLE DASHBOARD Label and Icon Update */}
+                {/* ROLE DASHBOARD Label and Icon Update */}
                 <button 
                   onClick={() => setInternalView('performance-report')} 
                   className="w-full md:w-auto flex items-center justify-center gap-3 px-6 md:px-8 py-3 md:py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs md:text-sm hover:bg-indigo-700 shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 border-b-[4px] border-indigo-900 uppercase"
@@ -352,12 +352,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
           <div className="flex flex-col gap-6 md:gap-10 relative">
               <div className="bg-gradient-to-br from-indigo-700 via-royal-800 to-royal-900 rounded-[2.2rem] md:rounded-[2.8rem] p-5 md:p-8 shadow-[0_30px_80px_-20px_rgba(30,27,75,0.4)] relative border-b-[10px] border-indigo-950 w-full lg:max-w-[60%] lg:mx-auto">
                   <div className="absolute top-0 right-0 w-[20rem] h-[20rem] bg-white/5 rounded-full blur-[80px] -mr-32 -mt-32 pointer-events-none"></div>
-                  <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-4"><div className="p-3 bg-white/10 text-white rounded-xl border border-white/20 shadow-2xl backdrop-blur-2xl"><UserCircle size={28} /></div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">Personal Console</h3></div><div className="max-w-3xl"><p className="text-indigo-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">Your inner sanctuary for growth. Track transformations, curate your library, and verify achievements.</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={personalItems} direction="up" primaryColorClass="bg-indigo-600 hover:bg-indigo-500 border-indigo-900 shadow-indigo-950/60" /></div></div>
+                  <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-2.5"><div className="p-3 bg-white/10 text-white rounded-xl border border-white/20 shadow-2xl backdrop-blur-2xl"><UserCircle size={28} /></div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">Personal Console</h3></div><div className="max-w-3xl"><p className="text-indigo-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">Your inner sanctuary for growth. Track transformations, curate your library, and verify achievements.</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={personalItems} direction="up" primaryColorClass="bg-indigo-600 hover:bg-indigo-500 border-indigo-900 shadow-indigo-950/60" /></div></div>
               </div>
               {!isStudent && (
                 <div className={`bg-gradient-to-br from-slate-900 via-gray-900 to-black rounded-[2.2rem] md:rounded-[2.8rem] p-5 md:p-8 border-t-[10px] ${isParent ? 'border-indigo-400' : 'border-gold-500'} shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)] relative w-full lg:max-w-[60%] lg:mx-auto`}>
                     <div className="absolute top-0 left-0 w-full h-full opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                    <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-4"><div className="p-3 bg-white/5 text-gold-400 rounded-xl border border-white/10 shadow-2xl backdrop-blur-2xl">{isParent ? <Heart size={28} className="text-rose-400"/> : <Users size={28}/>}</div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">{isParent ? "My Child's Console" : "Group Console"}</h3></div><div className="max-w-3xl"><p className="text-amber-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">{isParent ? "Oversee spiritual foundations. Audit logs, track modules, and manage their earned credentials." : "Command center for community oversight. Manage invites, validate requests, and analyze performance."}</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={groupItems} direction="down" primaryColorClass={isParent ? "bg-indigo-500 hover:bg-indigo-400 border-indigo-900 shadow-black/70" : "bg-gold-500 hover:bg-gold-400 border-gold-800 shadow-black/70"} /></div></div>
+                    <div className="flex flex-col relative z-10 gap-4"><div className="flex items-center gap-2.5"><div className="p-3 bg-white/5 text-gold-400 rounded-xl border border-white/10 shadow-2xl backdrop-blur-2xl">{isParent ? <Heart size={28} className="text-rose-400"/> : <Users size={28}/>}</div><h3 className="font-serif font-black text-white uppercase text-lg md:text-2xl tracking-[0.15em] drop-shadow-2xl">{isParent ? "My Child's Console" : "Group Console"}</h3></div><div className="max-w-3xl"><p className="text-amber-50 text-xs md:text-base font-medium leading-relaxed opacity-90 italic">{isParent ? "Oversee spiritual foundations. Audit logs, track modules, and manage their earned credentials." : "Command center for community oversight. Manage invites, validate requests, and analyze performance."}</p></div><div className="mt-2"><ConsoleDropdown label="CLICK HERE" items={groupItems} direction="down" primaryColorClass={isParent ? "bg-indigo-500 hover:bg-indigo-400 border-indigo-900 shadow-black/70" : "bg-gold-500 hover:bg-gold-400 border-gold-800 shadow-black/70"} /></div></div>
                 </div>
               )}
           </div>
@@ -369,7 +369,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                   <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border-2 border-gray-50 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
                       <div className="absolute top-0 right-0 p-8 opacity-[0.03] transition-opacity group-hover:opacity-[0.08]"><Newspaper size={200} /></div>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 border-b-4 border-royal-50 pb-6 gap-4">
-                         <div className="flex items-center gap-4">
+                         <div className="flex items-center gap-2.5 md:gap-4">
                             <div className="p-3 bg-royal-900 text-gold-400 rounded-2xl shadow-xl"><Newspaper size={28} /></div>
                             <h3 className="font-serif font-black text-gray-900 text-xl md:text-3xl uppercase tracking-tighter">News & Updates</h3>
                          </div>
@@ -408,7 +408,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                   <div className="p-3 md:p-4 bg-white rounded-[2rem] md:rounded-[2.5rem] border-4 border-royal-100 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col gap-3 group relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-48 h-48 bg-royal-50/50 rounded-full blur-3xl -mr-24 -mt-24 pointer-events-none"></div>
                       
-                      <div className="flex flex-col md:flex-row items-center gap-3 md:gap-4 relative z-10">
+                      <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 relative z-10">
                           <div className="p-2.5 md:p-3.5 bg-royal-900 rounded-[1.4rem] text-gold-400 shrink-0 group-hover:scale-105 transition-transform shadow-2xl border-b-[5px] border-royal-950">
                              <Globe size={24} className="md:w-6 md:h-6"/>
                           </div>
@@ -430,7 +430,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
                       {/* --- PERFORMANCE METRICS & STATISTICS TOOLS WITH ANIMATIONS --- */}
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-gray-100 relative z-10">
-                          {/* (a) Current Module Progress Bar */}
+                          {/* Current Module Progress Bar */}
                           <ScrollReveal className="lg:col-span-2" delay={100}>
                             <div className="space-y-2 bg-white p-2.5 rounded-2xl border-4 border-indigo-400 shadow-sm group/stat hover:border-indigo-600 transition-all hover:shadow-xl hover:scale-[1.02]">
                                 <div className="flex justify-between items-start">
@@ -452,7 +452,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                             </div>
                           </ScrollReveal>
 
-                          {/* (d) Modules Completed */}
+                          {/* Modules Completed */}
                           <ScrollReveal delay={200}>
                             <div className="bg-white p-2.5 rounded-2xl border-4 border-gold-400 flex items-center gap-2.5 shadow-sm group/stat hover:border-gold-600 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
                                 <div className="p-2 bg-gold-50 text-gold-600 rounded-lg group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Award size={16} /></div>
@@ -466,7 +466,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                             </div>
                           </ScrollReveal>
 
-                          {/* (e) Last Lesson Score Pie Chart */}
+                          {/* Last Lesson Score Pie Chart */}
                           <ScrollReveal delay={300}>
                             <div className="bg-white p-2.5 rounded-2xl border-4 border-royal-500 flex items-center gap-2.5 shadow-sm group/stat hover:border-royal-700 transition-all hover:shadow-xl hover:scale-[1.02] h-full">
                                 <div className="p-1 bg-royal-50 text-royal-600 rounded-lg group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Target size={16} /></div>
@@ -481,7 +481,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                           </ScrollReveal>
                       </div>
 
-                      {/* (b) & (c) Time Stats */}
+                      {/* Time Stats */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 relative z-10">
                           <ScrollReveal delay={400} className="w-full">
                             <div className="flex items-center gap-3 p-2.5 bg-white border-4 border-amber-400 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500 transition-all group/time">
@@ -508,7 +508,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
               {/* Sidebars - Recent Chats Section */}
               <div className="space-y-8 md:space-y-14">
                   <div className="bg-white rounded-[2.5rem] p-6 md:p-8 border-2 border-gray-50 shadow-2xl">
-                      <h3 className="font-serif font-black text-gray-900 text-base md:text-2xl uppercase tracking-[0.3em] mb-8 flex items-center gap-5">
+                      <h3 className="font-serif font-black text-gray-900 text-base md:text-2xl uppercase tracking-[0.3em] mb-8 flex items-center gap-3 md:gap-5">
                         <div className="p-3 bg-royal-900 text-white rounded-2xl shadow-lg">
                             <MessageSquare size={26} />
                         </div> 

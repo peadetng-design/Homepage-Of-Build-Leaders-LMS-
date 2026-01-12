@@ -43,6 +43,7 @@
               'orange-pulse': 'orange-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'green-pulse': 'green-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'red-pulse': 'red-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'spin-slow': 'spin 8s linear infinite',
             },
             keyframes: {
               float: {
@@ -85,6 +86,7 @@
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
         overflow-x: hidden;
+        transition: background-color 0.5s ease, color 0.5s ease;
       }
       .glass-panel {
         background: rgba(255, 255, 255, 0.7);
@@ -107,6 +109,76 @@
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
         background: #cbd5e1;
       }
+
+      /* Base Transitions for smooth theme switching */
+      * { transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease; }
+
+      /* Midnight Theme */
+      html.theme-midnight body { background-color: #020617; color: #f8fafc; }
+      html.theme-midnight .bg-white { background-color: #0f172a; border-color: #1e293b; }
+      html.theme-midnight .text-gray-900 { color: #f1f5f9; }
+      html.theme-midnight .text-gray-500 { color: #94a3b8; }
+      html.theme-midnight .border-gray-100 { border-color: #1e293b; }
+      html.theme-midnight .bg-gray-50 { background-color: #1e293b; }
+
+      /* Parchment Theme */
+      html.theme-parchment body { background-color: #f4ead5; color: #5d4037; }
+      html.theme-parchment .bg-white { background-color: #fdf5e6; border-color: #d7ccc8; }
+      html.theme-parchment .text-gray-900 { color: #3e2723; }
+
+      /* High Vis Theme */
+      html.theme-contrast body { background-color: #000000; color: #ffffff; }
+      html.theme-contrast .bg-white { background-color: #111111; border-color: #ffffff; border-width: 2px; }
+      html.theme-contrast * { border-color: #ffffff !important; }
+      html.theme-contrast .text-royal-600 { color: #ffff00; }
+
+      /* Emerald Theme Overrides */
+      html.theme-emerald body { background-color: #f0fdf4; color: #064e3b; }
+      html.theme-emerald .bg-white { background-color: #ffffff; border-color: #dcfce7; }
+      html.theme-emerald .text-royal-600 { color: #059669; }
+      html.theme-emerald .text-royal-700 { color: #047857; }
+      html.theme-emerald .bg-royal-900 { background-color: #064e3b; }
+      html.theme-emerald .bg-royal-800 { background-color: #065f46; }
+      html.theme-emerald .bg-royal-50 { background-color: #ecfdf5; }
+      html.theme-emerald .border-royal-100 { border-color: #d1fae5; }
+      html.theme-emerald .border-royal-200 { border-color: #a7f3d0; }
+      html.theme-emerald .ring-royal-50 { --tw-ring-color: #ecfdf5; }
+
+      /* Ocean Theme Overrides */
+      html.theme-ocean body { background-color: #f0f9ff; color: #0c4a6e; }
+      html.theme-ocean .bg-white { background-color: #ffffff; border-color: #e0f2fe; }
+      html.theme-ocean .text-royal-600 { color: #0284c7; }
+      html.theme-ocean .text-royal-700 { color: #0369a1; }
+      html.theme-ocean .bg-royal-900 { background-color: #0c4a6e; }
+      html.theme-ocean .bg-royal-800 { background-color: #075985; }
+      html.theme-ocean .bg-royal-50 { background-color: #f0f9ff; }
+      html.theme-ocean .border-royal-100 { border-color: #e0f2fe; }
+      html.theme-ocean .border-royal-200 { border-color: #bae6fd; }
+      html.theme-ocean .ring-royal-50 { --tw-ring-color: #f0f9ff; }
+
+      /* Rose Theme Overrides */
+      html.theme-rose body { background-color: #fff1f2; color: #881337; }
+      html.theme-rose .bg-white { background-color: #ffffff; border-color: #ffe4e6; }
+      html.theme-rose .text-royal-600 { color: #e11d48; }
+      html.theme-rose .text-royal-700 { color: #be123c; }
+      html.theme-rose .bg-royal-900 { background-color: #881337; }
+      html.theme-rose .bg-royal-800 { background-color: #9f1239; }
+      html.theme-rose .bg-royal-50 { background-color: #fff1f2; }
+      html.theme-rose .border-royal-100 { border-color: #ffe4e6; }
+      html.theme-rose .border-royal-200 { border-color: #fecdd3; }
+      html.theme-rose .ring-royal-50 { --tw-ring-color: #fff1f2; }
+
+      /* Amber Theme Overrides */
+      html.theme-amber body { background-color: #fffbeb; color: #78350f; }
+      html.theme-amber .bg-white { background-color: #ffffff; border-color: #fef3c7; }
+      html.theme-amber .text-royal-600 { color: #d97706; }
+      html.theme-amber .text-royal-700 { color: #b45309; }
+      html.theme-amber .bg-royal-900 { background-color: #78350f; }
+      html.theme-amber .bg-royal-800 { background-color: #92400e; }
+      html.theme-amber .bg-royal-50 { background-color: #fffbeb; }
+      html.theme-amber .border-royal-100 { border-color: #fef3c7; }
+      html.theme-amber .border-royal-200 { border-color: #fde68a; }
+      html.theme-amber .ring-royal-50 { --tw-ring-color: #fffbeb; }
     </style>
   <script type="importmap">
 {

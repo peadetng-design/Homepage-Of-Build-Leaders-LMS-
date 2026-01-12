@@ -1,9 +1,8 @@
-
 import React from 'react';
 import {
   Home, Book, Users, Award, MessageCircle, Settings,
   LogOut, Shield, Heart, ChevronLeft, ChevronRight,
-  Library, Building2, UserPlus, Newspaper, MessageSquare, BadgeCheck, LayoutDashboard
+  Library, Building2, UserPlus, Newspaper, MessageSquare, BadgeCheck, LayoutDashboard, UserCircle
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -21,13 +20,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
   const commonItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: 'dashboard' },
     { label: 'Home', icon: Home, path: 'home' },
+    { label: 'My Profile', icon: UserCircle, path: 'profile' },
     { label: 'Resources', icon: Library, path: 'resources' },
     { label: 'News', icon: Newspaper, path: 'news' },
     { label: 'Chat', icon: MessageSquare, path: 'chat' }, 
     { label: 'Certificates', icon: BadgeCheck, path: 'certificates' },
   ];
 
-  // Specific items per role - UPDATED to remove requested headers
+  // Specific items per role
   const roleItems: Record<string, { label: string, icon: any, path: string }[]> = {
     [UserRole.STUDENT]: [
       { label: 'Progress', icon: Award, path: 'progress' },
@@ -49,51 +49,57 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
       className={`fixed left-0 top-0 h-full bg-white shadow-xl z-40 transition-all duration-300 ease-in-out border-r border-gray-100 flex flex-col
         ${isOpen ? 'w-32 md:w-64' : 'w-12 md:w-20'} pt-20 pb-4`}
     >
-      <div className="flex-1 px-2 md:px-3 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
-        {items.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePath === item.path;
-          return (
-            <button
-              key={item.path}
-              onClick={() => setActivePath(item.path)}
+      <div className="flex-1 px-2 md:px-3 mt-4 overflow-y-auto custom-scrollbar flex flex-col">
+        <div className="space-y-2">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = activePath === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => setActivePath(item.path)}
+                className={`w-full flex items-center p-2 md:p-3 rounded-xl transition-all duration-200 group relative
+                  ${isActive ? 'bg-royal-50 text-royal-800 shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}
+                `}
+              >
+                <Icon size={isActive ? 22 : 20} className={`md:w-6 md:h-6 ${isActive ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+                <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Settings and Sign Out moved closer to headers by placing inside the flex-1 container */}
+        <div className="mt-4 space-y-2">
+          <div className="border-t border-gray-100 my-2 mx-2"></div>
+          
+          <button
+              onClick={() => setActivePath('settings')}
               className={`w-full flex items-center p-2 md:p-3 rounded-xl transition-all duration-200 group relative
-                ${isActive ? 'bg-royal-50 text-royal-800 shadow-sm' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}
+                ${activePath === 'settings' ? 'bg-royal-50 text-royal-800' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}
               `}
             >
-              <Icon size={isActive ? 22 : 20} className={`md:w-6 md:h-6 ${isActive ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
+              <Settings size={20} className={`md:w-6 md:h-6 ${activePath === 'settings' ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
               <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-                {item.label}
+                Settings
               </span>
-            </button>
-          );
-        })}
+          </button>
+
+           <button
+              onClick={onSignOut}
+              className={`w-full flex items-center p-2 md:p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all group`}
+            >
+              <LogOut size={20} className="md:w-6 md:h-6 group-hover:text-red-500" />
+              <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
+                Sign Out
+              </span>
+          </button>
+        </div>
       </div>
 
-      <div className="px-2 md:px-3 mt-auto space-y-2">
-        <div className="border-t border-gray-100 my-2"></div>
-        
-        <button
-            onClick={() => setActivePath('settings')}
-            className={`w-full flex items-center p-2 md:p-3 rounded-xl transition-all duration-200 group relative
-              ${activePath === 'settings' ? 'bg-royal-50 text-royal-800' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}
-            `}
-          >
-            <Settings size={20} className={`md:w-6 md:h-6 ${activePath === 'settings' ? 'text-royal-600' : 'text-gray-400 group-hover:text-gray-600'}`} />
-            <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-              Settings
-            </span>
-        </button>
-
-         <button
-            onClick={onSignOut}
-            className={`w-full flex items-center p-2 md:p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all group`}
-          >
-            <LogOut size={20} className="md:w-6 md:h-6 group-hover:text-red-500" />
-            <span className={`ml-2 md:ml-3 font-bold md:font-medium text-[10px] md:text-sm whitespace-nowrap overflow-hidden transition-all duration-300 ${isOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0'}`}>
-              Sign Out
-            </span>
-        </button>
+      <div className="px-2 md:px-3 mt-2">
         <button
           onClick={toggle}
           className="w-full flex items-center justify-center p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors mt-2"

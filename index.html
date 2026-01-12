@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -44,6 +43,10 @@
               'green-pulse': 'green-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'red-pulse': 'red-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'spin-slow': 'spin 8s linear infinite',
+              'spin-very-slow': 'spin 20s linear infinite',
+              'rays': 'rays 15s linear infinite',
+              'particle-up': 'particle-up 10s ease-in-out infinite',
+              'glow-pulse': 'glow-pulse 2.5s infinite ease-in-out',
             },
             keyframes: {
               float: {
@@ -75,6 +78,21 @@
               'red-pulse': {
                 '0%, 100%': { color: '#dc2626', textShadow: '0 0 0px rgba(220, 38, 38, 0)' },
                 '50%': { color: '#ef4444', textShadow: '0 0 10px rgba(220, 38, 38, 0.4)' },
+              },
+              'rays': {
+                '0%': { transform: 'rotate(0deg) scale(1)' },
+                '50%': { transform: 'rotate(180deg) scale(1.1)' },
+                '100%': { transform: 'rotate(360deg) scale(1)' },
+              },
+              'particle-up': {
+                '0%': { transform: 'translateY(100%) translateX(0)', opacity: '0' },
+                '20%': { opacity: '0.6' },
+                '80%': { opacity: '0.6' },
+                '100%': { transform: 'translateY(-100%) translateX(20px)', opacity: '0' },
+              },
+              'glow-pulse': {
+                '0%, 100%': { boxShadow: '0 0 15px rgba(30, 27, 75, 0.1)', borderColor: 'rgba(30, 27, 75, 0.2)' },
+                '50%': { boxShadow: '0 0 35px rgba(79, 70, 229, 0.5)', borderColor: 'rgba(79, 70, 229, 0.8)' },
               }
             }
           }
@@ -96,18 +114,22 @@
       .cinzel {
         font-family: 'Cinzel', serif;
       }
+      /* SUPER VISIBLE HIGH-CONTRAST SCROLLBAR */
       .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
+        width: 14px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
+        background: #f8fafc;
+        border-left: 2px solid #e2e8f0;
       }
       .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
-        border-radius: 10px;
+        background: #1e1b4b; /* Royal 900 */
+        border-radius: 100px;
+        border: 3px solid #f8fafc;
+        box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
       }
       .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #cbd5e1;
+        background: #4f46e5; /* Royal 600 */
       }
 
       /* Base Transitions for smooth theme switching */
@@ -179,6 +201,18 @@
       html.theme-amber .border-royal-100 { border-color: #fef3c7; }
       html.theme-amber .border-royal-200 { border-color: #fde68a; }
       html.theme-amber .ring-royal-50 { --tw-ring-color: #fffbeb; }
+
+      /* Specialized Multi-layered Animation Helpers */
+      .rays-container {
+        mask-image: radial-gradient(circle, white 0%, transparent 70%);
+      }
+      .particle {
+        position: absolute;
+        bottom: -10px;
+        background: white;
+        border-radius: 50%;
+        pointer-events: none;
+      }
     </style>
   <script type="importmap">
 {

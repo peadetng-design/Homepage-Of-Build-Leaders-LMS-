@@ -205,13 +205,14 @@ class LessonService {
       return { completed: completedCount, total: Math.max(mod.totalLessonsRequired, mod.lessonIds.length), lessons: details };
   }
 
-  async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
-      const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
-      for (const mod of relevantModules) {
+  async getEligibleModulesForUser(userId: string): Promise<Module[]> {
+      const eligible: Module[] = [];
+      for (const mod of this.modules) {
           let lessonsProcessed = 0;
           let totalScore = 0;
           let lessonsDone = 0;
           const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
+          if (requiredCount === 0) continue;
           for (const lId of mod.lessonIds) {
               const lesson = this.lessons.find(l => l.id === lId);
               if (!lesson) continue;
@@ -227,9 +228,21 @@ class LessonService {
                   lessonsProcessed++;
               }
           }
-          if (lessonsDone < requiredCount || lessonsProcessed === 0) continue;
-          const avgScore = totalScore / lessonsProcessed;
-          if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
+          if (lessonsDone >= requiredCount && lessonsProcessed > 0) {
+              const avgScore = totalScore / lessonsProcessed;
+              if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
+                  eligible.push(mod);
+              }
+          }
+      }
+      return eligible;
+  }
+
+  async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
+      const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
+      for (const mod of relevantModules) {
+          const eligible = await this.getEligibleModulesForUser(userId);
+          if (eligible.find(e => e.id === mod.id)) {
               const alreadyIssued = this.certificates.find(c => c.userId === userId && c.moduleId === mod.id);
               if (!alreadyIssued) return mod;
           }
@@ -262,6 +275,10 @@ class LessonService {
   async getUserCertificates(userId: string): Promise<Certificate[]> { return this.certificates.filter(c => c.userId === userId); }
   async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
   
+  async verifyCertificate(code: string): Promise<Certificate | undefined> {
+      return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
+  }
+
   // RESOURCES CRUD
   async getResources(): Promise<Resource[]> { return this.resources; }
   async addResource(resource: Resource, actor: User): Promise<void> { 
@@ -317,7 +334,7 @@ class LessonService {
         if (dLesson.bibleQuizzes.length > 0) {
             sections.push({ id: crypto.randomUUID(), type: 'quiz_group', title: "Bible Knowledge Check", sequence: 2, quizzes: dLesson.bibleQuizzes.map((q, idx) => ({ id: q.question_id || crypto.randomUUID(), type: 'Bible Quiz', reference: q.reference, text: q.text, sequence: idx, options: q.options.map((o: any) => ({ ...o, id: crypto.randomUUID() })) })) });
         }
-        const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, authorId: author.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
+        const lesson: Lesson = { id: dLesson.metadata.lesson_id, moduleId: dLesson.metadata.module_id, orderInModule: dLesson.metadata.lesson_order, title: dLesson.metadata.title, description: dLesson.metadata.description, lesson_type: dLesson.metadata.lesson_type, targetAudience: dLesson.metadata.targetAudience, book: dLesson.metadata.book, chapter: dLesson.metadata.chapter, author: author.name, authorId: author.id, created_at: author.id, updated_at: new Date().toISOString(), status: 'published', views: 0, sections };
         await this.publishLesson(lesson);
     }
     authService.recordExternalAction(author, 'COMMIT_DRAFT', `Mass import committed for module: ${draft.moduleMetadata.title}`);
@@ -342,6 +359,72 @@ class LessonService {
   }
   async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
   async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
+  
+  // REMOTE AGGREGATION FOR SUMMARY DASHBOARD
+  async getStudentSummary(studentId: string): Promise<{ 
+    avgScore: number, 
+    totalLessons: number, 
+    totalTime: number, 
+    modulesCompleted: number,
+    totalModules: number,
+    lastLessonScore: string,
+    lastLessonTime: number
+  }> {
+      const userAttempts = this.attempts.filter(a => a.studentId === studentId).sort((a,b) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
+      const uniqueLessonIds = Array.from(new Set(this.attempts.filter(a => a.studentId === studentId).map(a => a.lessonId)));
+      
+      let totalScorePercentage = 0;
+      let lessonsEvaluated = 0;
+      let totalSeconds = 0;
+
+      for (const lId of uniqueLessonIds) {
+          const lesson = this.lessons.find(l => l.id === lId);
+          if (!lesson) continue;
+          
+          const lessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lId);
+          const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+          
+          const latestAttemptsPerQuiz = new Map<string, boolean>();
+          lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
+          const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
+          
+          if (uniqueQuizzesInLesson > 0) {
+              totalScorePercentage += (correct / uniqueQuizzesInLesson) * 100;
+              lessonsEvaluated++;
+          }
+
+          totalSeconds += this.timers[`${studentId}_${lId}`] || 0;
+      }
+
+      const eligibleModules = await this.getEligibleModulesForUser(studentId);
+      
+      // Last Lesson Details
+      let lastLessonScoreStr = "0/0";
+      let lastLessonTimeVal = 0;
+      if (userAttempts.length > 0) {
+          const lastLessonId = userAttempts[0].lessonId;
+          const lesson = this.lessons.find(l => l.id === lastLessonId);
+          if (lesson) {
+              const lastLessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lastLessonId);
+              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const latestAttemptsPerQuiz = new Map<string, boolean>();
+              lastLessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
+              const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
+              lastLessonScoreStr = `${correct}/${uniqueQuizzesInLesson}`;
+              lastLessonTimeVal = this.timers[`${studentId}_${lastLessonId}`] || 0;
+          }
+      }
+
+      return {
+          avgScore: lessonsEvaluated > 0 ? Math.round(totalScorePercentage / lessonsEvaluated) : 0,
+          totalLessons: uniqueLessonIds.length,
+          totalTime: totalSeconds,
+          modulesCompleted: eligibleModules.length,
+          totalModules: this.modules.length,
+          lastLessonScore: lastLessonScoreStr,
+          lastLessonTime: lastLessonTimeVal
+      };
+  }
 }
 
 export const lessonService = new LessonService();

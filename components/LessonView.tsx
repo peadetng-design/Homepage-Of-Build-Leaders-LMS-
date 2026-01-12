@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Certificate } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, Printer, Sparkles, Book } from 'lucide-react';
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, Clock, Trophy, BadgeCheck, Loader2, History, ListChecks, Printer, Sparkles, Book, Star } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -106,7 +107,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="bg-gray-50 min-h-screen pb-24 font-sans">
-      {/* --- RESTORED STICKY PERFORMANCE PANEL (HIGH VISIBILITY CONTRAST) --- */}
       <div className="sticky top-0 z-30 bg-royal-900 shadow-2xl rounded-b-[2rem] md:rounded-b-[3.5rem] overflow-hidden border-b border-royal-700/50 animate-in slide-in-from-top-4 duration-500">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pointer-events-none"></div>
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-10 text-white">
@@ -125,7 +125,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                 </div>
 
                 <div className="flex items-center gap-4 md:gap-8 flex-wrap justify-center w-full lg:w-auto">
-                    {/* Light-colored Circular Score for High Contrast */}
                     <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-md">
                         <div className="relative w-12 h-12 flex items-center justify-center">
                             <svg className="absolute inset-0 w-full h-full transform -rotate-90">
@@ -140,7 +139,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                         </div>
                     </div>
 
-                    {/* Light-colored Timer */}
                     <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 backdrop-blur-md">
                         <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
                             <Clock size={16} className="text-indigo-300" />
@@ -151,7 +149,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                         </div>
                     </div>
 
-                    {/* High Visibility Horizontal Progress */}
                     <div className="hidden sm:flex flex-col gap-1.5 w-40 md:w-56">
                         <div className="flex justify-between items-end">
                             <span className="text-[9px] font-black text-royal-200 uppercase tracking-widest">PROGRESS</span>
@@ -200,32 +197,73 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                    <h2 className="text-5xl font-serif font-black text-gray-950 leading-tight">Excellent Standing!</h2>
                    <div className="flex flex-col sm:flex-row gap-6 justify-center items-center pt-4">
                         {moduleProgress && (
-                             <button onClick={() => setShowTracker(true)} className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-50 transition-all flex items-center gap-3 border-2 border-royal-200 shadow-xl"><ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})</button>
+                             <button onClick={() => setShowTracker(true)} className="px-10 py-4 bg-white text-royal-800 font-black rounded-2xl hover:bg-gray-200 transition-all flex items-center gap-3 border-4 border-royal-100 shadow-xl"><ListChecks size={24} /> VIEW PROGRESS ({moduleProgress.completed}/{moduleProgress.total})</button>
                         )}
-                        <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl">EXIT TO LIBRARY</button>
+                        <button onClick={onBack} className="px-10 py-4 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all shadow-xl border-b-4 border-black">EXIT TO LIBRARY</button>
                    </div>
                </div>
            )}
 
            {completedModule && (
-               <div className="mt-20 p-12 bg-gradient-to-br from-royal-950 via-royal-900 to-indigo-950 text-white rounded-[3.5rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.6)] border-b-8 border-gold-600 relative overflow-hidden animate-in zoom-in-95 duration-1000">
-                   <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 -translate-y-20"><Trophy size={400} /></div>
-                   <div className="relative z-10 text-center">
-                       <div className="mb-8 relative inline-block">
-                            <div className="absolute inset-0 bg-gold-400 blur-[80px] opacity-30 animate-pulse"></div>
-                            <div className="w-24 h-24 bg-gradient-to-br from-gold-400 to-gold-600 rounded-2xl flex items-center justify-center shadow-2xl transform rotate-12 mx-auto ring-4 ring-white/10"><BadgeCheck size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} /></div>
+               <div className="mt-24 p-1 rounded-[4rem] bg-gradient-to-br from-gold-500 via-amber-400 to-gold-600 shadow-[0_50px_100px_-20px_rgba(217,119,6,0.5)] relative overflow-hidden animate-in zoom-in-95 duration-1000">
+                   
+                   {/* LAYER 1: ROTATING RAYS (Atmosphere) */}
+                   <div className="absolute inset-0 rays-container overflow-hidden pointer-events-none opacity-40">
+                       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[conic-gradient(from_0deg,transparent_0deg,white_20deg,transparent_40deg)] animate-rays"></div>
+                   </div>
+
+                   {/* LAYER 2: GRACE PARTICLES (Particles) */}
+                   <div className="absolute inset-0 pointer-events-none">
+                       {[...Array(12)].map((_, i) => (
+                           <div key={i} className="particle animate-particle-up" style={{ left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 5}s`, width: `${Math.random() * 6 + 2}px`, height: `${Math.random() * 6 + 2}px` }}></div>
+                       ))}
+                   </div>
+
+                   {/* LAYER 3: THE CREDENTIAL (The big pulsing center) */}
+                   <div className="bg-royal-950 p-12 md:p-16 rounded-[3.8rem] relative z-10 text-center overflow-hidden border-2 border-white/10">
+                       <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12 -translate-y-20 scale-150"><Trophy size={400} /></div>
+                       
+                       <div className="relative z-10">
+                           <div className="mb-10 relative inline-block">
+                                <div className="absolute inset-0 bg-gold-400 blur-[60px] opacity-40 animate-pulse"></div>
+                                <div className="w-28 h-28 bg-gradient-to-br from-gold-300 to-gold-600 rounded-[2rem] flex items-center justify-center shadow-[0_20px_60px_-10px_rgba(217,119,6,0.6)] transform rotate-6 mx-auto ring-8 ring-white/20 animate-pop-in">
+                                    <BadgeCheck size={64} className="text-white drop-shadow-2xl" strokeWidth={3} />
+                                </div>
+                                <div className="absolute -top-4 -right-4 bg-white text-royal-900 p-2 rounded-full shadow-lg animate-bounce duration-1000"><Star fill="currentColor" size={24} /></div>
+                           </div>
+
+                           <h3 className="text-gold-400 text-base font-black tracking-[0.6em] uppercase mb-4 animate-in slide-in-from-bottom-2 duration-500">Milestone Unlocked</h3>
+                           <h2 className="text-4xl md:text-6xl font-serif font-black mb-8 leading-tight text-white tracking-tighter">Module Mastered: <br/> <span className="text-gold-400 drop-shadow-md">{completedModule.title}</span></h2>
+                           
+                           <div className="h-1.5 w-32 bg-gold-500 mx-auto rounded-full mb-10 shadow-[0_0_15px_rgba(217,119,6,0.8)]"></div>
+                           
+                           <p className="text-indigo-100 mb-12 max-w-xl mx-auto font-bold text-xl leading-relaxed opacity-90">
+                              Well done, good and faithful leader! Your spiritual foundations have been verified. Your digital credential is ready for collection.
+                           </p>
+
+                           {/* LAYER 4: INTERACTIVE (High-impact button) */}
+                           <div className="flex flex-col gap-6 items-center">
+                               {issuedCert ? (
+                                   <button 
+                                     onClick={() => setViewingCert(issuedCert)} 
+                                     className="group relative px-16 py-6 bg-gold-500 text-white font-black rounded-3xl shadow-[0_30px_60px_-15px_rgba(217,119,6,0.5)] hover:bg-gold-400 transition-all flex items-center gap-4 text-2xl border-b-8 border-gold-700 transform hover:-translate-y-1 active:scale-95"
+                                   >
+                                       <Printer size={32} /> PRINT OFFICIAL COPY
+                                   </button>
+                               ) : (
+                                   <button 
+                                     onClick={handleClaimCertificate} 
+                                     disabled={isIssuingCert} 
+                                     className="group relative px-20 py-8 bg-gradient-to-r from-gold-400 via-amber-300 to-gold-600 text-royal-950 font-black rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(217,119,6,0.6)] hover:shadow-[0_50px_100px_-25px_rgba(217,119,6,0.8)] transform transition-all hover:scale-105 flex items-center gap-6 mx-auto text-3xl border-b-[10px] border-gold-800 animate-bounce-pulse"
+                                   >
+                                        <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-1000 ease-in-out -skew-x-12 -translate-x-full"></div>
+                                        {isIssuingCert ? <Loader2 className="animate-spin" size={40} /> : <Trophy size={40} className="group-hover:rotate-12 transition-transform" />} 
+                                        RECEIVE CERTIFICATE
+                                   </button>
+                               )}
+                               <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em] mt-4">Verified by Build Biblical Leaders LMS Authority</p>
+                           </div>
                        </div>
-                       <h3 className="text-gold-400 text-sm font-black tracking-[0.4em] uppercase mb-4">Milestone Unlocked</h3>
-                       <h2 className="text-4xl md:text-5xl font-serif font-black mb-6 leading-tight">Module Mastered: <br/> <span className="text-white">{completedModule.title}</span></h2>
-                       <p className="text-indigo-200 mb-10 max-w-lg mx-auto font-bold text-lg leading-relaxed">Glory to God! Your credentials for this leadership block are now verified and ready.</p>
-                       {issuedCert ? (
-                           <button onClick={() => setViewingCert(issuedCert)} className="px-12 py-5 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_40px_rgba(217,119,6,0.3)] hover:bg-gold-600 transition-all flex items-center gap-4 text-xl border-b-4 border-gold-800"><Printer size={28} /> PRINT OFFICIAL COPY</button>
-                       ) : (
-                           <button onClick={handleClaimCertificate} disabled={isIssuingCert} className="group relative px-14 py-6 bg-gold-500 text-white font-black rounded-2xl shadow-[0_20px_50px_rgba(217,119,6,0.4)] hover:bg-gold-400 transform transition-all hover:scale-105 flex items-center gap-4 mx-auto text-2xl border-b-8 border-gold-700">
-                                {isIssuingCert ? <Loader2 className="animate-spin" size={32} /> : <Trophy size={32} />} 
-                                RECEIVE CERTIFICATE
-                           </button>
-                       )}
                    </div>
                </div>
            )}
@@ -255,7 +293,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                               </div>
                           ))}
                       </div>
-                      <button onClick={() => setShowTracker(false)} className="w-full mt-10 py-5 bg-royal-950 text-white font-black rounded-3xl text-xl shadow-2xl">CLOSE DASHBOARD</button>
+                      <button onClick={() => setShowTracker(false)} className="w-full mt-10 py-5 bg-royal-950 text-white font-black rounded-3xl text-xl shadow-2xl border-b-4 border-black">CLOSE DASHBOARD</button>
                   </div>
               </div>
           </div>

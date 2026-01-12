@@ -1,3 +1,4 @@
+
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, ChatChannel, ChatMessage, ChatAttachment } from '../types';
 
 // STORAGE KEYS
@@ -547,6 +548,8 @@ class AuthService {
     if (isAdminType) return this.users;
     if (actor.role === UserRole.ORGANIZATION) return this.users.filter(u => u.organizationId === actor.id || u.createdBy === actor.id);
     if (actor.role === UserRole.MENTOR) return this.users.filter(u => u.mentorId === actor.id || u.createdBy === actor.id);
+    // Linked Parent Filter
+    if (actor.role === UserRole.PARENT && actor.linkedStudentId) return this.users.filter(u => u.id === actor.linkedStudentId);
     throw new Error("Unauthorized");
   }
   

@@ -1,5 +1,6 @@
+
 import React, { useEffect, useState, useRef } from 'react';
-import { UserRole, User, Lesson, ChatMessage, NewsItem, Module, StudentAttempt } from '../types';
+import { UserRole, User, Lesson, ChatMessage, NewsItem, Module, StudentAttempt, Certificate } from '../types';
 import { getDailyVerse, getAIQuizQuestion } from '../services/geminiService';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
@@ -21,7 +22,7 @@ import CertificatesPanel from './CertificatesPanel';
 import {
   BookOpen, Trophy, Activity, CheckCircle, Heart,
   Users, Upload, Play, Printer, Lock, TrendingUp, Edit3, Star, UserPlus, List, BarChart3, MessageSquare, Hash, ArrowRight, UserCircle, Camera, Save, Loader2,
-  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck, ChevronDown, Clock, Newspaper, Calendar, Target, Zap, PieChart, Layers, Sparkles, LayoutDashboard, Mail as MailIcon, X, Languages, Moon, Sun, Monitor, Eye, ShieldCheck, Database, ZapOff, RefreshCcw, Bell, Trees, Waves, Flower2, Sunrise
+  ArrowLeft, Settings, Globe, ClipboardList, Shield, Key, History, Mail, Bookmark, Briefcase, LayoutGrid, Award, BadgeCheck, ChevronDown, Clock, Newspaper, Calendar, Target, Zap, PieChart, Layers, Sparkles, LayoutDashboard, Mail as MailIcon, X, Languages, Moon, Sun, Monitor, Eye, ShieldCheck, Database, ZapOff, RefreshCcw, Bell, Trees, Waves, Flower2, Sunrise, ShieldCheck as ShieldIcon, Link as LinkIcon
 } from 'lucide-react';
 
 export type DashboardView = 
@@ -507,8 +508,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const [recentChats, setRecentChats] = useState<ChatMessage[]>([]);
   const [recentNews, setRecentNews] = useState<NewsItem[]>([]);
   const [showExportModal, setShowExportModal] = useState(false);
-  const [learningMetrics, setLearningMetrics] = useState({ lastLesson: null, lastModuleProgress: 0, lastLessonTime: 0, lastModuleTime: 0, completedModulesCount: 0, totalModulesCount: 1, lastLessonScore: 0 });
   
+  // Stats State (Centralized)
+  const [stats, setStats] = useState({ 
+    modulesCompleted: 0, 
+    totalModules: 0, 
+    totalTime: 0, 
+    avgScore: 0, 
+    lastLessonScore: "0/0", 
+    lastLessonTime: 0 
+  });
+  
+  // Child Credentials for Parent
+  const [childCerts, setChildCerts] = useState<Certificate[]>([]);
+  const [childSummary, setChildSummary] = useState<any>(null);
+
   // Lifted Theme State
   const [theme, setTheme] = useState(localStorage.getItem('bbl_theme') || 'royal');
 
@@ -530,42 +544,21 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
         const sorted = [...items].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRecentNews(sorted.slice(0, 2));
     });
-    calculateLearningPath();
+    
+    // Fetch Summary
+    lessonService.getStudentSummary(user.id).then(setStats);
+
+    if (user.role === UserRole.PARENT && user.linkedStudentId) {
+        lessonService.getUserCertificates(user.linkedStudentId).then(setChildCerts);
+        lessonService.getStudentSummary(user.linkedStudentId).then(setChildSummary);
+    }
   }, [user]);
 
-  const calculateLearningPath = async () => {
-    const allLessons = await lessonService.getLessons();
-    const allModules = await lessonService.getModules();
-    let lastLId = null;
-    const history = localStorage.getItem('bbl_db_attempts') ? JSON.parse(localStorage.getItem('bbl_db_attempts')!) : [];
-    const userHistory = history.filter((h: StudentAttempt) => h.studentId === user.id).sort((a: any, b: any) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
-    if (userHistory.length > 0) lastLId = userHistory[0].lessonId;
-    if (lastLId) {
-      const lastLesson = allLessons.find(l => l.id === lastLId);
-      if (lastLesson) {
-        const progress = await lessonService.getModuleProgress(user.id, lastLesson.moduleId);
-        const lastLessonTime = await lessonService.getQuizTimer(user.id, lastLesson.id);
-        const moduleLessons = allLessons.filter(l => l.moduleId === lastLesson.moduleId);
-        let modTime = 0;
-        for(const ml of moduleLessons) modTime += await lessonService.getQuizTimer(user.id, ml.id);
-        let completedCount = 0;
-        for(const m of allModules) {
-          const mProg = await lessonService.getModuleProgress(user.id, m.id);
-          if (mProg.completed >= mProg.total && mProg.total > 0) completedCount++;
-        }
-        const lastLessonAttempts = userHistory.filter((h: any) => h.lessonId === lastLId);
-        const uniqueQInLastLesson = lastLesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
-        const uniqueCorrect = new Set(lastLessonAttempts.filter((a: any) => a.isCorrect).map((a: any) => a.quizId)).size;
-        const scorePerc = uniqueQInLastLesson > 0 ? (uniqueCorrect / uniqueQInLastLesson) * 100 : 0;
-        setLearningMetrics({ lastLesson: lastLesson as any, lastModuleProgress: Math.round((progress.completed / progress.total) * 100) || 0, lastLessonTime, lastModuleTime: modTime, completedModulesCount: completedCount, totalModulesCount: allModules.length || 1, lastLessonScore: scorePerc });
-      }
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
+  const formatDigitalTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    return `${m}m ${s}s`;
+    return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
   };
 
   const renderHomeDashboard = () => {
@@ -593,6 +586,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
       { label: "CURRICULUM", icon: LayoutGrid, action: () => setInternalView('lessons'), color: "bg-purple-600 text-white", glowColor: "#9333ea", hoverBg: "hover:bg-purple-50" }
     );
     if (canManageContent || isParent) groupItems.push({ label: "AUDIT LOGS", icon: History, action: () => setInternalView('logs'), color: "bg-slate-600 text-white", glowColor: "#475569", hoverBg: "hover:bg-slate-50" });
+
+    const completionPercent = stats.totalModules > 0 ? Math.round((stats.modulesCompleted / stats.totalModules) * 100) : 0;
 
     return (
       <div className="space-y-8 md:space-y-12 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-32">
@@ -632,6 +627,72 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-14 relative z-0 lg:max-w-[90%] lg:mx-auto">
               <div className="lg:col-span-2 space-y-8 md:space-y-14">
+                  
+                  {isParent && childCerts.length > 0 && (
+                      <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border-4 border-indigo-50 shadow-xl relative overflow-hidden animate-in fade-in">
+                          <div className="flex items-center gap-3 mb-8 pb-6 border-b-2 border-indigo-50">
+                              <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg">
+                                  <ShieldIcon size={28} />
+                              </div>
+                              <div>
+                                  <h3 className="font-serif font-black text-gray-900 text-2xl uppercase tracking-tighter">Child's Credentials</h3>
+                                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Shareable & Verified Portfolios</p>
+                              </div>
+                          </div>
+                          
+                          {/* Child Performance Summary Strip */}
+                          {childSummary && (
+                              <div className="mb-8 p-6 bg-indigo-50/30 rounded-3xl border-2 border-indigo-100/50 flex flex-wrap gap-8 items-center justify-between">
+                                  <div className="flex items-center gap-4">
+                                      <div className="p-3 bg-white rounded-2xl shadow-sm"><Layers className="text-indigo-600"/></div>
+                                      <div>
+                                          <p className="text-sm font-black text-indigo-900 uppercase">Modules: {childSummary.modulesCompleted}/{childSummary.totalModules}</p>
+                                          <div className="w-24 h-1.5 bg-indigo-200 rounded-full mt-1 overflow-hidden">
+                                              <div className="h-full bg-indigo-600" style={{width: `${(childSummary.modulesCompleted/childSummary.totalModules)*100}%`}}></div>
+                                          </div>
+                                      </div>
+                                  </div>
+                                  <div>
+                                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Avg Accuracy</p>
+                                      <p className="text-lg font-black text-indigo-900">{childSummary.avgScore}%</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Time Spent</p>
+                                      <p className="text-lg font-black text-indigo-900">{formatDigitalTime(childSummary.totalTime)}</p>
+                                  </div>
+                                  <div>
+                                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Last Lesson</p>
+                                      <p className="text-lg font-black text-indigo-900">{childSummary.lastLessonScore}</p>
+                                  </div>
+                              </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                              {childCerts.map(cert => (
+                                  <div key={cert.id} className="bg-gray-50/50 p-6 rounded-3xl border-2 border-transparent hover:border-indigo-200 transition-all group">
+                                      <div className="flex justify-between items-start mb-4">
+                                          <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold shadow-inner">
+                                              <BadgeCheck size={24} />
+                                          </div>
+                                          <span className="text-[9px] font-mono text-gray-400 bg-white px-2 py-1 rounded border border-gray-100 uppercase">{cert.uniqueCode}</span>
+                                      </div>
+                                      <h4 className="font-black text-gray-900 text-lg leading-tight mb-2">{cert.moduleTitle}</h4>
+                                      <p className="text-gray-500 text-xs font-medium mb-6">Earned on {new Date(cert.issueDate).toLocaleDateString()}</p>
+                                      
+                                      <div className="pt-4 border-t border-indigo-100/50 flex flex-col gap-2">
+                                          <a 
+                                            href={`${window.location.origin}?verify_cert=${cert.uniqueCode}`}
+                                            className="w-full py-3 bg-white text-indigo-600 border-2 border-indigo-600 font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                                          >
+                                              <LinkIcon size={14} /> Verification Link
+                                          </a>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
                   <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border-2 border-gray-50 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] relative overflow-hidden group">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 border-b-4 border-royal-50 pb-6 gap-4">
                          <div className="flex items-center gap-2.5 md:gap-4"><div className="p-2 bg-royal-900 text-gold-400 rounded-2xl shadow-xl"><Newspaper size={24} /></div><h3 className="font-serif font-black text-gray-900 text-lg md:text-3xl uppercase tracking-tighter">News & Updates</h3></div>
@@ -649,14 +710,15 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                       </div>
                   </div>
                   
+                  {/* --- ENHANCED PERFORMANCE INTELLIGENCE PANEL --- */}
                   <div className="p-3 md:p-4 bg-white rounded-[2rem] md:rounded-[2.5rem] border-4 border-royal-100 shadow-[0_40px_100px_-30px_rgba(0,0,0,0.1)] flex flex-col gap-3 group relative overflow-hidden">
                       <div className="flex flex-col md:flex-row items-center gap-4 relative z-10">
-                          <div className="p-3 bg-royal-900 rounded-[1.4rem] text-gold-400 shrink-0 shadow-2xl border-b-[5px] border-royal-950"><Globe size={22}/></div>
+                          <div className="p-3 bg-royal-900 rounded-[1.4rem] text-gold-400 shrink-0 shadow-2xl border-b-[5px] border-royal-950"><Activity size={22}/></div>
                           <div className="text-center md:text-left flex-1">
-                              <h4 className="font-serif font-black text-gray-950 text-base md:text-xl uppercase tracking-tighter">Active Learning Path</h4>
+                              <h4 className="font-serif font-black text-gray-950 text-base md:text-xl uppercase tracking-tighter">Performance Intelligence</h4>
                               <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-1">
-                                <p className="text-[10px] md:text-xs text-gray-500 font-bold opacity-80">Continue your discipleship journey. Your next milestone is moments away.</p>
-                                <button onClick={() => learningMetrics.lastLesson && setSelectedLessonId((learningMetrics.lastLesson as any).id)} className="px-7 py-2.5 bg-royal-800 hover:bg-black text-white font-black rounded-xl text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 border-b-2 border-royal-950 flex items-center gap-1.5">CONTINUE <ArrowRight size={14} /></button>
+                                <p className="text-[10px] md:text-xs text-gray-500 font-bold opacity-80">Track your path to leadership mastery with real-time analytics.</p>
+                                <button onClick={() => setInternalView('performance-report')} className="px-7 py-2.5 bg-royal-800 hover:bg-black text-white font-black rounded-xl text-xs uppercase tracking-[0.2em] transition-all transform hover:-translate-y-1 border-b-2 border-royal-950 flex items-center gap-1.5">FULL REPORT <ArrowRight size={14} /></button>
                               </div>
                           </div>
                       </div>
@@ -665,23 +727,23 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                           <ScrollReveal className="lg:col-span-2" delay={100}>
                             <div className="space-y-2 bg-white p-2.5 rounded-2xl border-4 border-indigo-400 shadow-sm group/stat hover:border-indigo-600 transition-all">
                                 <div className="flex justify-between items-start">
-                                    <div className="flex items-center gap-2.5"><div className="p-2 bg-royal-100 text-royal-700 rounded-lg group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm"><Layers size={16} /></div><div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none">Module Progress</h5><p className="text-[9px] font-bold text-gray-400 truncate max-w-[80px]">{(learningMetrics.lastLesson as any)?.moduleId || 'N/A'}</p></div></div>
-                                    <span className="text-xl font-black text-royal-950 leading-none">{learningMetrics.lastModuleProgress}%</span>
+                                    <div className="flex items-center gap-2.5"><div className="p-2 bg-royal-100 text-royal-700 rounded-lg group-hover/stat:bg-royal-600 group-hover/stat:text-white transition-colors shadow-sm"><Layers size={16} /></div><div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none">NUMBER OF MODULES</h5><p className="text-[9px] font-bold text-gray-400 truncate max-w-[80px]">{stats.modulesCompleted} Won</p></div></div>
+                                    <span className="text-xl font-black text-royal-950 leading-none">{completionPercent}%</span>
                                 </div>
-                                <div className="h-2.5 w-full bg-gray-50 rounded-full border border-royal-50 overflow-hidden p-0.5"><div className="h-full bg-gradient-to-r from-royal-600 to-royal-400 rounded-full transition-all duration-1000" style={{ width: `${learningMetrics.lastModuleProgress}%` }} /></div>
+                                <div className="h-2.5 w-full bg-gray-50 rounded-full border border-royal-50 overflow-hidden p-0.5"><div className="h-full bg-gradient-to-r from-royal-600 to-royal-400 rounded-full transition-all duration-1000" style={{ width: `${completionPercent}%` }} /></div>
                             </div>
                           </ScrollReveal>
 
                           <ScrollReveal delay={200}>
                             <div className="bg-white p-2.5 rounded-2xl border-4 border-gold-400 flex items-center gap-2.5 shadow-sm group/stat hover:border-gold-600 transition-all h-full">
-                                <div className="p-2 bg-gold-50 text-gold-600 rounded-lg group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Award size={16} /></div>
-                                <div className="min-w-0"><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Mastered</h5><div className="flex items-baseline gap-1"><span className="text-xl font-black text-royal-950 leading-none">{learningMetrics.completedModulesCount}</span><span className="text-[10px] text-gray-300 font-bold">/ {learningMetrics.totalModulesCount}</span></div></div>
+                                <div className="p-2 bg-gold-50 text-gold-600 rounded-lg group-hover/stat:bg-gold-500 group-hover/stat:text-white transition-colors shadow-sm shrink-0"><Clock size={16} /></div>
+                                <div className="min-w-0"><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">TIME DURATION</h5><span className="text-xl font-black text-royal-950 leading-none">{formatDigitalTime(stats.totalTime)}</span></div>
                             </div>
                           </ScrollReveal>
 
                           <ScrollReveal delay={300}>
                             <div className="bg-white p-2.5 rounded-2xl border-4 border-royal-500 flex items-center gap-2.5 shadow-sm group/stat hover:border-royal-700 transition-all h-full">
-                                <div className="min-w-0 flex items-center gap-1.5"><MiniPieChart percent={learningMetrics.lastLessonScore} color="#4f46e5" bgColor="#e0e7ff" /><div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Precision</h5><span className="text-xl font-black text-royal-950 leading-none">{Math.round(learningMetrics.lastLessonScore)}%</span></div></div>
+                                <div className="min-w-0 flex items-center gap-1.5"><MiniPieChart percent={stats.avgScore} color="#4f46e5" bgColor="#e0e7ff" /><div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">AVG SCORE (%)</h5><span className="text-xl font-black text-royal-950 leading-none">{stats.avgScore}%</span></div></div>
                             </div>
                           </ScrollReveal>
                       </div>
@@ -689,14 +751,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <ScrollReveal delay={400} className="w-full">
                             <div className="flex items-center gap-2.5 p-2.5 bg-white border-4 border-amber-400 rounded-2xl shadow-sm hover:shadow-xl hover:border-amber-500 transition-all group/time">
-                                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover/time:bg-amber-500 group-hover/time:text-white transition-colors shadow-sm"><Clock size={20} /></div>
-                                <div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Last Session</h5><p className="text-lg md:text-xl font-black text-gray-900 leading-none">{formatTime(learningMetrics.lastLessonTime)}</p></div>
+                                <div className="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover/time:bg-amber-500 group-hover/time:text-white transition-colors shadow-sm"><Award size={20} /></div>
+                                <div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">LAST LESSON SCORE</h5><p className="text-lg md:text-xl font-black text-gray-900 leading-none">{stats.lastLessonScore}</p></div>
                             </div>
                           </ScrollReveal>
                           <ScrollReveal delay={500} className="w-full">
                             <div className="flex items-center gap-2.5 p-2.5 bg-white border-4 border-emerald-400 rounded-2xl shadow-sm hover:shadow-xl hover:border-emerald-500 transition-all group/time">
                                 <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg group-hover/time:bg-emerald-500 group-hover/time:text-white transition-colors shadow-sm"><History size={20} /></div>
-                                <div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">Total Effort</h5><p className="text-lg md:text-xl font-black text-gray-900 leading-none">{formatTime(learningMetrics.lastModuleTime)}</p></div>
+                                <div><h5 className="text-[8px] font-black text-royal-600 uppercase tracking-widest leading-none mb-1">LAST LESSON TIME</h5><p className="text-lg md:text-xl font-black text-gray-900 leading-none">{formatDigitalTime(stats.lastLessonTime)}</p></div>
                             </div>
                           </ScrollReveal>
                       </div>
@@ -742,9 +804,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
       case 'resources': return <ResourceView />;
       case 'news': return <NewsView />;
       case 'chat': return <ChatPanel currentUser={user} />;
-      case 'certificates': return <CertificatesPanel currentUser={user} />;
+      case 'certificates': return <CertificatesPanel currentUser={user} onBack={() => setInternalView('dashboard')} />;
       case 'performance-report': return <PerformanceReport currentUser={user} onBack={() => setInternalView('dashboard')} />;
-      case 'profile': return <ProfileView user={user} completedCount={learningMetrics.completedModulesCount} onEdit={() => setInternalView('edit-profile')} />;
+      case 'profile': return <ProfileView user={user} completedCount={stats.modulesCompleted} onEdit={() => setInternalView('edit-profile')} />;
       case 'edit-profile': return <EditProfileView user={user} onUpdate={(u) => { onUpdateUser(u); setInternalView('profile'); }} onCancel={() => setInternalView('profile')} />;
       case 'settings': return <SettingsView user={user} currentTheme={theme} onThemeChange={setTheme} onChangePassword={onChangePasswordClick || (() => {})} />;
       case 'dashboard': default: return renderHomeDashboard();

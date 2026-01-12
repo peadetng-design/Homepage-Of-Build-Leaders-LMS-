@@ -1,7 +1,7 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Certificate, CertificateDesign } from '../types';
-import { Download, Printer } from 'lucide-react';
+import { Download, Printer, Share2, Check, ArrowLeft } from 'lucide-react';
 
 interface CertificateGeneratorProps {
   certificate: Certificate;
@@ -12,6 +12,7 @@ interface CertificateGeneratorProps {
 
 const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate, onClose, previewDesign }) => {
   const certRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   // Merge defaults
   const design = previewDesign || certificate.design || {
@@ -25,6 +26,14 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
   const subTitle = "of Completion";
   const message = design.messageOverride || "This certifies that";
   const issuer = certificate.issuerName;
+
+  const verificationUrl = `${window.location.origin}?verify_cert=${certificate.uniqueCode}`;
+
+  const copyVerificationLink = () => {
+      navigator.clipboard.writeText(verificationUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+  };
 
   // --- TEMPLATE RENDERERS ---
 
@@ -60,11 +69,12 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
                       <div className="border-t border-gray-400 w-48 mt-1 pt-1 text-xs uppercase font-bold text-gray-500">Date Issued</div>
                   </div>
                   
-                  {/* Seal */}
-                  <div className="relative opacity-90 -mb-4">
-                      <div className="w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-inner" style={{ borderColor: design.secondaryColor, backgroundColor: design.secondaryColor }}>
+                  {/* Seal & Verification */}
+                  <div className="relative opacity-90 -mb-4 text-center">
+                      <div className="w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-inner mx-auto" style={{ borderColor: design.secondaryColor, backgroundColor: design.secondaryColor }}>
                           <div className="text-white text-center text-[10px] font-bold uppercase leading-tight">Official<br/>Seal</div>
                       </div>
+                      <p className="mt-2 text-[8px] font-mono text-gray-400 uppercase tracking-tighter">Verify: {certificate.uniqueCode}</p>
                   </div>
 
                   <div className="text-center relative">
@@ -93,6 +103,10 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
                   </div>
                   <h2 className="text-xl font-bold uppercase tracking-widest opacity-80">Awarded To</h2>
                   <h1 className="text-3xl font-bold mt-2 leading-tight">{certificate.userName}</h1>
+                  <div className="mt-12 pt-8 border-t border-white/20">
+                     <p className="text-[10px] font-mono opacity-60">VERIFICATION CODE</p>
+                     <p className="font-mono text-sm tracking-widest">{certificate.uniqueCode}</p>
+                  </div>
               </div>
           </div>
 
@@ -108,7 +122,8 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
                   <h3 className="text-4xl font-bold text-gray-900 mb-2">{certificate.moduleTitle}</h3>
                   <div className="h-2 w-32 rounded-full" style={{ backgroundColor: design.secondaryColor }}></div>
                   <p className="mt-6 text-gray-500">
-                      ID: <span className="font-mono">{certificate.uniqueCode}</span>
+                      Validated Credentials Portal: <br/>
+                      <span className="font-mono text-xs text-royal-500">{verificationUrl}</span>
                   </p>
               </div>
 
@@ -170,7 +185,7 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
               </div>
               
               <div className="absolute bottom-8 left-0 w-full text-center">
-                  <p className="text-[10px] text-gray-300 font-mono tracking-widest">{certificate.uniqueCode}</p>
+                  <p className="text-[10px] text-gray-300 font-mono tracking-widest">VERIFICATION ID: {certificate.uniqueCode}</p>
               </div>
           </div>
       </div>
@@ -227,27 +242,39 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full overflow-hidden flex flex-col h-[90vh]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/80 backdrop-blur-sm p-4 animate-in fade-in duration-300">
+      <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full overflow-hidden flex flex-col h-[95vh] animate-in zoom-in-95">
         
         {/* Toolbar */}
-        <div className="bg-royal-900 text-white p-4 flex justify-between items-center shrink-0">
-           <h3 className="font-bold text-lg">
-               {previewDesign ? "Certificate Design Preview" : "Certificate Viewer"}
-           </h3>
-           <div className="flex gap-2">
+        <div className="bg-royal-900 text-white p-4 flex flex-col md:flex-row justify-between items-center shrink-0 gap-4">
+           <div className="flex items-center gap-4">
+              <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center gap-2 text-royal-200">
+                  <ArrowLeft size={20} /> <span className="hidden md:inline font-bold">Back</span>
+              </button>
+              <h3 className="font-bold text-lg">
+                  {previewDesign ? "Certificate Design Preview" : "Certificate Viewer"}
+              </h3>
+           </div>
+
+           <div className="flex flex-wrap gap-2 justify-center">
+              <button 
+                onClick={copyVerificationLink}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all font-bold ${copied ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+              >
+                 {copied ? <Check size={18} /> : <Share2 size={18} />} 
+                 {copied ? 'Link Copied!' : 'Verification Link'}
+              </button>
               <button onClick={handlePrint} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors">
                  <Printer size={18} /> Print
               </button>
               <button onClick={handleDownload} className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg">
                  <Download size={18} /> Download
               </button>
-              <button onClick={onClose} className="px-4 py-2 hover:bg-white/10 rounded-lg text-gray-300">Close</button>
            </div>
         </div>
 
         {/* Certificate Canvas */}
-        <div className="flex-1 bg-gray-200 overflow-auto p-8 flex items-center justify-center">
+        <div className="flex-1 bg-gray-200 overflow-auto p-4 md:p-8 flex items-center justify-center">
            <div 
              ref={certRef} 
              className="certificate-wrapper shadow-2xl transform transition-transform origin-center bg-white"

@@ -6,6 +6,7 @@ import Hero from './components/Hero';
 import AuthModal from './components/AuthModal';
 import CreateGroupModal from './components/CreateGroupModal';
 import Dashboard from './components/Dashboard';
+import CertificateVerificationView from './components/CertificateVerificationView';
 import { User, UserRole } from './types';
 import { authService } from './services/authService';
 
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   const [verificationNotification, setVerificationNotification] = useState<string | null>(null);
   
   const [dashboardResetKey, setDashboardResetKey] = useState(0);
+  const [verifyCertCode, setVerifyCertCode] = useState<string | null>(null);
 
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
@@ -29,6 +31,12 @@ const App: React.FC = () => {
       handleEmailVerification(verifyToken);
       window.history.replaceState({}, document.title, "/");
       return; 
+    }
+
+    const certCode = queryParams.get('verify_cert');
+    if (certCode) {
+      setVerifyCertCode(certCode);
+      window.history.replaceState({}, document.title, "/");
     }
 
     const token = queryParams.get('invite');
@@ -114,6 +122,14 @@ const App: React.FC = () => {
   
   // RENDER LOGIC
   const renderContent = () => {
+    if (verifyCertCode) {
+        return (
+            <div className="py-12">
+                <CertificateVerificationView code={verifyCertCode} onBack={() => setVerifyCertCode(null)} />
+            </div>
+        );
+    }
+
     if (!user || activePath === 'home') {
        return (
          <Hero 

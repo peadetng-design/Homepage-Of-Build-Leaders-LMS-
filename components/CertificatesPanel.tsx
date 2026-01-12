@@ -4,7 +4,7 @@ import { User, UserRole, Certificate, Module, CertificateDesign } from '../types
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
 import CertificateGenerator from './CertificateGenerator';
-import { BadgeCheck, Download, Search, Plus, X, Loader2, ArrowLeft, ArrowRight, PenTool, Layout, Palette, Image as ImageIcon } from 'lucide-react';
+import { BadgeCheck, Download, Search, Plus, X, Loader2, ArrowLeft, ArrowRight, PenTool, Layout, Palette, Image as ImageIcon, Link as LinkIcon, Check } from 'lucide-react';
 
 interface CertificatesPanelProps {
   currentUser: User;
@@ -26,6 +26,7 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
   const [viewingCert, setViewingCert] = useState<Certificate | null>(null);
   const [activeTab, setActiveTab] = useState<'my_certs' | 'manage'>('my_certs');
   const [isLoading, setIsLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Manage / Issue State
   const [manageSearch, setManageSearch] = useState('');
@@ -113,6 +114,13 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
       }
   };
 
+  const copyVerificationLink = (code: string, id: string) => {
+      const url = `${window.location.origin}?verify_cert=${code}`;
+      navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Mock preview object for the generator
   const getPreviewCertificate = (): Certificate => {
       const student = students.find(s => s.id === selectedStudentId) || { name: 'Student Name' } as any;
@@ -145,8 +153,8 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
        <div className="flex flex-col md:flex-row justify-between items-end gap-4 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative">
           <div className="flex items-center gap-2.5 md:gap-4">
              {onBack && (
-                 <button onClick={onBack} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
-                     <ArrowLeft size={24} />
+                 <button onClick={onBack} className="p-3 hover:bg-gray-100 rounded-2xl text-gray-500 transition-colors border border-gray-200 shadow-sm group">
+                     <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
                  </button>
              )}
              <div>
@@ -228,12 +236,21 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
                             <span className="font-mono">{cert.uniqueCode}</span>
                          </div>
 
-                         <button 
-                           onClick={() => setViewingCert(cert)}
-                           className="w-full py-3 bg-gray-50 hover:bg-royal-600 hover:text-white text-gray-700 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 group-hover:shadow-md"
-                         >
-                            <Download size={18} /> View & Download
-                         </button>
+                         <div className="flex gap-2">
+                             <button 
+                               onClick={() => setViewingCert(cert)}
+                               className="flex-1 py-3 bg-royal-800 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 group-hover:shadow-md"
+                             >
+                                <Download size={14} /> Open
+                             </button>
+                             <button 
+                               onClick={() => copyVerificationLink(cert.uniqueCode, cert.id)}
+                               className={`p-3 rounded-xl transition-all shadow-sm ${copiedId === cert.id ? 'bg-green-500 text-white' : 'bg-gray-50 text-gray-500 hover:bg-royal-50 hover:text-royal-600'}`}
+                               title="Copy Verification Link"
+                             >
+                                {copiedId === cert.id ? <Check size={18}/> : <LinkIcon size={18} />}
+                             </button>
+                         </div>
                       </div>
                    </div>
                 ))}
@@ -256,9 +273,14 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
                    
                    {/* Wizard Header */}
                    <div className="bg-royal-900 p-6 text-white flex justify-between items-center shrink-0">
-                       <div>
-                           <h3 className="font-bold text-lg flex items-center gap-2"><BadgeCheck size={20} className="text-gold-500"/> Issue Certificate</h3>
-                           <p className="text-xs text-royal-200 mt-1">Step {wizardStep} of 3</p>
+                       <div className="flex items-center gap-4">
+                           <button onClick={() => setShowWizard(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                               <ArrowLeft size={20} />
+                           </button>
+                           <div>
+                               <h3 className="font-bold text-lg flex items-center gap-2"><BadgeCheck size={20} className="text-gold-500"/> Issue Certificate</h3>
+                               <p className="text-xs text-royal-200 mt-1">Step {wizardStep} of 3</p>
+                           </div>
                        </div>
                        <button onClick={() => setShowWizard(false)}><X size={20}/></button>
                    </div>
@@ -412,7 +434,9 @@ const CertificatesPanel: React.FC<CertificatesPanelProps> = ({ currentUser, onBa
                    {/* Footer Actions */}
                    <div className="p-6 bg-gray-50 border-t border-gray-200 flex justify-between">
                        {wizardStep > 1 ? (
-                           <button onClick={() => setWizardStep(prev => prev - 1 as any)} className="px-6 py-2 bg-white border border-gray-300 rounded-lg font-bold text-gray-600 hover:bg-gray-100">Back</button>
+                           <button onClick={() => setWizardStep(prev => prev - 1 as any)} className="px-6 py-2 bg-white border border-gray-300 rounded-lg font-bold text-gray-600 hover:bg-gray-100 flex items-center gap-2">
+                               <ArrowLeft size={16}/> Back
+                           </button>
                        ) : <div></div>}
 
                        {wizardStep < 3 ? (

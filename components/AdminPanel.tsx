@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, Resource, NewsItem, Module, Certificate } from '../types';
 import { authService } from '../services/authService';
@@ -333,101 +332,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           </div>
         )}
 
-        {/* --- PERFORMANCE INSIGHTS MODAL --- */}
+        {/* --- PERFORMANCE INSIGHTS MODAL (RESTORED DIMENSIONS) --- */}
         {insightUser && insightData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-[3.5rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">
+            <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">
                
-               {/* 50% REDUCED HEADER HEIGHT */}
-               <div className="p-6 text-center relative shrink-0 border-b-4 border-gray-100 bg-white">
-                  <div className="absolute top-2 right-4">
-                     <button onClick={() => setInsightUser(null)} className="p-2 text-gray-300 hover:text-royal-900 hover:bg-gray-100 rounded-xl transition-all">
-                        <X size={24} />
+               {/* RESTORED HEADER HEIGHT */}
+               <div className="p-12 text-center relative shrink-0 border-b-4 border-gray-100 bg-white">
+                  <div className="absolute top-4 right-8">
+                     <button onClick={() => setInsightUser(null)} className="p-3 text-gray-300 hover:text-royal-900 hover:bg-gray-100 rounded-2xl transition-all">
+                        <X size={32} />
                      </button>
                   </div>
                   
-                  <div className="flex flex-col items-center gap-2">
-                     <div className="w-16 h-16 bg-royal-900 text-white rounded-2xl flex items-center justify-center font-serif font-black text-2xl shadow-xl animate-in pop-in duration-500 border-4 border-gold-500">
+                  <div className="flex flex-col items-center gap-4">
+                     <div className="w-24 h-24 bg-royal-900 text-white rounded-[2rem] flex items-center justify-center font-serif font-black text-4xl shadow-2xl animate-in pop-in duration-500 border-4 border-gold-500">
                         {insightUser.name.charAt(0)}
                      </div>
                      <div>
-                        <h2 className="text-3xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-tight animate-in slide-in-from-bottom-2 duration-700">Performance Insights</h2>
-                        <div className="flex items-center justify-center gap-3 mt-1">
-                           <span className="px-4 py-1 bg-royal-900 text-white rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">{insightUser.name}</span>
-                           <span className="h-1 w-1 bg-gold-500 rounded-full"></span>
-                           <span className="text-royal-800 font-black text-[9px] uppercase tracking-widest flex items-center gap-1.5">
-                              <Shield size={12} className="fill-gold-500 text-gold-600" /> OFFICIAL SYSTEM AUDIT
+                        <h2 className="text-5xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-tight animate-in slide-in-from-bottom-2 duration-700">Performance Insights</h2>
+                        <div className="flex items-center justify-center gap-4 mt-3">
+                           <span className="px-6 py-2 bg-royal-900 text-white rounded-full text-xs font-black uppercase tracking-[0.25em] shadow-lg">{insightUser.name}</span>
+                           <span className="h-1.5 w-1.5 bg-gold-500 rounded-full"></span>
+                           <span className="text-royal-800 font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                              <Shield size={16} className="fill-gold-500 text-gold-600" /> OFFICIAL SYSTEM AUDIT
                            </span>
                         </div>
                      </div>
                   </div>
                </div>
 
-               <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-[#fdfdfd] custom-scrollbar">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 pb-6">
+               <div className="flex-1 overflow-y-auto p-12 space-y-12 bg-[#fdfdfd] custom-scrollbar">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-10">
                       
-                      {/* STAT: MODULES PROGRESS - 20% SMALLER */}
-                      <div className="lg:col-span-8 bg-white p-8 rounded-[2.5rem] border-8 border-royal-900 shadow-2xl space-y-6 animate-glow-pulse">
+                      {/* STAT: MODULES PROGRESS - RESTORED SIZE */}
+                      <div className="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl space-y-8 animate-glow-pulse">
                           <div className="flex justify-between items-end">
                              <div>
-                                <h4 className="font-black text-royal-900 uppercase text-[10px] tracking-[0.3em] mb-2 bg-royal-50 inline-block px-2 py-0.5 rounded-md">NUMBER OF MODULES</h4>
-                                <p className="text-4xl font-black text-royal-900 leading-none">{insightData.totalModules > 0 ? Math.round((insightData.modulesCompleted / insightData.totalModules) * 100) : 0}% <span className="text-sm font-bold text-gray-400 uppercase">GOAL REACHED</span></p>
+                                <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-4 bg-royal-50 inline-block px-3 py-1 rounded-lg">NUMBER OF MODULES</h4>
+                                <p className="text-6xl font-black text-royal-900 leading-none">{insightData.totalModules > 0 ? Math.round((insightData.modulesCompleted / insightData.totalModules) * 100) : 0}% <span className="text-xl font-bold text-gray-400">GOAL REACHED</span></p>
                              </div>
                              <div className="text-right">
-                                <p className="text-xl font-black text-royal-900 uppercase tracking-widest">{insightData.modulesCompleted} <span className="text-gray-300">/</span> {insightData.totalModules}</p>
-                                <p className="text-[9px] font-black text-royal-600 uppercase mt-1 tracking-widest">Mastery Count</p>
+                                <p className="text-2xl font-black text-royal-900 uppercase tracking-widest">{insightData.modulesCompleted} <span className="text-gray-300">/</span> {insightData.totalModules}</p>
+                                <p className="text-xs font-black text-royal-600 uppercase mt-2 tracking-widest">Mastery Count</p>
                              </div>
                           </div>
-                          <div className="h-4 w-full bg-royal-50 rounded-full overflow-hidden p-1 border-2 border-royal-100 shadow-inner">
+                          <div className="h-5 w-full bg-royal-50 rounded-full overflow-hidden p-1 border-2 border-royal-100 shadow-inner">
                              <div className="h-full bg-gradient-to-r from-royal-900 to-royal-600 rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(30,27,75,0.3)]" style={{ width: `${(insightData.modulesCompleted/insightData.totalModules)*100}%` }}></div>
                           </div>
                       </div>
 
-                      {/* STAT: ENGAGEMENT CYCLE - 20% SMALLER */}
-                      <div className="lg:col-span-4 bg-white p-8 rounded-[2.5rem] border-8 border-royal-900 shadow-2xl flex flex-col justify-center animate-glow-pulse delay-75">
-                          <h4 className="font-black text-royal-900 uppercase text-[10px] tracking-[0.3em] mb-4 bg-royal-50 inline-block px-2 py-0.5 rounded-md w-fit">TIME DURATION</h4>
-                          <span className="text-4xl font-mono font-black text-royal-900 leading-none tracking-tighter">
+                      {/* STAT: ENGAGEMENT CYCLE - RESTORED SIZE */}
+                      <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col justify-center animate-glow-pulse delay-75">
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-6 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">TIME DURATION</h4>
+                          <span className="text-5xl font-mono font-black text-royal-900 leading-none tracking-tighter">
                              {formatDigitalTime(insightData.totalTime)}
                           </span>
-                          <div className="mt-8 flex items-center gap-3 text-emerald-600 border-t pt-4 border-emerald-50">
-                             <div className="p-2 bg-emerald-50 rounded-xl"><Clock size={20} /></div>
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Validated Study Time</span>
+                          <div className="mt-10 flex items-center gap-4 text-emerald-600 border-t pt-6 border-emerald-50">
+                             <div className="p-3 bg-emerald-50 rounded-2xl"><Clock size={24} /></div>
+                             <span className="text-xs font-black uppercase tracking-[0.2em]">Validated Study Time</span>
                           </div>
                       </div>
 
-                      {/* STAT: AVG SCORE (UPDATED LABEL & VISIBILITY) - 20% SMALLER */}
-                      <div className="lg:col-span-4 bg-royal-950 p-8 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(30,27,75,0.7)] text-white relative overflow-hidden border-8 border-gold-500 animate-glow-pulse delay-100">
-                          <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12"><Target size={140} /></div>
-                          <h4 className="font-black text-gold-400 uppercase text-[9px] tracking-[0.2em] mb-8 relative z-10 leading-tight">AVERAGE SCORE OF ALL MODULES ATTEMPTED (IN PERCENTAGE)</h4>
+                      {/* STAT: AVG SCORE (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      <div className="lg:col-span-4 bg-royal-950 p-10 rounded-[3.5rem] shadow-[0_20px_60px_-15px_rgba(30,27,75,0.7)] text-white relative overflow-hidden border-8 border-gold-500 animate-glow-pulse delay-100">
+                          <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Target size={200} /></div>
+                          <h4 className="font-black text-gold-400 uppercase text-[10px] tracking-[0.3em] mb-12 relative z-10 leading-tight">AVERAGE SCORE OF ALL MODULES ATTEMPTED (IN PERCENTAGE)</h4>
                           <div className="relative z-10">
-                             <p className="text-7xl font-black leading-none drop-shadow-2xl text-gold-400">{insightData.avgScore}%</p>
-                             <div className="h-1.5 w-16 bg-gold-500 rounded-full mt-6 shadow-xl shadow-gold-500/40"></div>
-                             <p className="text-[9px] font-black text-royal-200 uppercase tracking-widest mt-8 opacity-80">System-wide Precision Audit</p>
+                             <p className="text-8xl font-black leading-none drop-shadow-2xl text-gold-400">{insightData.avgScore}%</p>
+                             <div className="h-2 w-24 bg-gold-500 rounded-full mt-8 shadow-xl shadow-gold-500/40"></div>
+                             <p className="text-xs font-black text-royal-200 uppercase tracking-widest mt-10 opacity-80">System-wide Precision Audit</p>
                           </div>
                       </div>
 
-                      {/* STAT: LAST LESSON SCORE (UPDATED LABEL) - 20% SMALLER */}
-                      <div className="lg:col-span-4 bg-white p-8 rounded-[2.5rem] border-8 border-royal-900 shadow-2xl flex flex-col animate-glow-pulse delay-200">
-                          <h4 className="font-black text-royal-900 uppercase text-[10px] tracking-[0.3em] mb-8 bg-royal-50 inline-block px-2 py-0.5 rounded-md w-fit">LAST (MOST RECENT) LESSON SCORE</h4>
-                          <div className="flex items-baseline gap-3 mb-8">
-                             <span className="text-7xl font-black text-royal-950 leading-none">{insightData.lastLessonScore.split('/')[0]}</span>
-                             <span className="text-3xl font-black text-gray-200 tracking-tighter">/ {insightData.lastLessonScore.split('/')[1]}</span>
+                      {/* STAT: LAST LESSON SCORE (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col animate-glow-pulse delay-200">
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.35em] mb-10 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">LAST (MOST RECENT) LESSON SCORE</h4>
+                          <div className="flex items-baseline gap-4 mb-10">
+                             <span className="text-8xl font-black text-royal-950 leading-none">{insightData.lastLessonScore.split('/')[0]}</span>
+                             <span className="text-4xl font-black text-gray-200 tracking-tighter">/ {insightData.lastLessonScore.split('/')[1]}</span>
                           </div>
-                          <div className="mt-auto flex items-center gap-3 text-gold-600 border-t pt-4 border-gold-50">
-                             <div className="p-2 bg-gold-50 rounded-xl"><Award size={20} /></div>
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Most Recent Standing</span>
+                          <div className="mt-auto flex items-center gap-4 text-gold-600 border-t pt-6 border-gold-50">
+                             <div className="p-3 bg-gold-50 rounded-2xl"><Award size={24} /></div>
+                             <span className="text-xs font-black uppercase tracking-[0.2em]">Most Recent Academic Standing</span>
                           </div>
                       </div>
 
-                      {/* STAT: LAST LESSON DURATION (UPDATED LABEL) - 20% SMALLER */}
-                      <div className="lg:col-span-4 bg-gray-50 p-8 rounded-[2.5rem] border-8 border-royal-900 shadow-inner flex flex-col animate-glow-pulse delay-300">
-                          <h4 className="font-black text-royal-900 uppercase text-[10px] tracking-[0.3em] mb-8 bg-white inline-block px-2 py-0.5 rounded-md w-fit shadow-sm">LAST LESSON DURATION</h4>
-                          <span className="text-4xl font-mono font-black text-royal-700 leading-none tracking-tighter">
+                      {/* STAT: LAST LESSON DURATION (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      <div className="lg:col-span-4 bg-gray-50 p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-inner flex flex-col animate-glow-pulse delay-300">
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-10 bg-white inline-block px-3 py-1 rounded-lg w-fit shadow-sm">LAST LESSON DURATION</h4>
+                          <span className="text-5xl font-mono font-black text-royal-700 leading-none tracking-tighter">
                              {formatDigitalTime(insightData.lastLessonTime)}
                           </span>
-                          <div className="mt-auto flex items-center gap-3 text-royal-900 border-t pt-4 border-royal-100">
-                             <div className="p-2 bg-white rounded-xl shadow-sm"><Activity size={20} /></div>
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Latest Recorded Tempo</span>
+                          <div className="mt-auto flex items-center gap-4 text-royal-900 border-t pt-6 border-royal-100">
+                             <div className="p-3 bg-white rounded-2xl shadow-sm"><Activity size={24} /></div>
+                             <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Recorded Tempo</span>
                           </div>
                       </div>
 
@@ -435,19 +434,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                </div>
 
                {/* Simple Mature Footer */}
-               <div className="p-6 bg-white border-t-4 border-gray-100 flex justify-center shrink-0">
-                  <button onClick={() => setInsightUser(null)} className="group px-16 py-4 bg-royal-900 text-white font-black rounded-2xl text-[10px] uppercase tracking-[0.4em] shadow-xl hover:bg-black transition-all transform hover:scale-[1.02] active:scale-95 flex items-center gap-4 border-b-4 border-royal-950">
-                     <ArrowLeft size={20} className="group-hover:-translate-x-2 transition-transform" /> BACK TO MEMBER LIST
+               <div className="p-12 bg-white border-t-4 border-gray-100 flex justify-center shrink-0">
+                  <button onClick={() => setInsightUser(null)} className="group px-20 py-6 bg-royal-900 text-white font-black rounded-[2.5rem] text-sm uppercase tracking-[0.5em] shadow-2xl hover:bg-black transition-all transform hover:scale-[1.05] active:scale-95 flex items-center gap-6 border-b-8 border-royal-950">
+                     <ArrowLeft size={24} className="group-hover:-translate-x-2 transition-transform" /> BACK TO MEMBER LIST
                   </button>
                </div>
             </div>
           </div>
         )}
 
-        {/* --- MODAL: Recipient Credentials (Updated with List of Completed Modules & Print Button) --- */}
+        {/* --- MODAL: Recipient Credentials (Existing logic preserved) --- */}
         {credentialUser && (
             <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
-                <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[85vh] border-8 border-royal-900">
+                <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">
                     <div className="bg-royal-900 p-8 text-white relative shrink-0">
                         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
                         <div className="relative z-10 flex justify-between items-center">

@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -53,7 +52,7 @@ export interface Course {
 
 export interface Module {
   id: string;
-  courseId: string; // Linked to parent course
+  courseId: string;
   title: string;
   subtitle?: string;
   description: string;
@@ -90,7 +89,7 @@ export interface Lesson {
   status: 'draft' | 'published';
   views: number;
   sections: LessonSection[];
-  about: AboutSegment[]; // New structured About content
+  about: AboutSegment[];
 }
 
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
@@ -138,102 +137,7 @@ export interface LessonDraft {
   errors: ImportError[];
 }
 
-export interface StudentAttempt {
-  id: string;
-  studentId: string;
-  lessonId: string;
-  quizId: string;
-  selectedOptionId: string;
-  isCorrect: boolean;
-  score: number;
-  attempted_at: string;
-}
-
-export interface JoinRequest {
-  id: string;
-  studentId: string;
-  studentName: string;
-  mentorId: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  timestamp: string;
-}
-
-export interface ChatChannel {
-  id: string;
-  name: string;
-  description?: string;
-  creatorId: string;
-  scope: 'global' | 'org' | 'class';
-  orgId?: string;
-  mentorId?: string;
-  includeRoles: UserRole[];
-  includeStudentsOfMentors?: boolean;
-  createdAt: string;
-}
-
-// Added ChatAttachment interface definition
-export interface ChatAttachment {
-  name: string;
-  type: string;
-  data: string;
-  size: number;
-}
-
-export interface ChatMessage {
-  id: string;
-  channelId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: UserRole;
-  text: string;
-  timestamp: string;
-  // Updated attachment to use ChatAttachment interface
-  attachment?: ChatAttachment;
-}
-
-export interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  fileType: 'pdf' | 'doc' | 'image' | 'other';
-  url: string;
-  uploadedBy: string;
-  uploadedAt: string;
-  size: string;
-}
-
-export interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  date: string;
-  category: 'Announcement' | 'Event' | 'Update';
-  author: string;
-}
-
-export interface AuditLog {
-  id: string;
-  action: string;
-  actorId: string;
-  actorName: string;
-  targetId?: string;
-  details: string;
-  timestamp: string;
-  severity: 'info' | 'warning' | 'critical';
-}
-
-export interface Invite {
-  id: string;
-  token: string;
-  email: string;
-  role: UserRole;
-  invitedBy: string;
-  inviterId?: string;
-  organizationId?: string;
-  createdAt: string;
-  expiresAt: string;
-  status: 'pending' | 'accepted' | 'expired';
-}
+// Fix: Added missing exported members to satisfy imports in other components and services
 
 export interface HomepageContent {
   heroTagline: string;
@@ -280,20 +184,113 @@ export interface HomepageContent {
   footerPhone: string;
   footerAddress: string;
   footerQuickInfoHeading: string;
-  footerQuickInfoItems: string; 
+  footerQuickInfoItems: string;
   footerCopyright: string;
   footerPrivacyText: string;
   footerTermsText: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  text: string;
+  timestamp: string;
+  attachment?: ChatAttachment;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description: string;
+  creatorId: string;
+  scope: 'global' | 'org' | 'class';
+  orgId?: string;
+  mentorId?: string;
+  includeRoles: UserRole[];
+  includeStudentsOfMentors?: boolean;
+  createdAt: string;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  category: string;
+  author: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  fileType: 'pdf' | 'doc' | 'image' | 'other';
+  url: string;
+  uploadedAt: string;
+  size: string;
+}
+
+export interface StudentAttempt {
+  id: string;
+  studentId: string;
+  lessonId: string;
+  quizId: string;
+  selectedOptionId: string;
+  isCorrect: boolean;
+  score: number;
+  attempted_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  actorId: string;
+  actorName: string;
+  action: string;
+  details: string;
+  severity: 'info' | 'warning' | 'critical';
+}
+
+export interface Invite {
+  id: string;
+  token: string;
+  email: string;
+  role: UserRole;
+  invitedBy: string;
+  inviterId: string;
+  organizationId?: string;
+  createdAt: string;
+  expiresAt: string;
+  status: 'pending' | 'accepted' | 'expired';
+}
+
+export interface JoinRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  mentorId: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  timestamp: string;
+}
+
 export interface CertificateDesign {
-  templateId: 'classic' | 'modern' | 'minimal';
+  templateId: string;
   primaryColor: string;
   secondaryColor: string;
   titleOverride?: string;
   messageOverride?: string;
-  signatureUrl?: string;
   signatureName?: string;
+  signatureUrl?: string;
 }
 
 export interface Certificate {
@@ -305,5 +302,5 @@ export interface Certificate {
   issueDate: string;
   issuerName: string;
   uniqueCode: string;
-  design?: CertificateDesign;
+  design: CertificateDesign;
 }

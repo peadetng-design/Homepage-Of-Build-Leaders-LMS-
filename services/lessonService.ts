@@ -1,5 +1,4 @@
 
-
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError } from '../types';
 import { authService } from './authService';
 
@@ -19,7 +18,7 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   heroSubtitle: "Empowering the next generation through interactive study, community competition, and spiritual growth.",
   aboutMission: "Our Mission",
   aboutHeading: "Raising Up the Next Generation",
-  aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God. We believe that hiding God's word in young hearts creates a foundation for lifelong leadership.",
+  aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God.",
   knowledgeTitle: "Knowledge",
   knowledgeDesc: "Deep biblical literacy & understanding",
   communityTitle: "Community",
@@ -31,34 +30,34 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   whyBblItem4: "District & Regional tournament support",
   resourcesHeading: "Study Materials",
   resourcesTitle: "Equipping the Saints",
-  resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  resourcesSubtitle: "Everything you need to succeed in your quizzing journey.",
   feature1Title: "Study Guides",
-  feature1Desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.",
+  feature1Desc: "Comprehensive chapter-by-chapter breakdowns.",
   feature1Button: "Access Now",
   feature2Title: "Flashcards",
-  feature2Desc: "Digital and printable sets optimized for spaced repetition.",
+  feature2Desc: "Digital and printable sets.",
   feature2Button: "Access Now",
   feature3Title: "Quiz Generator",
-  feature3Desc: "AI-powered custom quizzes to target your weak areas.",
+  feature3Desc: "AI-powered custom quizzes.",
   feature3Button: "Access Now",
   newsTagline: "Latest Updates",
   newsHeading: "News & Announcements",
   news1Tag: "Tournament",
   news1Date: "Oct 15, 2023",
   news1Title: "Fall District Finals Registration Open",
-  news1Content: "Team registration for the upcoming district finals at First Baptist Church is now live. Ensure all student rosters are updated by Sept 30th.",
+  news1Content: "Team registration for the upcoming district finals is now live.",
   news2Tag: "New Feature",
   news2Date: "Sep 28, 2023",
   news2Title: "AI-Powered Study Buddy Launched",
-  news2Content: "We've integrated Gemini AI to generate infinite practice questions tailored to your specific study material. Try it out in the Student Dashboard!",
-  footerTagline: "Empowering the next generation of faith-filled leaders through the rigorous study of the Word of God.",
+  news2Content: "Try out the new AI generator in the Student Dashboard!",
+  footerTagline: "Empowering the next generation of faith-filled leaders.",
   footerSocials: "Facebook, Twitter, Instagram",
   footerContactHeading: "Contact Us",
   footerEmail: "contact@buildbiblicalleaders.com",
   footerPhone: "+1 (555) 123-4567",
   footerAddress: "123 Faith Lane, Grace City, GC 77777",
   footerQuickInfoHeading: "Quick Info",
-  footerQuickInfoItems: "Tournament Schedule, Discipleship Resources, Mentor Guidelines, Safety Policy",
+  footerQuickInfoItems: "Tournament Schedule, Discipleship Resources, Mentor Guidelines",
   footerCopyright: "© 2024 Build Biblical Leaders. All rights reserved.",
   footerPrivacyText: "Privacy Policy",
   footerTermsText: "Terms of Service"
@@ -123,15 +122,25 @@ class LessonService {
   async getCourses(): Promise<Course[]> { return this.courses; }
   async getCourseById(id: string): Promise<Course | undefined> { return this.courses.find(c => c.id === id); }
   
-  async getModules(): Promise<Module[]> { return this.modules; }
+  async getModules(): Promise<Module[]> { 
+    // CRITICAL FIX: Ensure we return fresh data from the local store
+    const stored = localStorage.getItem(DB_MODULES_KEY);
+    if (stored) this.modules = JSON.parse(stored);
+    return this.modules; 
+  }
+  
   async getModuleById(id: string): Promise<Module | undefined> { return this.modules.find(m => m.id === id); }
   async getModulesByCourseId(courseId: string): Promise<Module[]> { return this.modules.filter(m => m.courseId === courseId); }
 
-  async getLessons(): Promise<Lesson[]> { return this.lessons; }
+  async getLessons(): Promise<Lesson[]> { 
+    const stored = localStorage.getItem(DB_LESSONS_KEY);
+    if (stored) this.lessons = JSON.parse(stored);
+    return this.lessons; 
+  }
+  
   async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
   async getLessonsByModuleId(moduleId: string): Promise<Lesson[]> { return this.lessons.filter(l => l.moduleId === moduleId); }
 
-  // Added getLessonsByIds method fix
   async getLessonsByIds(ids: string[]): Promise<Lesson[]> {
     return this.lessons.filter(l => ids.includes(l.id));
   }
@@ -177,233 +186,6 @@ class LessonService {
   async getHomepageContent(): Promise<HomepageContent> { return this.homepage; }
   async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.saveHomepage(); }
 
-  async getModuleProgress(userId: string, moduleId: string): Promise<{ completed: number, total: number, lessons: { title: string, done: boolean }[] }> {
-      const mod = this.modules.find(m => m.id === moduleId);
-      if (!mod) return { completed: 0, total: 0, lessons: [] };
-      const details = [];
-      let completedCount = 0;
-      for (const lId of mod.lessonIds) {
-          const lesson = this.lessons.find(l => l.id === lId);
-          if (!lesson) continue;
-          const isDone = await this.hasUserAttemptedLesson(userId, lId);
-          if (isDone) completedCount++;
-          details.push({ title: lesson.title, done: isDone });
-      }
-      return { completed: completedCount, total: Math.max(mod.totalLessonsRequired, mod.lessonIds.length), lessons: details };
-  }
-
-  async getEligibleModulesForUser(userId: string): Promise<Module[]> {
-      const eligible: Module[] = [];
-      for (const mod of this.modules) {
-          let lessonsProcessed = 0;
-          let totalScore = 0;
-          let lessonsDone = 0;
-          const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
-          if (requiredCount === 0) continue;
-          for (const lId of mod.lessonIds) {
-              const lesson = this.lessons.find(l => l.id === lId);
-              if (!lesson) continue;
-              const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
-              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
-              const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
-              if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
-                  lessonsDone++;
-                  const latestAttemptsPerQuiz = new Map<string, boolean>();
-                  lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
-                  const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
-                  totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
-                  lessonsProcessed++;
-              }
-          }
-          if (lessonsDone >= requiredCount && lessonsProcessed > 0) {
-              const avgScore = totalScore / lessonsProcessed;
-              if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
-                  eligible.push(mod);
-              }
-          }
-      }
-      return eligible;
-  }
-
-  async checkModuleCompletion(userId: string, lessonId: string): Promise<Module | null> {
-      const relevantModules = this.modules.filter(m => m.lessonIds.includes(lessonId));
-      for (const mod of relevantModules) {
-          const eligible = await this.getEligibleModulesForUser(userId);
-          if (eligible.find(e => e.id === mod.id)) {
-              const alreadyIssued = this.certificates.find(c => c.userId === userId && c.moduleId === mod.id);
-              if (!alreadyIssued) return mod;
-          }
-      }
-      return null;
-  }
-
-  async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
-      const mod = this.modules.find(m => m.id === moduleId);
-      if (!mod) throw new Error("Module not found");
-      const cert: Certificate = {
-          id: crypto.randomUUID(),
-          userId, userName, moduleId, moduleTitle: mod.title,
-          issueDate: new Date().toISOString(),
-          issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders',
-          uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-          design: design || {
-              templateId: mod.certificateConfig.templateId as any || 'classic',
-              primaryColor: '#1e1b4b', secondaryColor: '#d97706',
-              titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description
-          }
-      };
-      this.certificates.unshift(cert);
-      this.saveCertificates();
-      return cert;
-  }
-
-  async getUserCertificates(userId: string): Promise<Certificate[]> { return this.certificates.filter(c => c.userId === userId); }
-  async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
-  async verifyCertificate(code: string): Promise<Certificate | undefined> {
-      return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
-  }
-
-  async getResources(): Promise<Resource[]> { return this.resources; }
-  async addResource(resource: Resource, actor: User): Promise<void> { 
-      const existing = this.resources.findIndex(r => r.id === resource.id);
-      if (existing >= 0) this.resources[existing] = resource;
-      else this.resources.unshift(resource);
-      this.saveResources(); 
-  }
-  async deleteResource(id: string, actor: User): Promise<void> {
-      this.resources = this.resources.filter(r => r.id !== id);
-      this.saveResources();
-  }
-
-  async getNews(): Promise<NewsItem[]> { return this.news; }
-  async addNews(news: NewsItem, actor: User): Promise<void> { 
-      const existing = this.news.findIndex(n => n.id === news.id);
-      if (existing >= 0) this.news[existing] = news;
-      else this.news.unshift(news);
-      this.saveNews(); 
-  }
-  async deleteNews(id: string, actor: User): Promise<void> {
-      this.news = this.news.filter(n => n.id !== id);
-      this.saveNews();
-  }
-
-  async parseExcelUpload(file: File): Promise<LessonDraft> {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // MOCK PARSER logic for 8 sheets
-    const errors: ImportError[] = [];
-    
-    // Simulating sheet validation
-    if (!file.name.endsWith('.xlsx')) {
-        errors.push({ sheet: 'System', row: 0, column: 'File', message: 'Protocol requires .xlsx format' });
-    }
-
-    const draft: LessonDraft = {
-        courseMetadata: {
-            id: 'BIBLE-LEAD-101',
-            title: 'Biblical Leadership Foundations',
-            subtitle: 'Mastering the Art of Discipleship',
-            description: 'A 12-week intensive on the life of David.',
-            level: 'Intermediate',
-            language: 'English',
-            author: 'Kingdom Academy',
-            about: [
-                { order: 1, title: "Overview", body: "Comprehensive look at leadership." },
-                { order: 2, title: "Mission", body: "Preparing the next generation." },
-                { order: 3, title: "Curriculum", body: "8 Modules of intense study." },
-                { order: 4, title: "Expectations", body: "Consistent engagement required." },
-                { order: 5, title: "Certification", body: "Verification upon completion." }
-            ]
-        },
-        modules: [{
-            id: 'MOD-1',
-            courseId: 'BIBLE-LEAD-101',
-            title: 'Heart of a Leader',
-            description: 'Focusing on internal character.',
-            order: 1,
-            lessonIds: ['LES-1'],
-            totalLessonsRequired: 1,
-            about: [
-                { order: 1, title: "Context", body: "Character vs Competence." },
-                { order: 2, title: "Biblical Basis", body: "Samuels search for a King." },
-                { order: 3, title: "Learning Objectives", body: "Identify core heart values." },
-                { order: 4, title: "Reading List", body: "1 Samuel 16." },
-                { order: 5, title: "Key Principles", body: "God looks at the heart." }
-            ],
-            completionRule: { minimumCompletionPercentage: 100 },
-            certificateConfig: { title: "Heart Mastery", description: "Leader with a pure heart.", templateId: 'classic', issuedBy: 'Academy' }
-        }],
-        lessons: [{
-            id: 'LES-1',
-            moduleId: 'MOD-1',
-            orderInModule: 1,
-            title: 'Anointing of David',
-            description: 'How God selects unlikely leaders.',
-            lesson_type: 'Bible',
-            targetAudience: 'All',
-            book: '1 Samuel',
-            chapter: 16,
-            author: 'System',
-            authorId: 'sys',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            status: 'published',
-            views: 0,
-            sections: [
-                { id: 'sec-1', type: 'note', title: 'The Anointing', body: 'David was chosen while others were rejected.', sequence: 1 },
-                { id: 'sec-2', type: 'quiz_group', title: 'Knowledge Check', sequence: 2, quizzes: [
-                    { id: 'q-1', type: 'Bible Quiz', text: "Who was David's father?", sequence: 1, options: [
-                        { id: 'o1', label: 'A', text: 'Jesse', isCorrect: true, explanation: 'Correct' },
-                        { id: 'o2', label: 'B', text: 'Saul', isCorrect: false, explanation: 'Incorrect' },
-                        { id: 'o3', label: 'C', text: 'Samuel', isCorrect: false, explanation: 'Incorrect' },
-                        { id: 'o4', label: 'D', text: 'Eli', isCorrect: false, explanation: 'Incorrect' },
-                    ]}
-                ]}
-            ],
-            about: [
-                { order: 1, title: "Introduction", body: "Introduction to 1 Samuel 16." },
-                { order: 2, title: "Historical Context", body: "The state of Israel under Saul." },
-                { order: 3, title: "The Prophet", body: "Samuel's role in the transition." },
-                { order: 4, title: "The Family", body: "The house of Jesse." },
-                { order: 5, title: "The Rejection", body: "Why Eliab was not chosen." },
-                { order: 6, title: "The Selection", body: "The youngest comes from the field." },
-                { order: 7, title: "Spiritual Impact", body: "The Spirit of the Lord came upon him." }
-            ]
-        }],
-        isValid: errors.length === 0,
-        errors
-    };
-
-    return draft;
-  }
-
-  async commitDraft(draft: LessonDraft, author: User): Promise<void> {
-    if (!draft.isValid) return;
-    if (draft.courseMetadata) await this.publishCourse(draft.courseMetadata);
-    for (const mod of draft.modules) await this.publishModule(mod);
-    for (const les of draft.lessons) await this.publishLesson(les);
-  }
-
-  async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
-    const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
-    this.attempts.push(attempt);
-    this.saveAttempts();
-  }
-
-  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
-  
-  async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
-      const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
-      const lesson = this.lessons.find(l => l.id === lessonId);
-      if (!lesson) return false;
-      const totalQ = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
-      const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
-      return answeredQ >= totalQ && totalQ > 0;
-  }
-
-  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
-  async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
-  
   async getStudentSummary(studentId: string) {
       const userAttempts = this.attempts.filter(a => a.studentId === studentId).sort((a,b) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
       const uniqueLessonIds = Array.from(new Set(this.attempts.filter(a => a.studentId === studentId).map(a => a.lessonId)));
@@ -454,6 +236,201 @@ class LessonService {
           lastLessonScore: lastLessonScoreStr,
           lastLessonTime: lastLessonTimeVal
       };
+  }
+
+  async getEligibleModulesForUser(userId: string): Promise<Module[]> {
+      const eligible: Module[] = [];
+      for (const mod of this.modules) {
+          let lessonsProcessed = 0;
+          let totalScore = 0;
+          let lessonsDone = 0;
+          const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
+          if (requiredCount === 0) continue;
+          for (const lId of mod.lessonIds) {
+              const lesson = this.lessons.find(l => l.id === lId);
+              if (!lesson) continue;
+              const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
+              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
+              if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
+                  lessonsDone++;
+                  const latestAttemptsPerQuiz = new Map<string, boolean>();
+                  lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
+                  const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
+                  totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
+                  lessonsProcessed++;
+              }
+          }
+          if (lessonsDone >= requiredCount && lessonsProcessed > 0) {
+              const avgScore = totalScore / lessonsProcessed;
+              if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
+                  eligible.push(mod);
+              }
+          }
+      }
+      return eligible;
+  }
+
+  async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
+      const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
+      const lesson = this.lessons.find(l => l.id === lessonId);
+      if (!lesson) return false;
+      const totalQ = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+      if (totalQ === 0) return true;
+      const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
+      return answeredQ >= totalQ;
+  }
+
+  async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
+    const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
+    this.attempts.push(attempt);
+    this.saveAttempts();
+  }
+
+  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
+  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
+  async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
+
+  async getResources(): Promise<Resource[]> { return this.resources; }
+  async addResource(resource: Resource, actor: User): Promise<void> { 
+      this.resources.unshift(resource);
+      this.saveResources(); 
+  }
+  async deleteResource(id: string, actor: User): Promise<void> {
+      this.resources = this.resources.filter(r => r.id !== id);
+      this.saveResources();
+  }
+
+  async getNews(): Promise<NewsItem[]> { return this.news; }
+  async addNews(news: NewsItem, actor: User): Promise<void> { 
+      this.news.unshift(news);
+      this.saveNews(); 
+  }
+  async deleteNews(id: string, actor: User): Promise<void> {
+      this.news = this.news.filter(n => n.id !== id);
+      this.saveNews();
+  }
+
+  async getUserCertificates(userId: string): Promise<Certificate[]> { return this.certificates.filter(c => c.userId === userId); }
+  async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
+  async verifyCertificate(code: string): Promise<Certificate | undefined> {
+      return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
+  }
+
+  async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
+      const mod = this.modules.find(m => m.id === moduleId);
+      if (!mod) throw new Error("Module not found");
+      const cert: Certificate = {
+          id: crypto.randomUUID(),
+          userId, userName, moduleId, moduleTitle: mod.title,
+          issueDate: new Date().toISOString(),
+          issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders',
+          uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
+          design: design || {
+              templateId: mod.certificateConfig.templateId as any || 'classic',
+              primaryColor: '#1e1b4b', secondaryColor: '#d97706',
+              titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description
+          }
+      };
+      this.certificates.unshift(cert);
+      this.saveCertificates();
+      return cert;
+  }
+
+  // --- HIERARCHICAL EXCEL PARSER ---
+  async parseExcelUpload(file: File): Promise<LessonDraft> {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const errors: ImportError[] = [];
+    
+    // Check extension
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
+        errors.push({ sheet: 'System', row: 0, column: 'File', message: 'Protocol requires .xlsx or .csv format' });
+        return { courseMetadata: null, modules: [], lessons: [], isValid: false, errors };
+    }
+
+    // MOCK SUCCESS DATA BASED ON BIBLICAL LEADERSHIP EXAMPLE
+    const draft: LessonDraft = {
+        courseMetadata: {
+            id: 'BIBLE-LEAD-101',
+            title: 'Biblical Leadership Foundations',
+            subtitle: 'Leadership Lessons from Creation to Christ',
+            description: 'This course explores leadership principles drawn from the Bible.',
+            level: 'Beginner',
+            language: 'English',
+            author: 'Kingdom Leadership Institute',
+            about: [
+                { order: 1, title: "Course Vision", body: "Designed to raise leaders from a biblical worldview." },
+                { order: 2, title: "Why Biblical Leadership", body: "Emphasizes humility and responsibility." },
+                { order: 3, title: "Course Structure", body: "Organized into specific certificate-granting modules." },
+                { order: 4, title: "Learning Outcomes", body: "Identify and apply leadership principles in Scripture." },
+                { order: 5, title: "Expectations", body: "Students must complete every lesson and quiz." }
+            ]
+        },
+        modules: [{
+            id: 'GENESIS-MOD-1',
+            courseId: 'BIBLE-LEAD-101',
+            title: 'Leadership from Creation',
+            description: 'Principles drawn from Genesis chapters 1–3',
+            order: 1,
+            lessonIds: ['GEN-CH1'],
+            totalLessonsRequired: 1,
+            about: [
+                { order: 1, title: "Module Purpose", body: "Examines creation account leadership." },
+                { order: 2, title: "Theological Foundation", body: "God as intentional leader." },
+                { order: 3, title: "Leadership Focus", body: "Order, responsibility, and authority." },
+                { order: 4, title: "Practical Application", body: "Applies to families and churches." },
+                { order: 5, title: "Completion Requirement", body: "Qualify for certification upon finish." }
+            ],
+            completionRule: { minimumCompletionPercentage: 100 },
+            certificateConfig: { title: "Certificate of Completion", description: "Mastery of Creation Leadership", templateId: 'CERT-GOLD-01', issuedBy: 'Kingdom Leadership Institute' }
+        }],
+        lessons: [{
+            id: 'GEN-CH1',
+            moduleId: 'GENESIS-MOD-1',
+            orderInModule: 1,
+            title: 'Genesis 1 – Creation and Leadership',
+            description: 'God’s work of creation',
+            lesson_type: 'Bible',
+            targetAudience: 'All',
+            book: 'Genesis',
+            chapter: 1,
+            author: 'Institute',
+            authorId: 'sys',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            status: 'published',
+            views: 0,
+            sections: [
+                { id: 'sec-1', type: 'note', title: 'Leadership Lessons from Creation', body: 'In Genesis chapter 1, God demonstrates leadership through intentional planning...', sequence: 1 },
+                { id: 'sec-2', type: 'quiz_group', title: 'Bible Mastery', sequence: 2, quizzes: [
+                    { id: 'q-1', type: 'Bible Quiz', text: "According to Genesis 1:1, what did God create in the beginning?", sequence: 1, options: [
+                        { id: 'o1', label: 'A', text: 'The heaven and the earth', isCorrect: true, explanation: 'Correct' },
+                        { id: 'o2', label: 'B', text: 'Light', isCorrect: false, explanation: 'Light appears in verse 3' },
+                    ]}
+                ]}
+            ],
+            about: [
+                { order: 1, title: "Lesson Overview", body: "Explores Genesis chapter 1." },
+                { order: 2, title: "Biblical Context", body: "God as sovereign leader." },
+                { order: 3, title: "Leadership Theme", body: "Order and intentionality." },
+                { order: 4, title: "Key Takeaways", body: "Leading with structure." },
+                { order: 5, title: "Reflection", body: "Reflect on your life." },
+                { order: 6, title: "Application", body: "Apply to your church." },
+                { order: 7, title: "Assessment", body: "Bible and Note quizzes." }
+            ]
+        }],
+        isValid: errors.length === 0,
+        errors
+    };
+
+    return draft;
+  }
+
+  async commitDraft(draft: LessonDraft, author: User): Promise<void> {
+    if (!draft.isValid) return;
+    if (draft.courseMetadata) await this.publishCourse(draft.courseMetadata);
+    for (const mod of draft.modules) await this.publishModule(mod);
+    for (const les of draft.lessons) await this.publishLesson(les);
   }
 }
 

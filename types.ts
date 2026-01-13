@@ -1,3 +1,5 @@
+
+
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -32,74 +34,33 @@ export interface User {
   earnedCertificates?: string[];
 }
 
-export interface HomepageContent {
-  // Hero
-  heroTagline: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  
-  // Mission / About
-  aboutMission: string;
-  aboutHeading: string;
-  aboutBody: string;
-  knowledgeTitle: string;
-  knowledgeDesc: string;
-  communityTitle: string;
-  communityDesc: string;
+export interface AboutSegment {
+  order: number;
+  title: string;
+  body: string;
+}
 
-  // Why BBL
-  whyBblHeading: string;
-  whyBblItem1: string;
-  whyBblItem2: string;
-  whyBblItem3: string;
-  whyBblItem4: string;
-
-  // Resources / Features
-  resourcesHeading: string;
-  resourcesTitle: string;
-  resourcesSubtitle: string;
-  feature1Title: string;
-  feature1Desc: string;
-  feature1Button: string;
-  feature2Title: string;
-  feature2Desc: string;
-  feature2Button: string;
-  feature3Title: string;
-  feature3Desc: string;
-  feature3Button: string;
-
-  // News
-  newsTagline: string;
-  newsHeading: string;
-  news1Tag: string;
-  news1Date: string;
-  news1Title: string;
-  news1Content: string;
-  news2Tag: string;
-  news2Date: string;
-  news2Title: string;
-  news2Content: string;
-
-  // Footer
-  footerTagline: string;
-  footerSocials: string;
-  footerContactHeading: string;
-  footerEmail: string;
-  footerPhone: string;
-  footerAddress: string;
-  footerQuickInfoHeading: string;
-  footerQuickInfoItems: string; // Comma separated
-  footerCopyright: string;
-  footerPrivacyText: string;
-  footerTermsText: string;
+export interface Course {
+  id: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  language: string;
+  author: string;
+  about: AboutSegment[];
 }
 
 export interface Module {
   id: string;
+  courseId: string; // Linked to parent course
   title: string;
+  subtitle?: string;
   description: string;
+  order: number;
   lessonIds: string[]; 
   totalLessonsRequired: number; 
+  about: AboutSegment[];
   completionRule: {
     minimumCompletionPercentage: number;
   };
@@ -111,26 +72,25 @@ export interface Module {
   };
 }
 
-export interface CertificateDesign {
-  templateId: 'classic' | 'modern' | 'minimal';
-  primaryColor: string;
-  secondaryColor: string;
-  titleOverride?: string;
-  messageOverride?: string;
-  signatureUrl?: string;
-  signatureName?: string;
-}
-
-export interface Certificate {
+export interface Lesson {
   id: string;
-  userId: string;
-  userName: string;
   moduleId: string;
-  moduleTitle: string;
-  issueDate: string;
-  issuerName: string;
-  uniqueCode: string;
-  design?: CertificateDesign;
+  orderInModule: number;
+  title: string;
+  description: string;
+  category?: string;
+  lesson_type: LessonType;
+  targetAudience: TargetAudience;
+  book?: string;
+  chapter?: number;
+  author: string;
+  authorId: string;
+  created_at: string;
+  updated_at: string;
+  status: 'draft' | 'published';
+  views: number;
+  sections: LessonSection[];
+  about: AboutSegment[]; // New structured About content
 }
 
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
@@ -163,24 +123,19 @@ export interface LessonSection {
   sequence: number;
 }
 
-export interface Lesson {
-  id: string;
-  moduleId: string;
-  orderInModule: number;
-  title: string;
-  description: string;
-  category?: string;
-  lesson_type: LessonType;
-  targetAudience: TargetAudience;
-  book?: string;
-  chapter?: number;
-  author: string;
-  authorId: string;
-  created_at: string;
-  updated_at: string;
-  status: 'draft' | 'published';
-  views: number;
-  sections: LessonSection[];
+export interface ImportError {
+  sheet: string;
+  row: number;
+  column: string;
+  message: string;
+}
+
+export interface LessonDraft {
+  courseMetadata: Course | null;
+  modules: Module[];
+  lessons: Lesson[];
+  isValid: boolean;
+  errors: ImportError[];
 }
 
 export interface StudentAttempt {
@@ -192,31 +147,6 @@ export interface StudentAttempt {
   isCorrect: boolean;
   score: number;
   attempted_at: string;
-}
-
-export interface LessonDraft {
-  moduleMetadata: Module | null;
-  lessons: {
-    metadata: {
-      lesson_id: string;
-      module_id: string;
-      title: string;
-      description: string;
-      book: string;
-      chapter: number;
-      lesson_order: number;
-      lesson_type: LessonType;
-      targetAudience: TargetAudience;
-    };
-    leadershipNote: { 
-      title: string; 
-      body: string; 
-    };
-    bibleQuizzes: any[]; 
-    noteQuizzes: any[]; 
-  }[];
-  isValid: boolean;
-  errors: string[];
 }
 
 export interface JoinRequest {
@@ -241,6 +171,7 @@ export interface ChatChannel {
   createdAt: string;
 }
 
+// Added ChatAttachment interface definition
 export interface ChatAttachment {
   name: string;
   type: string;
@@ -256,6 +187,7 @@ export interface ChatMessage {
   senderRole: UserRole;
   text: string;
   timestamp: string;
+  // Updated attachment to use ChatAttachment interface
   attachment?: ChatAttachment;
 }
 
@@ -301,4 +233,77 @@ export interface Invite {
   createdAt: string;
   expiresAt: string;
   status: 'pending' | 'accepted' | 'expired';
+}
+
+export interface HomepageContent {
+  heroTagline: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  aboutMission: string;
+  aboutHeading: string;
+  aboutBody: string;
+  knowledgeTitle: string;
+  knowledgeDesc: string;
+  communityTitle: string;
+  communityDesc: string;
+  whyBblHeading: string;
+  whyBblItem1: string;
+  whyBblItem2: string;
+  whyBblItem3: string;
+  whyBblItem4: string;
+  resourcesHeading: string;
+  resourcesTitle: string;
+  resourcesSubtitle: string;
+  feature1Title: string;
+  feature1Desc: string;
+  feature1Button: string;
+  feature2Title: string;
+  feature2Desc: string;
+  feature2Button: string;
+  feature3Title: string;
+  feature3Desc: string;
+  feature3Button: string;
+  newsTagline: string;
+  newsHeading: string;
+  news1Tag: string;
+  news1Date: string;
+  news1Title: string;
+  news1Content: string;
+  news2Tag: string;
+  news2Date: string;
+  news2Title: string;
+  news2Content: string;
+  footerTagline: string;
+  footerSocials: string;
+  footerContactHeading: string;
+  footerEmail: string;
+  footerPhone: string;
+  footerAddress: string;
+  footerQuickInfoHeading: string;
+  footerQuickInfoItems: string; 
+  footerCopyright: string;
+  footerPrivacyText: string;
+  footerTermsText: string;
+}
+
+export interface CertificateDesign {
+  templateId: 'classic' | 'modern' | 'minimal';
+  primaryColor: string;
+  secondaryColor: string;
+  titleOverride?: string;
+  messageOverride?: string;
+  signatureUrl?: string;
+  signatureName?: string;
+}
+
+export interface Certificate {
+  id: string;
+  userId: string;
+  userName: string;
+  moduleId: string;
+  moduleTitle: string;
+  issueDate: string;
+  issuerName: string;
+  uniqueCode: string;
+  design?: CertificateDesign;
 }

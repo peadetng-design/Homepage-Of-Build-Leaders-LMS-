@@ -123,7 +123,6 @@ class LessonService {
   async getCourseById(id: string): Promise<Course | undefined> { return this.courses.find(c => c.id === id); }
   
   async getModules(): Promise<Module[]> { 
-    // CRITICAL FIX: Ensure we return fresh data from the local store
     const stored = localStorage.getItem(DB_MODULES_KEY);
     if (stored) this.modules = JSON.parse(stored);
     return this.modules; 
@@ -198,7 +197,11 @@ class LessonService {
           const lesson = this.lessons.find(l => l.id === lId);
           if (!lesson) continue;
           const lessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lId);
-          const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+          
+          const bibleCount = lesson.bibleQuizzes?.length || 0;
+          const noteCount = lesson.noteQuizzes?.length || 0;
+          const uniqueQuizzesInLesson = bibleCount + noteCount;
+
           const latestAttemptsPerQuiz = new Map<string, boolean>();
           lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
           const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
@@ -218,7 +221,10 @@ class LessonService {
           const lesson = this.lessons.find(l => l.id === lastLessonId);
           if (lesson) {
               const lastLessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lastLessonId);
-              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const bibleCount = lesson.bibleQuizzes?.length || 0;
+              const noteCount = lesson.noteQuizzes?.length || 0;
+              const uniqueQuizzesInLesson = bibleCount + noteCount;
+
               const latestAttemptsPerQuiz = new Map<string, boolean>();
               lastLessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
               const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
@@ -250,7 +256,10 @@ class LessonService {
               const lesson = this.lessons.find(l => l.id === lId);
               if (!lesson) continue;
               const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
-              const uniqueQuizzesInLesson = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+              const bibleCount = lesson.bibleQuizzes?.length || 0;
+              const noteCount = lesson.noteQuizzes?.length || 0;
+              const uniqueQuizzesInLesson = bibleCount + noteCount;
+
               const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
               if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
                   lessonsDone++;
@@ -275,7 +284,9 @@ class LessonService {
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
       const lesson = this.lessons.find(l => l.id === lessonId);
       if (!lesson) return false;
-      const totalQ = lesson.sections.reduce((acc, s) => acc + (s.quizzes?.length || 0), 0);
+      const bibleCount = lesson.bibleQuizzes?.length || 0;
+      const noteCount = lesson.noteQuizzes?.length || 0;
+      const totalQ = bibleCount + noteCount;
       if (totalQ === 0) return true;
       const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
       return answeredQ >= totalQ;
@@ -337,90 +348,82 @@ class LessonService {
       return cert;
   }
 
-  // --- HIERARCHICAL EXCEL PARSER ---
+  // --- UPDATED HIERARCHICAL EXCEL PARSER (SHEETS 1-8) ---
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 2000));
     const errors: ImportError[] = [];
     
-    // Check extension
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.csv')) {
-        errors.push({ sheet: 'System', row: 0, column: 'File', message: 'Protocol requires .xlsx or .csv format' });
+    if (!file.name.endsWith('.xlsx')) {
+        errors.push({ sheet: 'System', row: 0, column: 'File', message: 'Protocol requires .xlsx format', severity: 'error' });
         return { courseMetadata: null, modules: [], lessons: [], isValid: false, errors };
     }
 
-    // MOCK SUCCESS DATA BASED ON BIBLICAL LEADERSHIP EXAMPLE
+    // Mock successful 8-sheet hierarchical mapping
+    const mockModule: Module = {
+        id: 'GENESIS-MOD-1',
+        courseId: 'BIBLE-LEAD-101',
+        title: 'Leadership from Creation',
+        description: 'Principles from Genesis 1-3',
+        order: 1,
+        lessonIds: ['GEN-CH1'],
+        totalLessonsRequired: 1,
+        about: [],
+        completionRule: { minimumCompletionPercentage: 100 },
+        certificateConfig: { title: 'Mastery of Creation', description: 'Certified biblical leadership', templateId: 'classic', issuedBy: 'Academy' }
+    };
+
+    const mockLesson: Lesson = {
+        id: 'GEN-CH1',
+        moduleId: 'GENESIS-MOD-1',
+        orderInModule: 1,
+        title: 'Order from Chaos',
+        description: 'Creation account leadership',
+        lesson_type: 'Bible',
+        targetAudience: 'All',
+        book: 'Genesis',
+        chapter: 1,
+        leadership_note_title: 'God as Executive',
+        leadership_note_body: 'In the beginning...',
+        // Fix: Added missing leadershipNotes property to satisfy Lesson interface
+        leadershipNotes: [], 
+        author: 'Academy',
+        authorId: 'sys',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        status: 'published',
+        views: 0,
+        bibleQuizzes: [
+            {
+                id: 'q1', type: 'Bible Quiz', sequence: 1, referenceText: 'Genesis 1:1', text: 'Who created the heavens and the earth?',
+                options: [
+                    { id: 'opt1', label: 'A', text: 'God', isCorrect: true, explanation: 'Scripture states: In the beginning God...' },
+                    { id: 'opt2', label: 'B', text: 'Humans', isCorrect: false, explanation: 'Humans were created later.' },
+                    { id: 'opt3', label: 'C', text: 'Angels', isCorrect: false, explanation: 'Incorrect.' },
+                    { id: 'opt4', label: 'D', text: 'Nature', isCorrect: false, explanation: 'Incorrect.' }
+                ]
+            }
+        ],
+        noteQuizzes: [],
+        sections: [],
+        about: [{ order: 1, title: 'Context', body: 'The historical backdrop' }]
+    };
+
     const draft: LessonDraft = {
+        // Fix: Added missing totalModulesRequired property to courseMetadata mock
         courseMetadata: {
             id: 'BIBLE-LEAD-101',
-            title: 'Biblical Leadership Foundations',
-            subtitle: 'Leadership Lessons from Creation to Christ',
-            description: 'This course explores leadership principles drawn from the Bible.',
-            level: 'Beginner',
+            title: 'Foundations',
+            description: 'Core course',
+            level: 'student (Beginner)',
             language: 'English',
-            author: 'Kingdom Leadership Institute',
-            about: [
-                { order: 1, title: "Course Vision", body: "Designed to raise leaders from a biblical worldview." },
-                { order: 2, title: "Why Biblical Leadership", body: "Emphasizes humility and responsibility." },
-                { order: 3, title: "Course Structure", body: "Organized into specific certificate-granting modules." },
-                { order: 4, title: "Learning Outcomes", body: "Identify and apply leadership principles in Scripture." },
-                { order: 5, title: "Expectations", body: "Students must complete every lesson and quiz." }
-            ]
+            author: 'Academy',
+            totalModulesRequired: 1,
+            about: []
         },
-        modules: [{
-            id: 'GENESIS-MOD-1',
-            courseId: 'BIBLE-LEAD-101',
-            title: 'Leadership from Creation',
-            description: 'Principles drawn from Genesis chapters 1–3',
-            order: 1,
-            lessonIds: ['GEN-CH1'],
-            totalLessonsRequired: 1,
-            about: [
-                { order: 1, title: "Module Purpose", body: "Examines creation account leadership." },
-                { order: 2, title: "Theological Foundation", body: "God as intentional leader." },
-                { order: 3, title: "Leadership Focus", body: "Order, responsibility, and authority." },
-                { order: 4, title: "Practical Application", body: "Applies to families and churches." },
-                { order: 5, title: "Completion Requirement", body: "Qualify for certification upon finish." }
-            ],
-            completionRule: { minimumCompletionPercentage: 100 },
-            certificateConfig: { title: "Certificate of Completion", description: "Mastery of Creation Leadership", templateId: 'CERT-GOLD-01', issuedBy: 'Kingdom Leadership Institute' }
-        }],
-        lessons: [{
-            id: 'GEN-CH1',
-            moduleId: 'GENESIS-MOD-1',
-            orderInModule: 1,
-            title: 'Genesis 1 – Creation and Leadership',
-            description: 'God’s work of creation',
-            lesson_type: 'Bible',
-            targetAudience: 'All',
-            book: 'Genesis',
-            chapter: 1,
-            author: 'Institute',
-            authorId: 'sys',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            status: 'published',
-            views: 0,
-            sections: [
-                { id: 'sec-1', type: 'note', title: 'Leadership Lessons from Creation', body: 'In Genesis chapter 1, God demonstrates leadership through intentional planning...', sequence: 1 },
-                { id: 'sec-2', type: 'quiz_group', title: 'Bible Mastery', sequence: 2, quizzes: [
-                    { id: 'q-1', type: 'Bible Quiz', text: "According to Genesis 1:1, what did God create in the beginning?", sequence: 1, options: [
-                        { id: 'o1', label: 'A', text: 'The heaven and the earth', isCorrect: true, explanation: 'Correct' },
-                        { id: 'o2', label: 'B', text: 'Light', isCorrect: false, explanation: 'Light appears in verse 3' },
-                    ]}
-                ]}
-            ],
-            about: [
-                { order: 1, title: "Lesson Overview", body: "Explores Genesis chapter 1." },
-                { order: 2, title: "Biblical Context", body: "God as sovereign leader." },
-                { order: 3, title: "Leadership Theme", body: "Order and intentionality." },
-                { order: 4, title: "Key Takeaways", body: "Leading with structure." },
-                { order: 5, title: "Reflection", body: "Reflect on your life." },
-                { order: 6, title: "Application", body: "Apply to your church." },
-                { order: 7, title: "Assessment", body: "Bible and Note quizzes." }
-            ]
-        }],
+        modules: [mockModule],
+        lessons: [mockLesson],
         isValid: errors.length === 0,
-        errors
+        errors: errors
     };
 
     return draft;

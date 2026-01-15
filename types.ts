@@ -39,27 +39,38 @@ export interface AboutSegment {
   body: string;
 }
 
-export interface Course {
+export interface LeadershipNote {
   id: string;
+  title: string;
+  body: string;
+}
+
+export type ProficiencyLevel = 'student (Beginner)' | 'Mentor, Organization & Parent (Intermediate)' | 'Mentor, Organization & Parent (Advanced)';
+
+export interface Course {
+  id: string; // course_id from Sheet 1
   title: string;
   subtitle?: string;
   description: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced';
+  level: ProficiencyLevel;
   language: string;
   author: string;
-  about: AboutSegment[];
+  totalModulesRequired: number; 
+  about: AboutSegment[]; // From Sheet 2
 }
 
 export interface Module {
-  id: string;
-  courseId: string;
+  id: string; // module_id from Sheet 3
+  courseId: string; // must match course_id
   title: string;
   subtitle?: string;
   description: string;
   order: number;
+  level?: ProficiencyLevel;
+  language?: string;
   lessonIds: string[]; 
   totalLessonsRequired: number; 
-  about: AboutSegment[];
+  about: AboutSegment[]; // From Sheet 4
   completionRule: {
     minimumCompletionPercentage: number;
   };
@@ -71,34 +82,9 @@ export interface Module {
   };
 }
 
-export interface Lesson {
-  id: string;
-  moduleId: string;
-  orderInModule: number;
-  title: string;
-  description: string;
-  category?: string;
-  lesson_type: LessonType;
-  targetAudience: TargetAudience;
-  book?: string;
-  chapter?: number;
-  author: string;
-  authorId: string;
-  created_at: string;
-  updated_at: string;
-  status: 'draft' | 'published';
-  views: number;
-  sections: LessonSection[];
-  about: AboutSegment[];
-}
-
-export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
-export type SectionType = 'note' | 'quiz_group';
-export type TargetAudience = 'Student' | 'Mentor' | 'Parent' | 'Organization' | 'Mentors_Org_Parents' | 'All';
-
 export interface QuizOption {
   id: string;
-  label: string; 
+  label: string; // A, B, C, D
   text: string;
   isCorrect: boolean;
   explanation: string;
@@ -107,11 +93,42 @@ export interface QuizOption {
 export interface QuizQuestion {
   id: string;
   type: 'Bible Quiz' | 'Note Quiz';
-  reference?: string;
+  referenceText?: string; // bible_reference for Sheet 7
+  sourceNoteTitle?: string; // source_note_title for Sheet 8
   text: string;
   options: QuizOption[];
   sequence: number;
 }
+
+export interface Lesson {
+  id: string; // lesson_id from Sheet 5
+  moduleId: string; // Parent module_id
+  orderInModule: number;
+  title: string;
+  subtitle?: string;
+  description: string;
+  lesson_type: LessonType;
+  targetAudience: TargetAudience;
+  book?: string; // bible_book
+  chapter?: number; // bible_chapter
+  leadership_note_title?: string; // Deprecated but kept for compatibility
+  leadership_note_body?: string;  // Deprecated but kept for compatibility
+  leadershipNotes: LeadershipNote[]; // Updated to support multiple notes
+  author: string;
+  authorId: string;
+  created_at: string;
+  updated_at: string;
+  status: 'draft' | 'published';
+  views: number;
+  about: AboutSegment[]; // From Sheet 6
+  bibleQuizzes: QuizQuestion[]; // From Sheet 7
+  noteQuizzes: QuizQuestion[]; // From Sheet 8
+  sections: LessonSection[]; // Derived for UI rendering
+}
+
+export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
+export type SectionType = 'note' | 'quiz_group';
+export type TargetAudience = 'Student' | 'Mentor' | 'Parent' | 'Organization' | 'Mentors_Org_Parents' | 'All';
 
 export interface LessonSection {
   id: string;
@@ -127,6 +144,7 @@ export interface ImportError {
   row: number;
   column: string;
   message: string;
+  severity: 'error' | 'warning';
 }
 
 export interface LessonDraft {
@@ -136,8 +154,6 @@ export interface LessonDraft {
   isValid: boolean;
   errors: ImportError[];
 }
-
-// Fix: Added missing exported members to satisfy imports in other components and services
 
 export interface HomepageContent {
   heroTagline: string;
@@ -166,6 +182,7 @@ export interface HomepageContent {
   feature2Button: string;
   feature3Title: string;
   feature3Desc: string;
+  // Fixed: Removed duplicate feature3Button identifiers
   feature3Button: string;
   newsTagline: string;
   newsHeading: string;
@@ -188,67 +205,6 @@ export interface HomepageContent {
   footerCopyright: string;
   footerPrivacyText: string;
   footerTermsText: string;
-}
-
-export interface ChatAttachment {
-  name: string;
-  type: string;
-  size: number;
-  data: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  channelId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: UserRole;
-  text: string;
-  timestamp: string;
-  attachment?: ChatAttachment;
-}
-
-export interface ChatChannel {
-  id: string;
-  name: string;
-  description: string;
-  creatorId: string;
-  scope: 'global' | 'org' | 'class';
-  orgId?: string;
-  mentorId?: string;
-  includeRoles: UserRole[];
-  includeStudentsOfMentors?: boolean;
-  createdAt: string;
-}
-
-export interface NewsItem {
-  id: string;
-  title: string;
-  content: string;
-  date: string;
-  category: string;
-  author: string;
-}
-
-export interface Resource {
-  id: string;
-  title: string;
-  description: string;
-  fileType: 'pdf' | 'doc' | 'image' | 'other';
-  url: string;
-  uploadedAt: string;
-  size: string;
-}
-
-export interface StudentAttempt {
-  id: string;
-  studentId: string;
-  lessonId: string;
-  quizId: string;
-  selectedOptionId: string;
-  isCorrect: boolean;
-  score: number;
-  attempted_at: string;
 }
 
 export interface AuditLog {
@@ -283,8 +239,69 @@ export interface JoinRequest {
   timestamp: string;
 }
 
+export interface ChatAttachment {
+  name: string;
+  type: string;
+  size: number;
+  data: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  channelId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  text: string;
+  timestamp: string;
+  attachment?: ChatAttachment;
+}
+
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description: string;
+  creatorId: string;
+  scope: 'global' | 'org' | 'class';
+  orgId?: string;
+  mentorId?: string;
+  includeRoles: UserRole[];
+  includeStudentsOfMentors?: boolean;
+  createdAt: string;
+}
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  fileType: 'pdf' | 'doc' | 'image' | 'other';
+  url: string;
+  size: string;
+  uploadedAt: string;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+  category: 'Announcement' | 'Event' | 'Update';
+  author: string;
+}
+
+export interface StudentAttempt {
+  id: string;
+  studentId: string;
+  lessonId: string;
+  quizId: string;
+  selectedOptionId: string;
+  isCorrect: boolean;
+  score: number;
+  attempted_at: string;
+}
+
 export interface CertificateDesign {
-  templateId: string;
+  templateId: 'classic' | 'modern' | 'minimal';
   primaryColor: string;
   secondaryColor: string;
   titleOverride?: string;

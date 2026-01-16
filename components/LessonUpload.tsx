@@ -1,10 +1,29 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, LessonDraft, Lesson, Module, Course, AboutSegment, ImportError, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, QuizQuestion, QuizOption, LeadershipNote, ProficiencyLevel } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, CheckCircle, HelpCircle, ArrowRight, AlertTriangle, Layers, BadgeCheck, PenTool, Check, Info, Library, Layout, ListChecks, Download, AlertCircle, ArrowLeft, Sparkles, FileText, Fingerprint, UserCircle, AlignLeft, ChevronDown, ListPlus, Send, Target, FileQuestion, GraduationCap, Trophy, Book } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, CheckCircle, HelpCircle, ArrowRight, AlertTriangle, Layers, BadgeCheck, PenTool, Check, Info, Library, Layout, ListChecks, Download, AlertCircle, ArrowLeft, Sparkles, FileText, Fingerprint, UserCircle, AlignLeft, ChevronDown, ListPlus, Send, Target, FileQuestion, GraduationCap, Trophy, Book, Trash, Edit } from 'lucide-react';
 
-// Fix: Moved HeaderActions helper to top of file
+interface BulkGridRow {
+    id: string;
+    course: string;
+    moduleNum: number;
+    moduleTitle: string;
+    lessonNum: number;
+    lessonTitle: string;
+    file: File | null;
+    status: 'UPLOADED' | 'EMPTY';
+}
+
+interface ManualGridRow {
+    id: string;
+    course: string;
+    moduleNum: number;
+    moduleTitle: string;
+    lessonNum: number;
+    lessonTitle: string;
+}
+
 const HeaderActions = ({ onEdit, onDelete }: { onEdit?: () => void, onDelete: () => void }) => (
     <div className="flex gap-2 shrink-0">
         {onEdit && (
@@ -18,7 +37,6 @@ const HeaderActions = ({ onEdit, onDelete }: { onEdit?: () => void, onDelete: ()
     </div>
 );
 
-// Fix: Moved AboutSegmentBuilder helper to top of file
 const AboutSegmentBuilder = ({ segments, type, onAdd, onUpdate, onRemove, min, theme = 'light' }: { segments: AboutSegment[], type: string, onAdd: () => void, onUpdate: (i:number, u:Partial<AboutSegment>) => void, onRemove: (i:number) => void, min: number, theme?: 'light' | 'dark' }) => {
     const isDark = theme === 'dark';
     return (
@@ -67,11 +85,21 @@ interface LessonUploadProps {
 
 const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onCancel, initialData, initialContentType = 'lesson' }) => {
   const [metricMode, setMetricMode] = useState<'manual' | 'bulk'>('bulk');
-  const [file, setFile] = useState<File | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [draft, setDraft] = useState<LessonDraft | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<'course' | 'modules' | 'lessons'>('course');
+
+  // New State for Excel Bulk Grid
+  const [bulkGridRows, setBulkGridRows] = useState<BulkGridRow[]>([
+    { id: crypto.randomUUID(), course: '', moduleNum: 1, moduleTitle: '', lessonNum: 1, lessonTitle: '', file: null, status: 'EMPTY' }
+  ]);
+
+  // New State for Manual Builder Grid (Table 2)
+  const [manualGridRows, setManualGridRows] = useState<ManualGridRow[]>([
+    { id: crypto.randomUUID(), course: '', moduleNum: 1, moduleTitle: '', lessonNum: 1, lessonTitle: '' }
+  ]);
+  const [activeManualRowId, setActiveManualRowId] = useState<string>(manualGridRows[0].id);
 
   const [finishedCourses, setFinishedCourses] = useState<Partial<Course>[]>([]);
   const [finishedModules, setFinishedModules] = useState<Partial<Module>[]>([]);
@@ -86,6 +114,78 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
   const [localQuizzes, setLocalQuizzes] = useState<Partial<QuizQuestion>[]>([]);
   const [localNotes, setLocalNotes] = useState<Partial<LeadershipNote>[]>([]);
   const [activeManualStep, setActiveManualStep] = useState<1 | 2>(1);
+
+  // Sync Logic for Manual Grid
+  useEffect(() => {
+    const activeRow = manualGridRows.find(r => r.id === activeManualRowId);
+    if (activeRow) {
+      setManualCourse(prev => ({ ...prev, title: activeRow.course, totalModulesRequired: activeRow.moduleNum }));
+      setManualModule(prev => ({ ...prev, title: activeRow.moduleTitle, totalLessonsRequired: activeRow.lessonNum }));
+      setCurrentLesson(prev => ({ ...prev, title: activeRow.lessonTitle }));
+    }
+  }, [activeManualRowId]);
+
+  const addNewBulkRow = () => {
+    setBulkGridRows(prev => [...prev, { id: crypto.randomUUID(), course: '', moduleNum: 1, moduleTitle: '', lessonNum: 1, lessonTitle: '', file: null, status: 'EMPTY' }]);
+  };
+
+  const updateBulkRow = (id: string, updates: Partial<BulkGridRow>) => {
+    setBulkGridRows(prev => prev.map(row => row.id === id ? { ...row, ...updates } : row));
+  };
+
+  const deleteBulkRow = (id: string) => {
+    if (bulkGridRows.length <= 1) return;
+    setBulkGridRows(prev => prev.filter(row => row.id !== id));
+  };
+
+  const handleBulkFileUpload = async (id: string, file: File) => {
+    updateBulkRow(id, { file, status: 'UPLOADED' });
+    setError(null);
+  };
+
+  const addNewManualRow = () => {
+    const newId = crypto.randomUUID();
+    setManualGridRows(prev => [...prev, { id: newId, course: '', moduleNum: 1, moduleTitle: '', lessonNum: 1, lessonTitle: '' }]);
+    setActiveManualRowId(newId);
+  };
+
+  const updateManualRow = (id: string, updates: Partial<ManualGridRow>) => {
+    setManualGridRows(prev => prev.map(row => row.id === id ? { ...row, ...updates } : row));
+    
+    // Auto-sync with panels below if this is the active row
+    if (id === activeManualRowId) {
+      if (updates.course !== undefined) setManualCourse(prev => ({ ...prev, title: updates.course }));
+      if (updates.moduleNum !== undefined) setManualCourse(prev => ({ ...prev, totalModulesRequired: updates.moduleNum }));
+      if (updates.moduleTitle !== undefined) setManualModule(prev => ({ ...prev, title: updates.moduleTitle }));
+      if (updates.lessonNum !== undefined) setManualModule(prev => ({ ...prev, totalLessonsRequired: updates.lessonNum }));
+      if (updates.lessonTitle !== undefined) setCurrentLesson(prev => ({ ...prev, title: updates.lessonTitle }));
+    }
+  };
+
+  const deleteManualRow = (id: string) => {
+    if (manualGridRows.length <= 1) return;
+    setManualGridRows(prev => prev.filter(row => row.id !== id));
+    if (activeManualRowId === id) setActiveManualRowId(manualGridRows[0].id);
+  };
+
+  const processBulkGrid = async () => {
+    const validRows = bulkGridRows.filter(r => r.file !== null);
+    if (validRows.length === 0) {
+        setError("Protocol Violation: No workbook deposits found in registry.");
+        return;
+    }
+
+    setIsParsing(true);
+    try {
+        const res = await lessonService.parseExcelUpload(validRows[0].file!);
+        setDraft(res);
+        if (res.errors.length > 0) setError(`Mapping conflicts detected in workbook segments.`);
+    } catch (e: any) {
+        setError(e.message);
+    } finally {
+        setIsParsing(false);
+    }
+  };
 
   const validateCourseAndProceed = (isFinal: boolean) => {
     if (!manualCourse.id || !manualCourse.title) { setError("Course ID and Title are mandatory."); return; }
@@ -119,7 +219,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     if (finishedLessons.length >= (manualModule.totalLessonsRequired || 0)) { setError(`Registry Alert: Module limit reached (${manualModule.totalLessonsRequired} units).`); return; }
     setError(null);
     setIsAddingLesson(true);
-    setCurrentLesson({ id: `LES-${Math.random().toString(36).substring(7).toUpperCase()}`, title: '', book: '', chapter: 1, lesson_type: 'Mixed', targetAudience: 'All', about: [], bibleQuizzes: [], noteQuizzes: [], leadershipNotes: [] });
+    setCurrentLesson({ id: `LES-${Math.random().toString(36).substring(7).toUpperCase()}`, title: manualGridRows.find(r => r.id === activeManualRowId)?.lessonTitle || '', book: '', chapter: 1, lesson_type: 'Mixed', targetAudience: 'All', about: [], bibleQuizzes: [], noteQuizzes: [], leadershipNotes: [] });
   };
 
   const saveLessonIteratively = (isFinal: boolean) => {
@@ -179,12 +279,17 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
       if (type === 'lesson') setCurrentLesson(p => { const list = (p.about || []).filter((_, i) => i !== idx); list.forEach((s, i) => s.order = i+1); return {...p, about: list}; });
   };
 
+  const getManualRowStatus = (row: ManualGridRow) => {
+    const isComplete = finishedLessons.some(l => l.title === row.lessonTitle);
+    if (isComplete) return 'UPLOADED';
+    const isStarted = row.course || row.moduleTitle || row.lessonTitle;
+    return isStarted ? 'STARTED' : 'EMPTY';
+  };
+
   const inputClass = "w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-gray-800 placeholder:text-gray-300";
   const darkInputClass = "w-full p-4 bg-white/5 border-2 border-white/10 rounded-2xl text-white font-bold outline-none focus:border-gold-500 transition-all placeholder:text-white/20";
   const labelClass = "text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block ml-1";
   const darkLabelClass = "text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-2 block ml-1";
-
-  const processBulkFile = async () => { if (!file) return; setIsParsing(true); setError(null); try { const res = await lessonService.parseExcelUpload(file); setDraft(res); if (res.errors.length > 0) setError(`Protocol violations identified in registry mapping.`); } catch (e: any) { setError(e.message); } finally { setIsParsing(false); } };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in">
@@ -213,19 +318,141 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     </div>
                 )}
                 {metricMode === 'bulk' ? (
-                    <div className="max-w-6xl mx-auto space-y-12">
+                    <div className="max-w-full mx-auto space-y-12">
                         {!draft ? (
-                            <div className="space-y-8 animate-in fade-in text-center">
-                                <div className="border-8 border-dashed border-gray-100 rounded-[4rem] p-32 hover:bg-gray-50/50 hover:border-indigo-200 transition-all cursor-pointer relative group">
-                                    <input type="file" accept=".xlsx" onChange={(e) => setFile(e.target.files?.[0] || null)} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                                    <div className="flex flex-col items-center gap-8 group-hover:scale-110 transition-transform duration-500">
-                                        <div className="p-10 bg-indigo-50 text-indigo-600 rounded-[2.5rem] shadow-inner"><FileIcon size={80}/></div>
-                                        <div><p className="text-3xl font-serif font-black text-gray-800 uppercase tracking-tighter">{file ? file.name : "DEPOSIT 8-SHEET WORKBOOK"}</p><p className="text-gray-400 font-black uppercase tracking-[0.3em] text-xs mt-4">Required: COURSE, ABOUT_COURSE, MODULE, ABOUT_MODULE, LESSON, ABOUT_LESSON, QUIZ_BLOCK, QUIZ_QUESTION</p></div>
+                            <div className="space-y-8 animate-in fade-in">
+                                <div className="flex justify-between items-center px-4">
+                                    <h3 className="text-4xl font-serif font-black text-gray-900 uppercase tracking-tighter">Workbook Registry Matrix</h3>
+                                    <button 
+                                        onClick={addNewBulkRow}
+                                        className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-xl border-b-4 border-indigo-900 hover:bg-indigo-700 transition-all flex items-center gap-3 uppercase text-xs tracking-widest active:scale-95"
+                                    >
+                                        <Plus size={18}/> Add New Course
+                                    </button>
+                                </div>
+                                
+                                <div className="bg-white border-8 border-gray-50 rounded-[3rem] shadow-2xl overflow-hidden">
+                                    <div className="overflow-x-auto custom-scrollbar">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-royal-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-gold-500">
+                                                    <th className="p-6 min-w-[250px]">Course Title</th>
+                                                    <th className="p-6 min-w-[120px]">Module #</th>
+                                                    <th className="p-6 min-w-[250px]">Module Title</th>
+                                                    <th className="p-6 min-w-[120px]">Lesson #</th>
+                                                    <th className="p-6 min-w-[250px]">Lesson Title</th>
+                                                    <th className="p-6 min-w-[350px]">Lesson Management</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {bulkGridRows.map((row) => (
+                                                    <tr key={row.id} className="group hover:bg-royal-50/30 transition-all">
+                                                        <td className="p-4">
+                                                            <div className="relative">
+                                                                <input 
+                                                                    className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                    value={row.course}
+                                                                    onChange={(e) => updateBulkRow(row.id, { course: e.target.value })}
+                                                                    placeholder="e.g. Genesis Mastery"
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-2 border-transparent focus-within:bg-white focus-within:border-indigo-400 transition-all">
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                    value={row.moduleNum}
+                                                                    onChange={(e) => updateBulkRow(row.id, { moduleNum: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <div className="flex flex-col text-gray-300">
+                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: row.moduleNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
+                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: Math.max(1, row.moduleNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <input 
+                                                                className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                value={row.moduleTitle}
+                                                                onChange={(e) => updateBulkRow(row.id, { moduleTitle: e.target.value })}
+                                                                placeholder="e.g. Creation & Early Life"
+                                                            />
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-2 border-transparent focus-within:bg-white focus-within:border-indigo-400 transition-all">
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                    value={row.lessonNum}
+                                                                    onChange={(e) => updateBulkRow(row.id, { lessonNum: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <div className="flex flex-col text-gray-300">
+                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: row.lessonNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
+                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: Math.max(1, row.lessonNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <input 
+                                                                className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                value={row.lessonTitle}
+                                                                onChange={(e) => updateBulkRow(row.id, { lessonTitle: e.target.value })}
+                                                                placeholder="e.g. Genesis 1: The First Act"
+                                                            />
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="relative group/upload">
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept=".xlsx" 
+                                                                        className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full" 
+                                                                        onChange={(e) => {
+                                                                            const f = e.target.files?.[0];
+                                                                            if (f) handleBulkFileUpload(row.id, f);
+                                                                        }}
+                                                                    />
+                                                                    <button className="px-5 py-3 bg-white text-royal-900 border-2 border-royal-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-royal-900 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover/upload:border-indigo-600">
+                                                                        <Upload size={14}/> DEPOSIT 8-SHEET WORKBOOK
+                                                                    </button>
+                                                                </div>
+                                                                
+                                                                <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 ${row.status === 'UPLOADED' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                                    {row.status}
+                                                                </div>
+
+                                                                <div className="flex gap-1">
+                                                                    <button 
+                                                                        onClick={() => deleteBulkRow(row.id)}
+                                                                        className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                    >
+                                                                        <Trash size={18}/>
+                                                                    </button>
+                                                                    <button className="p-3 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                                                        <Edit size={18}/>
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Matrix Scroll Enabled • Permanent Registry Protocol</p>
                                     </div>
                                 </div>
-                                {file && (
-                                    <button onClick={processBulkFile} disabled={isParsing} className="w-full py-7 bg-royal-950 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center justify-center gap-8 text-3xl group transform active:scale-95">{isParsing ? <Loader2 className="animate-spin" size={40}/> : <CheckCircle size={40} className="text-gold-500" />} {isParsing ? "Analyzing Mappings..." : "EXECUTE SYSTEM ANALYSIS"}</button>
-                                )}
+                                
+                                <button 
+                                    onClick={processBulkGrid} 
+                                    disabled={isParsing || bulkGridRows.every(r => !r.file)} 
+                                    className="w-full py-8 bg-royal-950 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center justify-center gap-8 text-3xl group transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isParsing ? <Loader2 className="animate-spin" size={40}/> : <CheckCircle size={40} className="text-gold-500" />} 
+                                    {isParsing ? "Synchronizing Matrix..." : "EXECUTE SYSTEM ANALYSIS"}
+                                </button>
                             </div>
                         ) : (
                             <div className="space-y-12 animate-in fade-in duration-700">
@@ -281,7 +508,118 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in">
                         <div className="flex justify-center mb-16"><div className="flex items-center gap-8 bg-gray-50 p-3 rounded-[2.5rem] border-4 border-gray-100 shadow-inner">{[1,2].map(step => (<button key={step} onClick={() => setActiveManualStep(step as any)} className={`flex items-center gap-4 px-10 py-3.5 rounded-[1.8rem] transition-all duration-500 ${activeManualStep === step ? 'bg-indigo-600 text-white shadow-2xl scale-110' : 'text-gray-400 hover:bg-gray-100'}`}><span className="font-black text-2xl">{step}</span><span className="text-xs font-black uppercase tracking-widest">{step === 1 ? 'Course Creation' : 'Module Creation'}</span></button>))}</div></div>
                         
-                        {/* Fix: Wrapped sibling components in React Fragments */}
+                        {/* TABLE 2: MANUAL BUILDER GRID */}
+                        <div className="space-y-8 animate-in slide-in-from-top-4">
+                            <div className="flex justify-between items-center px-4">
+                                <h3 className="text-3xl font-serif font-black text-gray-900 uppercase tracking-tighter">Manual Registry Matrix</h3>
+                                <button 
+                                    onClick={addNewManualRow}
+                                    className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-xl border-b-4 border-indigo-900 hover:bg-indigo-700 transition-all flex items-center gap-3 uppercase text-xs tracking-widest active:scale-95"
+                                >
+                                    <Plus size={18}/> Add New Course
+                                </button>
+                            </div>
+                            
+                            <div className="bg-white border-8 border-gray-50 rounded-[3rem] shadow-2xl overflow-hidden">
+                                <div className="overflow-x-auto custom-scrollbar">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-royal-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-gold-500">
+                                                <th className="p-6 min-w-[200px]">Course</th>
+                                                <th className="p-6 min-w-[100px]">Module</th>
+                                                <th className="p-6 min-w-[200px]">Module Title</th>
+                                                <th className="p-6 min-w-[100px]">No. of Lesson</th>
+                                                <th className="p-6 min-w-[200px]">Lesson Title</th>
+                                                <th className="p-6 min-w-[300px]">Lesson Management</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {manualGridRows.map((row) => (
+                                                <tr key={row.id} className={`group transition-all ${activeManualRowId === row.id ? 'bg-indigo-50/50' : 'hover:bg-gray-50'}`}>
+                                                    <td className="p-4">
+                                                        <input 
+                                                            className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                            value={row.course}
+                                                            onChange={(e) => updateManualRow(row.id, { course: e.target.value })}
+                                                            placeholder="Course Name"
+                                                        />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2 bg-white rounded-2xl p-2 border-2 border-gray-100 transition-all">
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-10 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                value={row.moduleNum}
+                                                                onChange={(e) => updateManualRow(row.id, { moduleNum: parseInt(e.target.value) || 0 })}
+                                                            />
+                                                            <div className="flex flex-col text-gray-300">
+                                                                <button onClick={() => updateManualRow(row.id, { moduleNum: row.moduleNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={12} className="rotate-180"/></button>
+                                                                <button onClick={() => updateManualRow(row.id, { moduleNum: Math.max(1, row.moduleNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={12}/></button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <input 
+                                                            className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                            value={row.moduleTitle}
+                                                            onChange={(e) => updateManualRow(row.id, { moduleTitle: e.target.value })}
+                                                            placeholder="Module Name"
+                                                        />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2 bg-white rounded-2xl p-2 border-2 border-gray-100 transition-all">
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-10 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                value={row.lessonNum}
+                                                                onChange={(e) => updateManualRow(row.id, { lessonNum: parseInt(e.target.value) || 0 })}
+                                                            />
+                                                            <div className="flex flex-col text-gray-300">
+                                                                <button onClick={() => updateManualRow(row.id, { lessonNum: row.lessonNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={12} className="rotate-180"/></button>
+                                                                <button onClick={() => updateManualRow(row.id, { lessonNum: Math.max(1, row.lessonNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={12}/></button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <input 
+                                                            className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                            value={row.lessonTitle}
+                                                            onChange={(e) => updateManualRow(row.id, { lessonTitle: e.target.value })}
+                                                            placeholder="Lesson Name"
+                                                        />
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 min-w-[80px] text-center ${getManualRowStatus(row) === 'UPLOADED' ? 'bg-green-50 text-green-600 border-green-200' : getManualRowStatus(row) === 'STARTED' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                                {getManualRowStatus(row)}
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                <button 
+                                                                    onClick={() => deleteManualRow(row.id)}
+                                                                    className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                                >
+                                                                    <Trash size={18}/>
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setActiveManualRowId(row.id)}
+                                                                    className={`p-3 rounded-xl transition-all ${activeManualRowId === row.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-gray-300 hover:text-indigo-600 hover:bg-indigo-50'}`}
+                                                                >
+                                                                    <Edit size={18}/>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Grid Management Integrated • Matrix Scroll Enabled</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {activeManualStep === 1 && (
                             <>
                                 <div className="space-y-10 animate-in slide-in-from-right-8 duration-700">
@@ -293,7 +631,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                         <div className="grid grid-cols-2 gap-10">
                                             <div className="col-span-2 md:col-span-1"><label className={labelClass}>Course ID</label><input className={inputClass} value={manualCourse.id} onChange={e => setManualCourse({...manualCourse, id: e.target.value.toUpperCase().replace(/\s/g, '-')})} placeholder="e.g. BIBLE-LEAD-101" /></div>
                                             <div className="col-span-2 md:col-span-1"><label className={labelClass}>Author</label><input className={inputClass} value={manualCourse.author} onChange={e => setManualCourse({...manualCourse, author: e.target.value})} placeholder="e.g. Kingdom Institute" /></div>
-                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Master Title</label><input className={inputClass} value={manualCourse.title} onChange={e => setManualCourse({...manualCourse, title: e.target.value})} placeholder="e.g. Biblical Leadership Foundations" /></div>
+                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Master Title</label><input className={inputClass} value={manualCourse.title} onChange={e => {
+                                                const newTitle = e.target.value;
+                                                setManualCourse({...manualCourse, title: newTitle});
+                                                updateManualRow(activeManualRowId, { course: newTitle });
+                                            }} placeholder="e.g. Biblical Leadership Foundations" /></div>
                                             <div className="col-span-2 md:col-span-1">
                                                 <label className={labelClass}>Course Level</label>
                                                 <select value={manualCourse.level} onChange={e => setManualCourse({...manualCourse, level: e.target.value as ProficiencyLevel})} className={inputClass}>
@@ -302,7 +644,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                     <option value="Mentor, Organization & Parent (Advanced)">mentor/parent/organization (Advanced)</option>
                                                 </select>
                                             </div>
-                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Number of Modules</label><input type="number" className={inputClass} value={manualCourse.totalModulesRequired} onChange={e => setManualCourse({...manualCourse, totalModulesRequired: parseInt(e.target.value)})} /></div>
+                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Number of Modules</label><input type="number" className={inputClass} value={manualCourse.totalModulesRequired} onChange={e => {
+                                                const val = parseInt(e.target.value);
+                                                setManualCourse({...manualCourse, totalModulesRequired: val});
+                                                updateManualRow(activeManualRowId, { moduleNum: val });
+                                            }} /></div>
                                             <div className="col-span-2"><label className={labelClass}>Summary</label><textarea className={`${inputClass} min-h-[120px]`} value={manualCourse.description} onChange={e => setManualCourse({...manualCourse, description: e.target.value})} /></div>
                                         </div>
                                     </div>
@@ -315,7 +661,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                             </>
                         )}
                         
-                        {/* Fix: Wrapped sibling components in React Fragments */}
                         {activeManualStep === 2 && (
                             <>
                                 <div className="space-y-12 animate-in slide-in-from-right-8 duration-700 pb-32">
@@ -323,8 +668,16 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                         <div className="flex justify-between items-center border-b-4 border-gray-50 pb-6"><div className="flex items-center gap-4"><Layers className="text-indigo-600" size={32} /><h3 className="text-3xl font-serif font-black text-gray-950 uppercase tracking-tighter leading-none">MODULE CREATION PANEL</h3></div><div className="flex gap-2"><button className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl hover:bg-indigo-100 transition-all"><Edit3 size={24}/></button><button onClick={() => setManualModule({ id: '', title: '', description: '', totalLessonsRequired: 1, about: [], completionRule: { minimumCompletionPercentage: 100 }, certificateConfig: { title: 'Certificate of Achievement', description: 'Certified Excellence', templateId: 'classic', issuedBy: currentUser.name } })} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 transition-all"><Trash2 size={24}/></button></div></div>
                                         <div className="grid grid-cols-2 gap-10">
                                             <div className="col-span-2 md:col-span-1"><label className={labelClass}>Module ID</label><input className={inputClass} value={manualModule.id} onChange={e => setManualModule({...manualModule, id: e.target.value.toUpperCase().replace(/\s/g, '-')})} placeholder="e.g. GENESIS-MOD-1" /></div>
-                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Units Required</label><input type="number" className={inputClass} value={manualModule.totalLessonsRequired} onChange={e => setManualModule({...manualModule, totalLessonsRequired: parseInt(e.target.value)})} /></div>
-                                            <div className="col-span-2"><label className={labelClass}>Module Title</label><input className={inputClass} value={manualModule.title} onChange={e => setManualModule({...manualModule, title: e.target.value})} placeholder="e.g. Creation & Dominion" /></div>
+                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Number of Lessons</label><input type="number" className={inputClass} value={manualModule.totalLessonsRequired} onChange={e => {
+                                                const val = parseInt(e.target.value);
+                                                setManualModule({...manualModule, totalLessonsRequired: val});
+                                                updateManualRow(activeManualRowId, { lessonNum: val });
+                                            }} /></div>
+                                            <div className="col-span-2"><label className={labelClass}>Module Title</label><input className={inputClass} value={manualModule.title} onChange={e => {
+                                                const val = e.target.value;
+                                                setManualModule({...manualModule, title: val});
+                                                updateManualRow(activeManualRowId, { moduleTitle: val });
+                                            }} placeholder="e.g. Creation & Dominion" /></div>
                                             <div className="col-span-2"><label className={labelClass}>Architecture Summary</label><textarea className={`${inputClass} min-h-[100px]`} value={manualModule.description} onChange={e => setManualModule({...manualModule, description: e.target.value})} /></div>
                                         </div>
                                     </div>
@@ -367,7 +720,11 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-8">
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Lesson ID (Registry Key)</label><input className={darkInputClass} value={currentLesson.id} onChange={e => setCurrentLesson({...currentLesson, id: e.target.value.toUpperCase()})} placeholder="e.g. GEN-CH1-L1" /></div>
-                                                        <div className="col-span-2 md:col-span-1"><label className={labelClass}>Lesson Title</label><input className={darkInputClass} value={currentLesson.title} onChange={e => setCurrentLesson({...currentLesson, title: e.target.value})} placeholder="e.g. Creation: Order from Chaos" /></div>
+                                                        <div className="col-span-2 md:col-span-1"><label className={labelClass}>Lesson Title</label><input className={darkInputClass} value={currentLesson.title} onChange={e => {
+                                                            const val = e.target.value;
+                                                            setCurrentLesson({...currentLesson, title: val});
+                                                            updateManualRow(activeManualRowId, { lessonTitle: val });
+                                                        }} placeholder="e.g. Creation: Order from Chaos" /></div>
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Bible Book</label><input className={darkInputClass} value={currentLesson.book} onChange={e => setCurrentLesson({...currentLesson, book: e.target.value})} placeholder="e.g. Genesis" /></div>
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Chapter</label><input type="number" className={darkInputClass} value={currentLesson.chapter} onChange={e => setCurrentLesson({...currentLesson, chapter: parseInt(e.target.value)})} /></div>
                                                     </div>
@@ -376,22 +733,13 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                             <h5 className="text-xs font-black text-indigo-400 uppercase tracking-widest">Instructional Components Audit</h5>
                                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[200px] overflow-y-auto custom-scrollbar pr-2">
                                                                 {currentLesson.leadershipNotes?.map((n, i) => (
-                                                                    <div key={n.id} className="p-4 bg-emerald-950/40 rounded-2xl border border-emerald-500/20 flex items-center justify-between text-emerald-100 group">
-                                                                        <div className="flex items-center gap-3"><FileText size={20}/><span className="text-xs font-black truncate">{n.title} (ESSAY)</span></div>
-                                                                        <HeaderActions onDelete={() => setCurrentLesson(p => ({...p, leadershipNotes: p.leadershipNotes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('NOTE')} />
-                                                                    </div>
+                                                                    <div key={n.id} className="p-4 bg-emerald-950/40 rounded-2xl border border-emerald-500/20 flex items-center justify-between text-emerald-100 group"><div className="flex items-center gap-3"><FileText size={20}/><span className="text-xs font-black truncate">{n.title} (ESSAY)</span></div><HeaderActions onDelete={() => setCurrentLesson(p => ({...p, leadershipNotes: p.leadershipNotes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('NOTE')} /></div>
                                                                 ))}
                                                                 {currentLesson.bibleQuizzes?.map((q, i) => (
-                                                                    <div key={q.id} className="p-4 bg-indigo-950/40 rounded-2xl border border-indigo-500/20 flex items-center justify-between text-indigo-100">
-                                                                        <div className="flex items-center gap-3"><Book size={20}/><span className="text-xs font-black truncate">{q.text} (BIBLE)</span></div>
-                                                                        <HeaderActions onDelete={() => setCurrentLesson(p => ({...p, bibleQuizzes: p.bibleQuizzes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('BIBLE_QUIZ')} />
-                                                                    </div>
+                                                                    <div key={q.id} className="p-4 bg-indigo-950/40 rounded-2xl border border-indigo-500/20 flex items-center justify-between text-indigo-100"><div className="flex items-center gap-3"><Book size={20}/><span className="text-xs font-black truncate">{q.text} (BIBLE)</span></div><HeaderActions onDelete={() => setCurrentLesson(p => ({...p, bibleQuizzes: p.bibleQuizzes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('BIBLE_QUIZ')} /></div>
                                                                 ))}
                                                                 {currentLesson.noteQuizzes?.map((q, i) => (
-                                                                    <div key={q.id} className="p-4 bg-amber-950/40 rounded-2xl border border-amber-500/20 flex items-center justify-between text-amber-100">
-                                                                        <div className="flex items-center gap-3"><PenTool size={20}/><span className="text-xs font-black truncate">{q.text} (CONTEXT)</span></div>
-                                                                        <HeaderActions onDelete={() => setCurrentLesson(p => ({...p, noteQuizzes: p.noteQuizzes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('NOTE_QUIZ')} />
-                                                                    </div>
+                                                                    <div key={q.id} className="p-4 bg-amber-950/40 rounded-2xl border border-amber-500/20 flex items-center justify-between text-amber-100"><div className="flex items-center gap-3"><PenTool size={20}/><span className="text-xs font-black truncate">{q.text} (CONTEXT)</span></div><HeaderActions onDelete={() => setCurrentLesson(p => ({...p, noteQuizzes: p.noteQuizzes?.filter((_, idx) => idx !== i)}))} onEdit={() => openSubEditor('NOTE_QUIZ')} /></div>
                                                                 ))}
                                                             </div>
                                                         </div>

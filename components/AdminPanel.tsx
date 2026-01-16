@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, Resource, NewsItem, Module, Certificate } from '../types';
 import { authService } from '../services/authService';
@@ -32,6 +33,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
   const [users, setUsers] = useState<User[]>([]);
   const [userSummaries, setUserSummaries] = useState<Record<string, any>>({});
+  const [userLogsCount, setUserLogsCount] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
@@ -72,10 +74,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         setUsers(data);
         
         const summaries: Record<string, any> = {};
+        const logsCounts: Record<string, number> = {};
+        const allLogs = await authService.getLogs(currentUser);
+
         for (const u of data) {
             summaries[u.id] = await lessonService.getStudentSummary(u.id);
+            logsCounts[u.id] = allLogs.filter(l => l.actorId === u.id).length;
         }
         setUserSummaries(summaries);
+        setUserLogsCount(logsCounts);
 
       } else if (activeTab === 'invites' && canManageUsers) {
         const invites = await authService.getInvites(currentUser);
@@ -261,22 +268,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
       <div className="p-8 bg-[#fdfdfd]">
         
-        {/* USERS TAB */}
+        {/* USERS TAB - BEAUTIFUL GRID TABLE WITH PERFORMANCE STATS */}
         {activeTab === 'users' && (
           <div className="space-y-6">
              <div className="overflow-x-auto border-2 border-gray-100 rounded-3xl shadow-lg bg-white overflow-visible">
                 <table className="w-full text-left">
                     <thead>
                       <tr className="bg-gray-50 border-b-2 border-gray-100 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                          <th className="p-6">User Identity</th>
-                          <th className="p-6">Performance Summary</th>
+                          <th className="p-6">Member Identity</th>
+                          <th className="p-6">Performance Matrix</th>
+                          <th className="p-6">Logs Activity</th>
                           <th className="p-6">Access Level</th>
-                          <th className="p-6 text-right">Credentials</th>
+                          <th className="p-6 text-right">Analytics</th>
                           <th className="p-6 text-right">Manage</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 font-bold text-sm">
                       {users.map(u => {
+                        const s = userSummaries[u.id];
                         return (
                           <tr key={u.id} className="hover:bg-royal-50/30 transition-all group">
                             <td className="p-6">
@@ -291,12 +300,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                                 </div>
                             </td>
                             <td className="p-6">
-                                <button 
-                                  onClick={() => handleOpenInsights(u)}
-                                  className="px-6 py-2.5 bg-royal-100 text-royal-700 text-[10px] font-black uppercase rounded-xl hover:bg-royal-700 hover:text-white transition-all shadow-sm border border-royal-200 flex items-center gap-2 group-hover:scale-105"
-                                >
-                                    <Activity size={14} /> VIEW PERFORMANCE
-                                </button>
+                                {s ? (
+                                    <div className="flex items-center gap-6">
+                                        <div>
+                                            <p className="text-[8px] font-black text-indigo-400 uppercase leading-none mb-1">AVG TOTAL SCORE</p>
+                                            <p className="text-sm font-black text-indigo-700">{s.avgScore}%</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-indigo-400 uppercase leading-none mb-1">MODULES</p>
+                                            <p className="text-sm font-black text-gray-700">{s.modulesCompleted}/{s.totalModules}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[8px] font-black text-indigo-400 uppercase leading-none mb-1">TOTAL TIME</p>
+                                            <p className="text-sm font-black text-gray-700">{formatDigitalTime(s.totalTime)}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-24 h-4 bg-gray-100 rounded-full animate-pulse"></div>
+                                )}
+                            </td>
+                            <td className="p-6">
+                                <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg w-fit">
+                                    <History size={12} className="text-gray-400" />
+                                    <span className="text-xs font-black text-gray-600">{userLogsCount[u.id] || 0} Records</span>
+                                </div>
                             </td>
                             <td className="p-6">
                                 <div className="relative inline-block">
@@ -310,10 +337,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </td>
                             <td className="p-6 text-right">
                                 <button 
-                                  onClick={() => handleOpenCredentials(u)}
-                                  className="px-4 py-2 bg-royal-800 text-white text-[10px] font-black uppercase rounded-xl hover:bg-black transition-all flex items-center gap-2 shadow-md ml-auto"
+                                  onClick={() => handleOpenInsights(u)}
+                                  className="px-6 py-2.5 bg-royal-800 text-white text-[10px] font-black uppercase rounded-xl hover:bg-black transition-all shadow-md flex items-center gap-2 ml-auto"
                                 >
-                                    <BadgeCheck size={14} /> Verified Credentials
+                                    <BarChart3 size={14} /> Full Analytics
                                 </button>
                             </td>
                             <td className="p-6 text-right">
@@ -332,12 +359,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           </div>
         )}
 
-        {/* --- PERFORMANCE INSIGHTS MODAL (RESTORED DIMENSIONS) --- */}
+        {/* --- PERFORMANCE INSIGHTS MODAL (REFINE LABELS) --- */}
         {insightUser && insightData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">
                
-               {/* RESTORED HEADER HEIGHT */}
                <div className="p-12 text-center relative shrink-0 border-b-4 border-gray-100 bg-white">
                   <div className="absolute top-4 right-8">
                      <button onClick={() => setInsightUser(null)} className="p-3 text-gray-300 hover:text-royal-900 hover:bg-gray-100 rounded-2xl transition-all">
@@ -350,7 +376,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                         {insightUser.name.charAt(0)}
                      </div>
                      <div>
-                        <h2 className="text-5xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-tight animate-in slide-in-from-bottom-2 duration-700">Performance Insights</h2>
+                        <h2 className="text-5xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">Group Member Analytics</h2>
                         <div className="flex items-center justify-center gap-4 mt-3">
                            <span className="px-6 py-2 bg-royal-900 text-white rounded-full text-xs font-black uppercase tracking-[0.25em] shadow-lg">{insightUser.name}</span>
                            <span className="h-1.5 w-1.5 bg-gold-500 rounded-full"></span>
@@ -365,12 +391,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                <div className="flex-1 overflow-y-auto p-12 space-y-12 bg-[#fdfdfd] custom-scrollbar">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-10">
                       
-                      {/* STAT: MODULES PROGRESS - RESTORED SIZE */}
+                      {/* STAT: NUMBER OF MODULES */}
                       <div className="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl space-y-8 animate-glow-pulse">
                           <div className="flex justify-between items-end">
                              <div>
                                 <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-4 bg-royal-50 inline-block px-3 py-1 rounded-lg">NUMBER OF MODULES</h4>
-                                <p className="text-6xl font-black text-royal-900 leading-none">{insightData.totalModules > 0 ? Math.round((insightData.modulesCompleted / insightData.totalModules) * 100) : 0}% <span className="text-xl font-bold text-gray-400">GOAL REACHED</span></p>
+                                <p className="text-6xl font-black text-royal-900 leading-none">{insightData.totalModules > 0 ? Math.round((insightData.modulesCompleted / insightData.totalModules) * 100) : 0}% <span className="text-xl font-bold text-gray-400">MASTERED</span></p>
                              </div>
                              <div className="text-right">
                                 <p className="text-2xl font-black text-royal-900 uppercase tracking-widest">{insightData.modulesCompleted} <span className="text-gray-300">/</span> {insightData.totalModules}</p>
@@ -382,9 +408,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: ENGAGEMENT CYCLE - RESTORED SIZE */}
+                      {/* STAT: TOTAL TIME SPENT */}
                       <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col justify-center animate-glow-pulse delay-75">
-                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-6 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">TIME DURATION</h4>
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-6 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">TOTAL TIME SPENT</h4>
                           <span className="text-5xl font-mono font-black text-royal-900 leading-none tracking-tighter">
                              {formatDigitalTime(insightData.totalTime)}
                           </span>
@@ -394,46 +420,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: AVG SCORE (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      {/* STAT: AVERAGE TOTAL SCORE */}
                       <div className="lg:col-span-4 bg-royal-950 p-10 rounded-[3.5rem] shadow-[0_20px_60px_-15px_rgba(30,27,75,0.7)] text-white relative overflow-hidden border-8 border-gold-500 animate-glow-pulse delay-100">
                           <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Target size={200} /></div>
-                          <h4 className="font-black text-gold-400 uppercase text-[10px] tracking-[0.3em] mb-12 relative z-10 leading-tight">AVERAGE SCORE OF ALL MODULES ATTEMPTED (IN PERCENTAGE)</h4>
+                          <h4 className="font-black text-gold-400 uppercase text-[10px] tracking-[0.3em] mb-12 relative z-10 leading-tight">AVERAGE TOTAL SCORE</h4>
                           <div className="relative z-10">
                              <p className="text-8xl font-black leading-none drop-shadow-2xl text-gold-400">{insightData.avgScore}%</p>
                              <div className="h-2 w-24 bg-gold-500 rounded-full mt-8 shadow-xl shadow-gold-500/40"></div>
-                             <p className="text-xs font-black text-royal-200 uppercase tracking-widest mt-10 opacity-80">System-wide Precision Audit</p>
+                             <p className="text-xs font-black text-royal-200 uppercase tracking-widest mt-10 opacity-80">Registry Precision Audit</p>
                           </div>
                       </div>
 
-                      {/* STAT: LAST LESSON SCORE (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      {/* STAT: MOST RECENT LESSON SCORE */}
                       <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col animate-glow-pulse delay-200">
-                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.35em] mb-10 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">LAST (MOST RECENT) LESSON SCORE</h4>
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.35em] mb-10 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">MOST RECENT LESSON SCORE</h4>
                           <div className="flex items-baseline gap-4 mb-10">
                              <span className="text-8xl font-black text-royal-950 leading-none">{insightData.lastLessonScore.split('/')[0]}</span>
                              <span className="text-4xl font-black text-gray-200 tracking-tighter">/ {insightData.lastLessonScore.split('/')[1]}</span>
                           </div>
                           <div className="mt-auto flex items-center gap-4 text-gold-600 border-t pt-6 border-gold-50">
                              <div className="p-3 bg-gold-50 rounded-2xl"><Award size={24} /></div>
-                             <span className="text-xs font-black uppercase tracking-[0.2em]">Most Recent Academic Standing</span>
+                             <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Session Accuracy</span>
                           </div>
                       </div>
 
-                      {/* STAT: LAST LESSON DURATION (LABELS FROM PROMPT 5) - RESTORED SIZE */}
+                      {/* STAT: MOST RECENT LESSON DURATION */}
                       <div className="lg:col-span-4 bg-gray-50 p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-inner flex flex-col animate-glow-pulse delay-300">
-                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-10 bg-white inline-block px-3 py-1 rounded-lg w-fit shadow-sm">LAST LESSON DURATION</h4>
+                          <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-10 bg-white inline-block px-3 py-1 rounded-lg w-fit shadow-sm">MOST RECENT LESSON DURATION</h4>
                           <span className="text-5xl font-mono font-black text-royal-700 leading-none tracking-tighter">
                              {formatDigitalTime(insightData.lastLessonTime)}
                           </span>
                           <div className="mt-auto flex items-center gap-4 text-royal-900 border-t pt-6 border-royal-100">
                              <div className="p-3 bg-white rounded-2xl shadow-sm"><Activity size={24} /></div>
-                             <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Recorded Tempo</span>
+                             <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Interaction Tempo</span>
                           </div>
                       </div>
 
                   </div>
                </div>
 
-               {/* Simple Mature Footer */}
                <div className="p-12 bg-white border-t-4 border-gray-100 flex justify-center shrink-0">
                   <button onClick={() => setInsightUser(null)} className="group px-20 py-6 bg-royal-900 text-white font-black rounded-[2.5rem] text-sm uppercase tracking-[0.5em] shadow-2xl hover:bg-black transition-all transform hover:scale-[1.05] active:scale-95 flex items-center gap-6 border-b-8 border-royal-950">
                      <ArrowLeft size={24} className="group-hover:-translate-x-2 transition-transform" /> BACK TO MEMBER LIST
@@ -464,13 +489,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                     </div>
                     
                     <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar bg-[#fdfdfd]">
-                        {/* Summary Block */}
                         <div className="grid grid-cols-2 gap-6">
                             <div className="bg-indigo-50/50 p-6 rounded-[2rem] border-4 border-indigo-100 flex items-center gap-4 shadow-sm group">
                                 <div className="p-3 bg-white rounded-xl text-royal-600 group-hover:scale-110 transition-transform shadow-sm"><Trophy size={28} /></div>
                                 <div>
                                     <p className="text-2xl font-black text-royal-900 leading-none">{eligibleModules.length}</p>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Modules Won</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Modules Mastered</p>
                                 </div>
                             </div>
                             <div className="bg-green-50/50 p-6 rounded-[2rem] border-4 border-green-100 flex items-center gap-4 shadow-sm group">
@@ -482,7 +506,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </div>
                         </div>
 
-                        {/* COMPLETED CURRICULUM MODULES LIST */}
                         <section className="space-y-6">
                             <div className="flex items-center gap-3 pb-2 border-b-2 border-gray-100">
                                 <Layers size={18} className="text-royal-400" />
@@ -538,7 +561,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                         </section>
                     </div>
                     
-                    {/* Footer */}
                     <div className="p-8 bg-white border-t-4 border-gray-100 flex justify-center shrink-0">
                         <button onClick={() => setCredentialUser(null)} className="px-16 py-4 bg-gray-100 text-gray-500 font-black rounded-2xl text-[10px] uppercase tracking-[0.4em] hover:bg-gray-200 transition-all active:scale-95">
                            EXIT PORTFOLIO
@@ -548,7 +570,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
             </div>
         )}
 
-        {/* View Modal for Issued Certs */}
         {viewingCert && (
             <CertificateGenerator certificate={viewingCert} onClose={() => setViewingCert(null)} />
         )}

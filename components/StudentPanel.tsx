@@ -154,7 +154,8 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                   </div>
               </div>
               
-              <div className="bg-white border-[12px] border-gray-50 rounded-[4rem] shadow-[0_60px_100px_-30px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col min-h-[750px]">
+              {/* TABLE CONTAINER: Height reduced by ~20% from min-h-[750px] to h-[600px] */}
+              <div className="bg-white border-[12px] border-gray-50 rounded-[4rem] shadow-[0_60px_100px_-30px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col h-[600px]">
                   {isEmpty ? (
                       <div className="py-64 text-center flex flex-col items-center gap-6">
                          <Database size={80} className="text-gray-100 animate-pulse" />
@@ -180,9 +181,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                         const modLessons = lessonsByModule[mod.id] || [];
                                         return modLessons.map((les) => (
                                             <tr key={les.id} className="group hover:bg-royal-50/10 transition-all align-top">
-                                                {/* COLUMN 1: COURSE & ABOUT */}
+                                                {/* COLUMN 1: COURSE & ABOUT - Height reduced by ~25% from 600 to 450 */}
                                                 <td className="p-10 border-r border-gray-100 relative bg-white/50 group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] flex flex-col">
+                                                    <div className="h-[450px] flex flex-col">
                                                         <div className="sticky top-0 bg-white/98 backdrop-blur-xl z-10 pb-6 mb-6 border-b-4 border-indigo-50 shrink-0">
                                                             <h3 className="text-3xl font-serif font-black text-royal-950 uppercase leading-tight tracking-tight drop-shadow-sm">{course.title}</h3>
                                                             <div className="flex items-center gap-3 mt-4">
@@ -198,17 +199,17 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                     </div>
                                                 </td>
 
-                                                {/* COLUMN 2: NO OF MODULES */}
+                                                {/* COLUMN 2: NO OF MODULES - Height reduced */}
                                                 <td className="p-10 border-r border-gray-100 text-center align-middle bg-gray-50/30 group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] flex flex-col justify-center items-center overflow-y-auto custom-scrollbar">
+                                                    <div className="h-[450px] flex flex-col justify-center items-center overflow-y-auto custom-scrollbar">
                                                         <span className="text-[180px] font-serif font-black text-gray-100 group-hover:text-indigo-600 transition-all duration-1000 transform group-hover:scale-110 leading-none">{course.totalModulesRequired}</span>
                                                         <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] mt-2">Active Modules</p>
                                                     </div>
                                                 </td>
 
-                                                {/* COLUMN 3: MODULE & ABOUT */}
+                                                {/* COLUMN 3: MODULE & ABOUT - Height reduced */}
                                                 <td className="p-10 border-r border-gray-100 relative group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] flex flex-col">
+                                                    <div className="h-[450px] flex flex-col">
                                                         <div className="sticky top-0 bg-white/98 backdrop-blur-xl z-10 pb-6 mb-6 border-b-4 border-indigo-50 shrink-0 flex justify-between items-start gap-4">
                                                             <div className="min-w-0">
                                                                 <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2">MODULE ARCHITECTURE {mod.order}</p>
@@ -224,17 +225,17 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                     </div>
                                                 </td>
 
-                                                {/* COLUMN 4: NO OF LESSONS */}
+                                                {/* COLUMN 4: NO OF LESSONS - Height reduced */}
                                                 <td className="p-10 border-r border-gray-100 text-center align-middle bg-gray-50/30 group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] flex flex-col justify-center items-center overflow-y-auto custom-scrollbar">
+                                                    <div className="h-[450px] flex flex-col justify-center items-center overflow-y-auto custom-scrollbar">
                                                         <span className="text-[180px] font-serif font-black text-gray-100 group-hover:text-indigo-600 transition-all duration-1000 transform group-hover:scale-110 leading-none">{mod.totalLessonsRequired}</span>
                                                         <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em] mt-2">Instructional Units</p>
                                                     </div>
                                                 </td>
 
-                                                {/* COLUMN 5: LESSON & ABOUT */}
+                                                {/* COLUMN 5: LESSON & ABOUT - Height reduced */}
                                                 <td className="p-10 border-r border-gray-100 relative group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] flex flex-col">
+                                                    <div className="h-[450px] flex flex-col">
                                                         <div className="sticky top-0 bg-white/98 backdrop-blur-xl z-10 pb-6 mb-6 border-b-4 border-indigo-50 shrink-0">
                                                             <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.4em] mb-2">LESSON UNIT {les.orderInModule}</p>
                                                             <h4 className="text-2xl font-serif font-black text-gray-900 uppercase leading-tight tracking-tight truncate drop-shadow-sm">{les.title}</h4>
@@ -246,9 +247,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                     </div>
                                                 </td>
 
-                                                {/* COLUMN 6: LESSON MANAGEMENT */}
+                                                {/* COLUMN 6: LESSON MANAGEMENT - Height reduced */}
                                                 <td className="p-10 align-middle bg-gray-50/30 group-hover:bg-white transition-colors">
-                                                    <div className="h-[600px] space-y-8 flex flex-col justify-center overflow-y-auto custom-scrollbar pr-4">
+                                                    <div className="h-[450px] space-y-8 flex flex-col justify-center overflow-y-auto custom-scrollbar pr-4">
                                                         <button 
                                                             onClick={() => onTakeLesson?.(les.id)}
                                                             className="w-full py-10 bg-royal-800 text-white font-black rounded-3xl shadow-2xl hover:bg-black transition-all flex flex-col items-center justify-center gap-4 uppercase text-[12px] tracking-[0.4em] border-b-[10px] border-royal-950 active:scale-95 group/btn"

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Course, AboutSegment, Certificate, LeadershipNote } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -299,32 +300,32 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
       </div>
 
-      {/* REAL-TIME TELEMETRY PANEL */}
-      <div className="bg-royal-950 border-b-[10px] border-black py-10 shadow-2xl relative overflow-hidden">
+      {/* REAL-TIME TELEMETRY PANEL - REDUCED HEIGHT BY 50% */}
+      <div className="bg-royal-950 border-b-[10px] border-black py-5 shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
-              <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
-                  <div className="p-5 bg-gold-500 text-white rounded-[1.5rem] shadow-[0_0_30px_rgba(245,158,11,0.4)] group-hover:scale-110 transition-transform"><Trophy size={40} /></div>
+              <div className="bg-white/5 backdrop-blur-xl p-4 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
+                  <div className="p-3 bg-gold-500 text-white rounded-[1.2rem] shadow-[0_0_20px_rgba(245,158,11,0.4)] group-hover:scale-110 transition-transform"><Trophy size={24} /></div>
                   <div>
-                      <p className="text-gold-400 text-xs font-black uppercase tracking-[0.4em] mb-2">LESSON SCORE</p>
-                      <h4 className="text-6xl font-black text-white leading-none tracking-tighter">
-                        {currentScore.correct} <span className="text-2xl text-white/30 tracking-tight">/ {currentScore.total}</span>
+                      <p className="text-gold-400 text-[10px] font-black uppercase tracking-[0.4em] mb-1">LESSON SCORE</p>
+                      <h4 className="text-3xl font-black text-white leading-none tracking-tighter">
+                        {currentScore.correct} <span className="text-lg text-white/30 tracking-tight">/ {currentScore.total}</span>
                       </h4>
                   </div>
               </div>
-              <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
-                  <div className="p-5 bg-indigo-500 text-white rounded-[1.5rem] shadow-[0_0_30px_rgba(79,70,229,0.4)] group-hover:scale-110 transition-transform"><Clock size={40} /></div>
+              <div className="bg-white/5 backdrop-blur-xl p-4 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
+                  <div className="p-3 bg-indigo-500 text-white rounded-[1.2rem] shadow-[0_0_20px_rgba(79,70,229,0.4)] group-hover:scale-110 transition-transform"><Clock size={24} /></div>
                   <div>
-                      <p className="text-indigo-300 text-xs font-black uppercase tracking-[0.4em] mb-2">LESSON DURATION</p>
-                      <h4 className="text-6xl font-mono font-black text-white leading-none tracking-tighter">
+                      <p className="text-indigo-300 text-[10px] font-black uppercase tracking-[0.4em] mb-1">LESSON DURATION</p>
+                      <h4 className="text-3xl font-mono font-black text-white leading-none tracking-tighter">
                         {formatTime(elapsedSeconds)}
                       </h4>
                   </div>
               </div>
           </div>
-          <div className="mt-8 flex justify-center items-center gap-4">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.6em]">Registry Analytics Synchronized In Real Time</p>
+          <div className="mt-4 flex justify-center items-center gap-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+              <p className="text-[8px] font-black text-white/40 uppercase tracking-[0.6em]">Registry Analytics Synchronized In Real Time</p>
           </div>
       </div>
 
@@ -334,10 +335,12 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
               <div className="absolute top-0 left-0 w-4 h-full bg-indigo-600 shadow-[0_0_20px_rgba(79,70,229,0.5)]"></div>
               <div className="flex flex-col gap-6 mb-14">
                   <div className="flex items-center gap-3"><div className="p-2 bg-royal-900 rounded-lg text-white"><FileText size={20}/></div><span className="text-[10px] font-black text-royal-600 uppercase tracking-[0.4em]">Integrated Leadership Article</span></div>
-                  <h2 className="text-4xl md:text-6xl font-serif font-black text-gray-950 leading-tight uppercase tracking-tighter">{note.title || 'INSTRUCTIONAL ESSAY'}</h2>
+                  {/* NOTE TITLE REDUCED BY 50% */}
+                  <h2 className="text-2xl md:text-3xl font-serif font-black text-gray-950 leading-tight uppercase tracking-tighter">{note.title || 'INSTRUCTIONAL ESSAY'}</h2>
                   <div className="w-24 h-1.5 bg-gold-500 rounded-full"></div>
               </div>
-              <div className="font-medium leading-relaxed text-gray-800 text-2xl prose prose-2xl prose-indigo max-w-none prose-p:mb-8 prose-headings:font-black" dangerouslySetInnerHTML={{ __html: note.body }} />
+              {/* NOTE BODY REDUCED BY 15% */}
+              <div className="font-medium leading-relaxed text-gray-800 text-xl prose prose-xl prose-indigo max-w-none prose-p:mb-8 prose-headings:font-black" dangerouslySetInnerHTML={{ __html: note.body }} />
             </div>
         ))}
 
@@ -392,11 +395,13 @@ const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
                 <span className="shrink-0 w-24 h-24 rounded-[2.5rem] bg-royal-950 text-white font-black flex items-center justify-center text-5xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-b-8 border-black group-hover/card:scale-110 transition-transform duration-500">{index}</span>
                 <div className="flex-1 space-y-6">
                     {(quiz.referenceText || quiz.sourceNoteTitle) && (
-                        <div className="text-indigo-600 font-black text-sm uppercase tracking-[0.4em] bg-indigo-50 px-6 py-3 rounded-2xl w-fit border border-indigo-100 shadow-sm flex items-center gap-3">
+                        /* REFERENCE TEXT REDUCED BY 15% AND ENABLED MIXED CASE */
+                        <div className="text-indigo-600 font-black text-[12px] tracking-[0.2em] bg-indigo-50 px-6 py-3 rounded-2xl w-fit border border-indigo-100 shadow-sm flex items-center gap-3">
                            <Book size={18}/> {quiz.referenceText || quiz.sourceNoteTitle}
                         </div>
                     )}
-                    <h3 className="font-black text-3xl md:text-5xl text-gray-950 leading-tight tracking-tight">{quiz.text}</h3>
+                    {/* QUIZ QUESTION TEXT REDUCED BY 60% AND MADE LESS BOLD (font-bold instead of font-black) */}
+                    <h3 className="font-bold text-lg md:text-xl text-gray-950 leading-tight tracking-tight">{quiz.text}</h3>
                 </div>
             </div>
 
@@ -405,8 +410,10 @@ const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
                     const isCurrentSelected = selectedOptionId === opt.id;
                     const isCorrect = opt.isCorrect;
                     
-                    let cardClass = "w-full text-left p-10 rounded-[3rem] border-4 transition-all duration-700 flex flex-col gap-6 relative group/opt overflow-hidden ";
-                    let badgeClass = "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl border-4 shrink-0 shadow-inner transition-all duration-500 ";
+                    /* OPTION BOX PADDING REDUCED BY 25% (p-10 to p-7) */
+                    let cardClass = "w-full text-left p-7 rounded-[3rem] border-4 transition-all duration-700 flex flex-col gap-6 relative group/opt overflow-hidden ";
+                    /* BADGE SIZE REDUCED (w-14 to w-10) */
+                    let badgeClass = "w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg border-4 shrink-0 shadow-inner transition-all duration-500 ";
                     
                     if (!isAnswered) {
                         cardClass += "bg-white border-gray-100 hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-[0_40px_80px_-20px_rgba(79,70,229,0.2)] hover:-translate-y-2 shadow-sm";
@@ -441,9 +448,10 @@ const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
                         <button key={opt.id} disabled={isAnswered} onClick={() => onSelect(opt)} className={cardClass}>
                             <div className="flex items-center gap-6">
                                 <span className={badgeClass}>{opt.label}</span>
-                                <span className="font-black text-2xl flex-1 tracking-tight leading-snug">{opt.text}</span>
-                                {isAnswered && isCorrect && <CheckCircle size={48} className="text-emerald-600 shrink-0 drop-shadow-xl animate-bounce" />}
-                                {isAnswered && isCurrentSelected && !isCorrect && <X size={48} className="text-red-600 shrink-0 drop-shadow-xl animate-pulse" />}
+                                {/* ANSWER OPTION TEXT REDUCED BY 25% (text-2xl to text-lg) */}
+                                <span className="font-black text-lg flex-1 tracking-tight leading-snug">{opt.text}</span>
+                                {isAnswered && isCorrect && <CheckCircle size={32} className="text-emerald-600 shrink-0 drop-shadow-xl animate-bounce" />}
+                                {isAnswered && isCurrentSelected && !isCorrect && <X size={32} className="text-red-600 shrink-0 drop-shadow-xl animate-pulse" />}
                             </div>
                             
                             {/* HYBRID BOLD MAGNIFYING REVEAL FOR EXPLANATIONS */}
@@ -455,7 +463,8 @@ const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
                                         </div>
                                         <div className="flex-1">
                                             <span className="text-[10px] font-black uppercase block mb-2 tracking-[0.2em] opacity-60">System Contextual Audit:</span>
-                                            <p className="text-lg font-bold italic leading-relaxed">
+                                            {/* EXPLANATION TEXT REDUCED BY 25% (text-lg to text-sm) */}
+                                            <p className="text-sm font-bold italic leading-relaxed">
                                                 "{opt.explanation}"
                                             </p>
                                         </div>

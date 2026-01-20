@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, LessonSection, QuizQuestion, QuizOption, StudentAttempt, User, Module, Course, AboutSegment, Certificate, LeadershipNote } from '../types';
 import { lessonService } from '../services/lessonService';
 import CertificateGenerator from './CertificateGenerator';
-import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, Clock, Trophy, BadgeCheck, Loader2, Info, LayoutGrid, Layers, Sparkles, Book, Star, ChevronRight, ArrowRight, Library, FileText, UserCircle, Globe, Fingerprint, Hash, Zap, Target, BookMarked, Quote, GraduationCap, Users, PenTool } from 'lucide-react';
+// Fix: Added missing AlertCircle import from lucide-react
+import { ArrowLeft, BookOpen, Check, X, HelpCircle, CheckCircle, Clock, Trophy, BadgeCheck, Loader2, Info, LayoutGrid, Layers, Sparkles, Book, Star, ChevronRight, ArrowRight, Library, FileText, UserCircle, Globe, Fingerprint, Hash, Zap, Target, BookMarked, Quote, GraduationCap, Users, PenTool, Save, MessageSquareText, Activity, AlertCircle } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -17,10 +17,43 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const [parentCourse, setParentCourse] = useState<Course | null>(null);
   const [activeAboutType, setActiveAboutType] = useState<'course' | 'module' | 'lesson' | null>(null);
   const [selectedSegment, setSelectedSegment] = useState<AboutSegment | null>(null);
+  
+  // Real-time telemetry state
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [currentScore, setCurrentScore] = useState({ correct: 0, total: 0 });
+  
+  // Journaling state
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [isSavingNote, setIsSavingNote] = useState(false);
+
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     loadData();
+    startTelemetry();
+    return () => stopTelemetry();
   }, [lesson.id]);
+
+  const startTelemetry = async () => {
+    const initialTime = await lessonService.getQuizTimer(currentUser.id, lesson.id);
+    setElapsedSeconds(initialTime);
+    timerRef.current = setInterval(() => {
+      setElapsedSeconds(prev => {
+          const next = prev + 1;
+          // Sync with storage every 5 seconds for real-time mentor visibility
+          if (next % 5 === 0) {
+              lessonService.saveQuizTimer(currentUser.id, lesson.id, next);
+          }
+          return next;
+      });
+    }, 1000);
+  };
+
+  const stopTelemetry = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    lessonService.saveQuizTimer(currentUser.id, lesson.id, elapsedSeconds);
+  };
 
   const loadData = async () => {
     const history = await lessonService.getAttempts(currentUser.id, lesson.id);
@@ -31,14 +64,42 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         if (course) setParentCourse(course);
     }
     const attemptMap: Record<string, string> = {};
-    history.forEach(h => { attemptMap[h.quizId] = h.selectedOptionId; });
+    let scoreCount = 0;
+    history.forEach(h => { 
+        attemptMap[h.quizId] = h.selectedOptionId;
+        if (h.isCorrect) scoreCount++;
+    });
     setAttempts(attemptMap);
+
+    const totalQ = (lesson.bibleQuizzes?.length || 0) + (lesson.noteQuizzes?.length || 0);
+    setCurrentScore({ correct: scoreCount, total: totalQ });
+
+    const savedNote = await lessonService.getUserLessonNote(currentUser.id, lesson.id);
+    setNoteText(savedNote);
   };
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
     if (attempts[quiz.id]) return;
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
+    
+    if (option.isCorrect) {
+        setCurrentScore(prev => ({ ...prev, correct: prev.correct + 1 }));
+    }
+    
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, option.isCorrect);
+  };
+
+  const handleSaveNote = async () => {
+      setIsSavingNote(true);
+      await lessonService.saveUserLessonNote(currentUser.id, lesson.id, noteText);
+      setTimeout(() => setIsSavingNote(false), 800);
+  };
+
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
   };
 
   const renderMetadataGrid = (type: 'Course' | 'Module' | 'Lesson') => {
@@ -168,7 +229,59 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   );
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-40">
+    <div className="bg-gray-100 min-h-screen pb-40 relative overflow-x-hidden">
+      
+      {/* PERSISTENT SIDE NOTE ICON */}
+      <div className="fixed right-8 top-1/2 -translate-y-1/2 z-[60] flex flex-col gap-4 animate-in slide-in-from-right-12 duration-1000">
+          <button 
+            onClick={() => setIsNoteOpen(true)}
+            className="w-20 h-20 bg-royal-900 text-white rounded-3xl shadow-[0_20px_50px_rgba(30,27,75,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all border-r-[8px] border-gold-500 group"
+          >
+             <MessageSquareText size={36} className="group-hover:rotate-12 transition-transform" />
+             <div className="absolute right-full mr-4 bg-gray-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-2xl">Personal Journal</div>
+          </button>
+      </div>
+
+      {/* JOURNAL DRAWER */}
+      {isNoteOpen && (
+          <div className="fixed inset-0 z-[140] flex justify-end animate-in fade-in duration-300">
+              <div className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm" onClick={() => setIsNoteOpen(false)}></div>
+              <div className="relative w-full max-w-md bg-white h-full shadow-[-30px_0_100px_rgba(0,0,0,0.3)] border-l-[12px] border-royal-900 flex flex-col animate-in slide-in-from-right-full duration-500">
+                  <div className="p-10 bg-royal-950 text-white relative">
+                      <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+                      <div className="relative z-10 flex justify-between items-center mb-6">
+                         <div className="p-4 bg-indigo-600 rounded-2xl shadow-xl"><MessageSquareText size={32} /></div>
+                         <button onClick={() => setIsNoteOpen(false)} className="p-3 hover:bg-white/10 rounded-full transition-colors"><X size={32} /></button>
+                      </div>
+                      <h3 className="text-3xl font-serif font-black uppercase tracking-tight relative z-10">Personal Insight Journal</h3>
+                      <p className="text-indigo-300 text-xs font-black uppercase tracking-[0.3em] mt-2 relative z-10">Lesson Audit Notes</p>
+                  </div>
+                  <div className="flex-1 p-10 bg-gray-50/50 flex flex-col gap-6">
+                      <div className="flex-1 relative">
+                        <textarea 
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Type your strategic insights and personal reflections here..."
+                            className="w-full h-full p-8 bg-white border-4 border-gray-100 rounded-[2.5rem] shadow-inner outline-none focus:border-indigo-400 transition-all font-medium text-lg leading-relaxed text-gray-700"
+                        />
+                        {isSavingNote && (
+                            <div className="absolute top-6 right-6 flex items-center gap-2 px-4 py-1.5 bg-emerald-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-top-2">
+                                <Check size={12} strokeWidth={4} /> Persistent Registry Saved
+                            </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={handleSaveNote}
+                        className="w-full py-6 bg-royal-900 text-white font-black rounded-3xl shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center justify-center gap-4 uppercase text-sm tracking-[0.4em] active:scale-95"
+                      >
+                         <Save size={24} /> Commit to Registry
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b-[6px] border-indigo-100 shadow-2xl px-6 py-6">
           <div className="max-w-7xl mx-auto flex flex-col xl:flex-row justify-between items-center gap-8">
               <div className="flex items-center gap-6">
@@ -183,6 +296,35 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                   <button onClick={() => setActiveAboutType('module')} className="px-8 py-3.5 bg-white text-royal-950 rounded-[1.8rem] font-black text-[10px] uppercase tracking-[0.25em] shadow-xl hover:scale-105 transition-all flex items-center gap-3 border-b-4 border-gray-200"><Layers size={18} className="text-indigo-600" /> ABOUT THIS MODULE</button>
                   <button onClick={() => setActiveAboutType('lesson')} className="px-8 py-3.5 bg-indigo-600 text-white rounded-[1.8rem] font-black text-[10px] uppercase tracking-[0.25em] shadow-xl hover:scale-105 transition-all flex items-center gap-3 border-b-4 border-indigo-900"><Sparkles size={18} className="text-gold-400" /> ABOUT THIS LESSON</button>
               </div>
+          </div>
+      </div>
+
+      {/* REAL-TIME TELEMETRY PANEL */}
+      <div className="bg-royal-950 border-b-[10px] border-black py-10 shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 opacity-5 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          <div className="max-w-4xl mx-auto px-6 grid grid-cols-1 md:grid-cols-2 gap-10 relative z-10">
+              <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
+                  <div className="p-5 bg-gold-500 text-white rounded-[1.5rem] shadow-[0_0_30px_rgba(245,158,11,0.4)] group-hover:scale-110 transition-transform"><Trophy size={40} /></div>
+                  <div>
+                      <p className="text-gold-400 text-xs font-black uppercase tracking-[0.4em] mb-2">LESSON SCORE</p>
+                      <h4 className="text-6xl font-black text-white leading-none tracking-tighter">
+                        {currentScore.correct} <span className="text-2xl text-white/30 tracking-tight">/ {currentScore.total}</span>
+                      </h4>
+                  </div>
+              </div>
+              <div className="bg-white/5 backdrop-blur-xl p-8 rounded-[3rem] border border-white/10 flex items-center gap-8 group">
+                  <div className="p-5 bg-indigo-500 text-white rounded-[1.5rem] shadow-[0_0_30px_rgba(79,70,229,0.4)] group-hover:scale-110 transition-transform"><Clock size={40} /></div>
+                  <div>
+                      <p className="text-indigo-300 text-xs font-black uppercase tracking-[0.4em] mb-2">LESSON DURATION</p>
+                      <h4 className="text-6xl font-mono font-black text-white leading-none tracking-tighter">
+                        {formatTime(elapsedSeconds)}
+                      </h4>
+                  </div>
+              </div>
+          </div>
+          <div className="mt-8 flex justify-center items-center gap-4">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.6em]">Registry Analytics Synchronized In Real Time</p>
           </div>
       </div>
 
@@ -236,9 +378,17 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
 const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
     const isAnswered = !!selectedOptionId;
+    const selectedOption = quiz.options.find((o: any) => o.id === selectedOptionId);
+    const correctSelected = selectedOption?.isCorrect;
+
     return (
-        <div className="bg-white rounded-[4rem] shadow-2xl border-[8px] border-gray-50 p-12 md:p-16 relative transition-all hover:border-indigo-100 group/card">
-            <div className="flex gap-10 mb-14 items-start">
+        <div className="bg-white rounded-[4rem] shadow-2xl border-[8px] border-gray-50 p-12 md:p-16 relative transition-all hover:border-indigo-100 group/card overflow-hidden">
+            {/* Background Motion Accent */}
+            {isAnswered && (
+                <div className={`absolute inset-0 opacity-5 pointer-events-none transition-all duration-1000 ${correctSelected ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`}></div>
+            )}
+
+            <div className="flex gap-10 mb-14 items-start relative z-10">
                 <span className="shrink-0 w-24 h-24 rounded-[2.5rem] bg-royal-950 text-white font-black flex items-center justify-center text-5xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border-b-8 border-black group-hover/card:scale-110 transition-transform duration-500">{index}</span>
                 <div className="flex-1 space-y-6">
                     {(quiz.referenceText || quiz.sourceNoteTitle) && (
@@ -249,29 +399,74 @@ const QuizCard = ({ quiz, index, selectedOptionId, onSelect }: any) => {
                     <h3 className="font-black text-3xl md:text-5xl text-gray-950 leading-tight tracking-tight">{quiz.text}</h3>
                 </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                 {quiz.options.map((opt: any) => {
-                    const isSelected = selectedOptionId === opt.id;
+                    const isCurrentSelected = selectedOptionId === opt.id;
                     const isCorrect = opt.isCorrect;
-                    let cls = "w-full text-left p-8 rounded-[2.5rem] border-4 transition-all duration-700 flex flex-col gap-6 relative overflow-hidden ";
-                    if (!isAnswered) cls += "bg-white border-gray-100 hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-2xl hover:-translate-y-2 shadow-sm";
-                    else if (isCorrect) cls += "bg-green-50 border-green-500 shadow-2xl scale-[1.05] z-10 text-green-950 animate-in pop-in";
-                    else if (isSelected) cls += "bg-red-50 border-red-500 shadow-xl text-red-950 scale-95 opacity-90";
-                    else cls += "opacity-30 grayscale pointer-events-none blur-[1px]";
+                    
+                    let cardClass = "w-full text-left p-10 rounded-[3rem] border-4 transition-all duration-700 flex flex-col gap-6 relative group/opt overflow-hidden ";
+                    let badgeClass = "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-2xl border-4 shrink-0 shadow-inner transition-all duration-500 ";
+                    
+                    if (!isAnswered) {
+                        cardClass += "bg-white border-gray-100 hover:border-indigo-400 hover:bg-indigo-50 hover:shadow-[0_40px_80px_-20px_rgba(79,70,229,0.2)] hover:-translate-y-2 shadow-sm";
+                        badgeClass += "bg-gray-50 border-gray-100 text-gray-400 group-hover/opt:bg-indigo-600 group-hover/opt:text-white group-hover/opt:border-indigo-700";
+                    } else {
+                        // REVEAL SYSTEM LOGIC
+                        if (correctSelected) {
+                            // Logic A: Correct selected
+                            if (isCorrect) {
+                                cardClass += "bg-emerald-50 border-emerald-500 shadow-2xl scale-[1.08] z-20 text-emerald-950 ring-[15px] ring-emerald-500/10 animate-in zoom-in-95 duration-1000";
+                                badgeClass += "bg-emerald-500 text-white border-emerald-600 rotate-[360deg]";
+                            } else {
+                                cardClass += "bg-red-50 border-red-200 opacity-60 scale-95 grayscale-[0.5] blur-[0.5px]";
+                                badgeClass += "bg-red-500 text-white border-red-600";
+                            }
+                        } else {
+                            // Logic B: Incorrect selected
+                            if (isCurrentSelected) {
+                                cardClass += "bg-red-50 border-red-500 shadow-xl text-red-950 scale-100 animate-in shake duration-500 z-10";
+                                badgeClass += "bg-red-600 text-white border-red-700";
+                            } else if (isCorrect) {
+                                cardClass += "bg-emerald-50 border-emerald-400 shadow-2xl scale-[1.08] z-20 text-emerald-950 ring-[15px] ring-emerald-500/10 animate-in zoom-in-95 duration-1000";
+                                badgeClass += "bg-emerald-500 text-white border-emerald-600 rotate-[360deg]";
+                            } else {
+                                cardClass += "bg-orange-50 border-orange-300 opacity-80 scale-95";
+                                badgeClass += "bg-orange-500 text-white border-orange-600";
+                            }
+                        }
+                    }
+
                     return (
-                        <button key={opt.id} disabled={isAnswered} onClick={() => onSelect(opt)} className={cls}>
+                        <button key={opt.id} disabled={isAnswered} onClick={() => onSelect(opt)} className={cardClass}>
                             <div className="flex items-center gap-6">
-                                <span className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl border-4 shrink-0 shadow-inner transition-colors duration-500 ${isAnswered && isCorrect ? 'bg-green-500 text-white border-green-600' : isAnswered && isSelected && !isCorrect ? 'bg-red-500 text-white border-red-600' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>{opt.label}</span>
-                                <span className="font-black text-xl flex-1 tracking-tight leading-snug">{opt.text}</span>
-                                {isAnswered && isCorrect && <CheckCircle size={36} className="text-green-600 shrink-0 drop-shadow-lg animate-bounce" />}
-                                {isAnswered && isSelected && !isCorrect && <X size={36} className="text-red-600 shrink-0 drop-shadow-lg animate-pulse" />}
+                                <span className={badgeClass}>{opt.label}</span>
+                                <span className="font-black text-2xl flex-1 tracking-tight leading-snug">{opt.text}</span>
+                                {isAnswered && isCorrect && <CheckCircle size={48} className="text-emerald-600 shrink-0 drop-shadow-xl animate-bounce" />}
+                                {isAnswered && isCurrentSelected && !isCorrect && <X size={48} className="text-red-600 shrink-0 drop-shadow-xl animate-pulse" />}
                             </div>
+                            
+                            {/* HYBRID BOLD MAGNIFYING REVEAL FOR EXPLANATIONS */}
                             {isAnswered && (
-                                <div className={`pt-6 border-t w-full animate-in slide-in-from-top-4 duration-1000 ${isCorrect ? 'border-green-200' : isSelected ? 'border-red-200' : 'border-gray-100'}`}>
-                                    <p className="text-base font-bold italic opacity-90 leading-relaxed">
-                                        <span className="text-[10px] font-black uppercase not-italic block mb-2 tracking-widest text-royal-400">Contextual Verification Audit:</span>
-                                        "{opt.explanation}"
-                                    </p>
+                                <div className={`pt-8 border-t-4 w-full animate-in slide-in-from-top-4 duration-1000 ${isCorrect ? 'border-emerald-200' : isCurrentSelected ? 'border-red-200' : 'border-orange-200'}`}>
+                                    <div className="flex items-start gap-4">
+                                        <div className={`mt-1 p-2 rounded-lg ${isCorrect ? 'bg-emerald-100 text-emerald-700' : isCurrentSelected ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            <Activity size={18} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="text-[10px] font-black uppercase block mb-2 tracking-[0.2em] opacity-60">System Contextual Audit:</span>
+                                            <p className="text-lg font-bold italic leading-relaxed">
+                                                "{opt.explanation}"
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {/* Magnifying Glass Icon Accent for revealed cards */}
+                            {isAnswered && (isCorrect || isCurrentSelected) && (
+                                <div className="absolute -bottom-4 -right-4 opacity-10 group-hover/opt:scale-125 transition-transform duration-1000">
+                                   {isCorrect ? <Sparkles size={100} /> : <AlertCircle size={100} />}
                                 </div>
                             )}
                         </button>

@@ -11,6 +11,7 @@ const DB_NEWS_KEY = 'bbl_db_news';
 const DB_TIMERS_KEY = 'bbl_db_timers';
 const DB_CERTIFICATES_KEY = 'bbl_db_certificates';
 const DB_HOMEPAGE_KEY = 'bbl_db_homepage';
+const DB_NOTES_KEY = 'bbl_db_user_notes';
 
 const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTagline: "The #1 Bible Quiz Platform",
@@ -72,6 +73,7 @@ class LessonService {
   private news: NewsItem[] = [];
   private timers: Record<string, number> = {}; 
   private certificates: Certificate[] = [];
+  private userNotes: Record<string, string> = {}; 
   private homepage: HomepageContent = DEFAULT_HOMEPAGE;
 
   constructor() {
@@ -103,10 +105,17 @@ class LessonService {
     const storedCerts = localStorage.getItem(DB_CERTIFICATES_KEY);
     if (storedCerts) this.certificates = JSON.parse(storedCerts);
 
+    const storedNotes = localStorage.getItem(DB_NOTES_KEY);
+    if (storedNotes) this.userNotes = JSON.parse(storedNotes);
+
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
     if (storedHomepage) {
       this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
     }
+  }
+
+  private forceSync() {
+    this.init();
   }
 
   private saveCourses() { localStorage.setItem(DB_COURSES_KEY, JSON.stringify(this.courses)); }
@@ -118,50 +127,96 @@ class LessonService {
   private saveTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
   private saveCertificates() { localStorage.setItem(DB_CERTIFICATES_KEY, JSON.stringify(this.certificates)); }
   private saveHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
+  private saveNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
 
-  async getCourses(): Promise<Course[]> { return this.courses; }
-  async getCourseById(id: string): Promise<Course | undefined> { return this.courses.find(c => c.id === id); }
+  async saveUserLessonNote(userId: string, lessonId: string, text: string): Promise<void> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    this.userNotes[key] = text;
+    this.saveNotes();
+  }
+
+  async getUserLessonNote(userId: string, lessonId: string): Promise<string> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    return this.userNotes[key] || "";
+  }
+
+  async getCourses(): Promise<Course[]> { 
+    this.forceSync();
+    return this.courses; 
+  }
+  
+  async getCourseById(id: string): Promise<Course | undefined> { 
+    this.forceSync();
+    return this.courses.find(c => c.id === id); 
+  }
   
   async getModules(): Promise<Module[]> { 
-    const stored = localStorage.getItem(DB_MODULES_KEY);
-    if (stored) this.modules = JSON.parse(stored);
+    this.forceSync();
     return this.modules; 
   }
   
-  async getModuleById(id: string): Promise<Module | undefined> { return this.modules.find(m => m.id === id); }
-  async getModulesByCourseId(courseId: string): Promise<Module[]> { return this.modules.filter(m => m.courseId === courseId); }
+  async getModuleById(id: string): Promise<Module | undefined> { 
+    this.forceSync();
+    return this.modules.find(m => m.id === id); 
+  }
+  
+  async getModulesByCourseId(courseId: string): Promise<Module[]> { 
+    this.forceSync();
+    return this.modules.filter(m => m.courseId === courseId); 
+  }
 
   async getLessons(): Promise<Lesson[]> { 
-    const stored = localStorage.getItem(DB_LESSONS_KEY);
-    if (stored) this.lessons = JSON.parse(stored);
+    this.forceSync();
     return this.lessons; 
   }
   
-  async getLessonById(id: string): Promise<Lesson | undefined> { return this.lessons.find(l => l.id === id); }
-  async getLessonsByModuleId(moduleId: string): Promise<Lesson[]> { return this.lessons.filter(l => l.moduleId === moduleId); }
+  async getLessonById(id: string): Promise<Lesson | undefined> { 
+    this.forceSync();
+    return this.lessons.find(l => l.id === id); 
+  }
+  
+  async getLessonsByModuleId(moduleId: string): Promise<Lesson[]> { 
+    this.forceSync();
+    return this.lessons.filter(l => l.moduleId === moduleId); 
+  }
 
   async getLessonsByIds(ids: string[]): Promise<Lesson[]> {
+    this.forceSync();
     return this.lessons.filter(l => ids.includes(l.id));
   }
 
   async publishCourse(course: Course): Promise<void> {
+    this.forceSync();
     const idx = this.courses.findIndex(c => c.id === course.id);
-    if (idx >= 0) this.courses[idx] = course;
-    else this.courses.unshift(course);
+    if (idx >= 0) {
+      this.courses[idx] = { ...course };
+    } else {
+      this.courses.unshift({ ...course });
+    }
     this.saveCourses();
   }
 
   async publishModule(module: Module): Promise<void> {
+    this.forceSync();
     const idx = this.modules.findIndex(m => m.id === module.id);
-    if (idx >= 0) this.modules[idx] = module;
-    else this.modules.unshift(module);
+    if (idx >= 0) {
+      this.modules[idx] = { ...module };
+    } else {
+      this.modules.unshift({ ...module });
+    }
     this.saveModules();
   }
 
   async publishLesson(lesson: Lesson): Promise<void> {
+    this.forceSync();
     const index = this.lessons.findIndex(l => l.id === lesson.id);
-    if (index >= 0) this.lessons[index] = lesson;
-    else this.lessons.unshift(lesson);
+    if (index >= 0) {
+      this.lessons[index] = { ...lesson };
+    } else {
+      this.lessons.unshift({ ...lesson });
+    }
     this.saveLessons();
     
     if (lesson.moduleId) {
@@ -174,6 +229,7 @@ class LessonService {
   }
 
   async deleteLesson(id: string): Promise<void> {
+    this.forceSync();
     this.lessons = this.lessons.filter(l => l.id !== id);
     this.saveLessons();
     this.modules.forEach(m => {
@@ -186,6 +242,7 @@ class LessonService {
   async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.saveHomepage(); }
 
   async getStudentSummary(studentId: string) {
+      this.forceSync();
       const userAttempts = this.attempts.filter(a => a.studentId === studentId).sort((a,b) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
       const uniqueLessonIds = Array.from(new Set(this.attempts.filter(a => a.studentId === studentId).map(a => a.lessonId)));
       
@@ -245,6 +302,7 @@ class LessonService {
   }
 
   async getEligibleModulesForUser(userId: string): Promise<Module[]> {
+      this.forceSync();
       const eligible: Module[] = [];
       for (const mod of this.modules) {
           let lessonsProcessed = 0;
@@ -281,6 +339,7 @@ class LessonService {
   }
 
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
+      this.forceSync();
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
       const lesson = this.lessons.find(l => l.id === lessonId);
       if (!lesson) return false;
@@ -293,42 +352,65 @@ class LessonService {
   }
 
   async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
+    this.forceSync();
     const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
     this.attempts.push(attempt);
     this.saveAttempts();
   }
 
-  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
+  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { 
+    this.forceSync();
+    return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); 
+  }
+  
   async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
   async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
 
-  async getResources(): Promise<Resource[]> { return this.resources; }
+  async getResources(): Promise<Resource[]> { 
+    this.forceSync();
+    return this.resources; 
+  }
   async addResource(resource: Resource, actor: User): Promise<void> { 
+      this.forceSync();
       this.resources.unshift(resource);
       this.saveResources(); 
   }
   async deleteResource(id: string, actor: User): Promise<void> {
+      this.forceSync();
       this.resources = this.resources.filter(r => r.id !== id);
       this.saveResources();
   }
 
-  async getNews(): Promise<NewsItem[]> { return this.news; }
+  async getNews(): Promise<NewsItem[]> { 
+    this.forceSync();
+    return this.news; 
+  }
   async addNews(news: NewsItem, actor: User): Promise<void> { 
+      this.forceSync();
       this.news.unshift(news);
       this.saveNews(); 
   }
   async deleteNews(id: string, actor: User): Promise<void> {
+      this.forceSync();
       this.news = this.news.filter(n => n.id !== id);
       this.saveNews();
   }
 
-  async getUserCertificates(userId: string): Promise<Certificate[]> { return this.certificates.filter(c => c.userId === userId); }
-  async getAllCertificates(): Promise<Certificate[]> { return this.certificates; }
+  async getUserCertificates(userId: string): Promise<Certificate[]> { 
+    this.forceSync();
+    return this.certificates.filter(c => c.userId === userId); 
+  }
+  async getAllCertificates(): Promise<Certificate[]> { 
+    this.forceSync();
+    return this.certificates; 
+  }
   async verifyCertificate(code: string): Promise<Certificate | undefined> {
-      return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
+    this.forceSync();
+    return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
   }
 
   async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
+      this.forceSync();
       const mod = this.modules.find(m => m.id === moduleId);
       if (!mod) throw new Error("Module not found");
       const cert: Certificate = {
@@ -348,7 +430,6 @@ class LessonService {
       return cert;
   }
 
-  // --- UPDATED HIERARCHICAL EXCEL PARSER (SHEETS 1-8) ---
   async parseExcelUpload(file: File): Promise<LessonDraft> {
     await new Promise(resolve => setTimeout(resolve, 2000));
     const errors: ImportError[] = [];
@@ -358,7 +439,6 @@ class LessonService {
         return { courseMetadata: null, modules: [], lessons: [], isValid: false, errors };
     }
 
-    // Mock successful 8-sheet hierarchical mapping
     const mockModule: Module = {
         id: 'GENESIS-MOD-1',
         courseId: 'BIBLE-LEAD-101',
@@ -382,9 +462,6 @@ class LessonService {
         targetAudience: 'All',
         book: 'Genesis',
         chapter: 1,
-        leadership_note_title: 'God as Executive',
-        leadership_note_body: 'In the beginning...',
-        // Fix: Added missing leadershipNotes property to satisfy Lesson interface
         leadershipNotes: [], 
         author: 'Academy',
         authorId: 'sys',
@@ -409,7 +486,6 @@ class LessonService {
     };
 
     const draft: LessonDraft = {
-        // Fix: Added missing totalModulesRequired property to courseMetadata mock
         courseMetadata: {
             id: 'BIBLE-LEAD-101',
             title: 'Foundations',
@@ -417,6 +493,7 @@ class LessonService {
             level: 'student (Beginner)',
             language: 'English',
             author: 'Academy',
+            authorId: 'usr_main_admin',
             totalModulesRequired: 1,
             about: []
         },
@@ -430,10 +507,27 @@ class LessonService {
   }
 
   async commitDraft(draft: LessonDraft, author: User): Promise<void> {
+    this.forceSync();
     if (!draft.isValid) return;
-    if (draft.courseMetadata) await this.publishCourse(draft.courseMetadata);
-    for (const mod of draft.modules) await this.publishModule(mod);
-    for (const les of draft.lessons) await this.publishLesson(les);
+    
+    if (draft.courseMetadata) {
+        draft.courseMetadata.authorId = author.id;
+        draft.courseMetadata.organizationId = author.organizationId;
+        draft.courseMetadata.author = author.name;
+        await this.publishCourse(draft.courseMetadata);
+    }
+    
+    for (const mod of draft.modules) {
+        mod.courseId = draft.courseMetadata?.id || mod.courseId;
+        if (!mod.level && draft.courseMetadata) mod.level = draft.courseMetadata.level;
+        await this.publishModule(mod);
+    }
+    
+    for (const les of draft.lessons) {
+        les.authorId = author.id;
+        les.author = author.name;
+        await this.publishLesson(les);
+    }
   }
 }
 

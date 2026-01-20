@@ -55,6 +55,8 @@ export interface Course {
   level: ProficiencyLevel;
   language: string;
   author: string;
+  authorId?: string; // Metadata for access control
+  organizationId?: string; // Metadata for access control
   totalModulesRequired: number; 
   about: AboutSegment[]; // From Sheet 2
 }
@@ -182,7 +184,6 @@ export interface HomepageContent {
   feature2Button: string;
   feature3Title: string;
   feature3Desc: string;
-  // Fixed: Removed duplicate feature3Button identifiers
   feature3Button: string;
   newsTagline: string;
   newsHeading: string;

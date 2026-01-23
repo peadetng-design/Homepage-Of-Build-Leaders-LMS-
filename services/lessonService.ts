@@ -114,6 +114,10 @@ class LessonService {
     }
   }
 
+  /**
+   * CRITICAL: Force synchronization from LocalStorage before any read.
+   * This fixes the bug where newly added content doesn't show up in tables immediately.
+   */
   private forceSync() {
     this.init();
   }

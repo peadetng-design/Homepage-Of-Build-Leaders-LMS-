@@ -1,4 +1,3 @@
-
 export enum UserRole {
   GUEST = 'GUEST',
   STUDENT = 'STUDENT',
@@ -31,6 +30,7 @@ export interface User {
   createdBy?: string;
   curatedLessonIds?: string[];
   earnedCertificates?: string[];
+  customModuleOrder?: Record<string, string[]>; // Map of courseId to ordered moduleId array
 }
 
 export interface AboutSegment {
@@ -161,6 +161,18 @@ export interface HomepageContent {
   heroTagline: string;
   heroTitle: string;
   heroSubtitle: string;
+  
+  stats1Val: string;
+  stats1Label: string;
+  stats2Val: string;
+  stats2Label: string;
+  stats3Val: string;
+  stats3Label: string;
+
+  ctaHeading: string;
+  ctaSubheading: string;
+  ctaButton: string;
+
   aboutMission: string;
   aboutHeading: string;
   aboutBody: string;
@@ -168,14 +180,17 @@ export interface HomepageContent {
   knowledgeDesc: string;
   communityTitle: string;
   communityDesc: string;
+  
   whyBblHeading: string;
   whyBblItem1: string;
   whyBblItem2: string;
   whyBblItem3: string;
   whyBblItem4: string;
+  
   resourcesHeading: string;
   resourcesTitle: string;
   resourcesSubtitle: string;
+  
   feature1Title: string;
   feature1Desc: string;
   feature1Button: string;
@@ -185,6 +200,7 @@ export interface HomepageContent {
   feature3Title: string;
   feature3Desc: string;
   feature3Button: string;
+  
   newsTagline: string;
   newsHeading: string;
   news1Tag: string;
@@ -195,6 +211,7 @@ export interface HomepageContent {
   news2Date: string;
   news2Title: string;
   news2Content: string;
+  
   footerTagline: string;
   footerSocials: string;
   footerContactHeading: string;
@@ -275,7 +292,7 @@ export interface Resource {
   id: string;
   title: string;
   description: string;
-  fileType: 'pdf' | 'doc' | 'image' | 'other';
+  fileType: 'pdf' | 'doc' | 'image' | 'video' | 'link' | 'other';
   url: string;
   size: string;
   uploadedAt: string;

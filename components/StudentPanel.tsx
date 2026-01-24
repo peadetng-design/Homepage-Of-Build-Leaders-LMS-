@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { User, Lesson, Module, Course, AboutSegment } from '../types';
 import { lessonService } from '../services/lessonService';
-import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity } from 'lucide-react';
+import { authService } from '../services/authService';
+import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3 } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
   activeTab: 'join' | 'browse' | 'lessons';
   onTakeLesson?: (lessonId: string) => void;
+  // New props for Edit Capability in "My List" mode
+  isManagementMode?: boolean;
+  onUpdateUser?: (user: User) => void;
 }
 
 interface LessonStatusData {
@@ -15,7 +19,7 @@ interface LessonStatusData {
     timeSpent: number;
 }
 
-const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson }) => {
+const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson, isManagementMode = false, onUpdateUser }) => {
   const [coursesByLevel, setCoursesByLevel] = useState<Record<string, Course[]>>({
     'student (Beginner)': [],
     'Mentor, Organization & Parent (Intermediate)': [],
@@ -27,6 +31,8 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   const [summary, setSummary] = useState<any>(null);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [newOrderValue, setNewOrderValue] = useState<string>("");
 
   // Modal States
   const [aboutModal, setAboutModal] = useState<{ isOpen: boolean; title: string; segments: AboutSegment[] }>({
@@ -62,6 +68,20 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       const allLessons = await lessonService.getLessons();
 
       const isSysAdmin = (email: string) => email === 'peadetng@gmail.com';
+
+      // 1. Identify "Provider" for custom orders
+      let providerOrder: Record<string, string[]> = currentUser.customModuleOrder || {};
+      
+      // If student, check mentor then org for custom order overrides
+      if (!isManagementMode && (currentUser.mentorId || currentUser.organizationId)) {
+          const managerId = currentUser.mentorId || currentUser.organizationId;
+          if (managerId) {
+              const manager = await authService.getUserById(managerId);
+              if (manager?.customModuleOrder) {
+                  providerOrder = manager.customModuleOrder;
+              }
+          }
+      }
 
       // FIX: Ensure global courses or courses by current user are visible
       const filteredCourses = allCourses.filter(c => {
@@ -100,10 +120,11 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       setCoursesByLevel(levels);
 
       const modMap: Record<string, Module[]> = {};
-      allModules.forEach(m => {
-          if (!modMap[m.courseId]) modMap[m.courseId] = [];
-          modMap[m.courseId].push(m);
-      });
+      for (const course of filteredCourses) {
+          const customOrder = providerOrder[course.id];
+          const sortedModules = await lessonService.getModulesByCourseId(course.id, customOrder);
+          modMap[course.id] = sortedModules;
+      }
       setModulesByCourse(modMap);
 
       const lesMap: Record<string, Lesson[]> = {};
@@ -132,6 +153,31 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
        console.error("Hierarchy Sync Failure:", e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdateOrder = async (courseId: string, moduleId: string, newVal: number) => {
+    if (!onUpdateUser) return;
+    
+    const courseModules = [...(modulesByCourse[courseId] || [])];
+    const targetIdx = courseModules.findIndex(m => m.id === moduleId);
+    if (targetIdx === -1) return;
+
+    // Remove item and re-insert at new position
+    const [movedItem] = courseModules.splice(targetIdx, 1);
+    const destinationIdx = Math.max(0, Math.min(newVal - 1, courseModules.length));
+    courseModules.splice(destinationIdx, 0, movedItem);
+
+    // Get the new array of IDs
+    const newOrderedIds = courseModules.map(m => m.id);
+    
+    try {
+        const updatedUser = await authService.saveCustomModuleOrder(currentUser.id, courseId, newOrderedIds);
+        onUpdateUser(updatedUser);
+        setEditingModuleId(null);
+        // fetchHierarchy will trigger due to currentUser dependency
+    } catch (e) {
+        console.error("Failed to save custom order:", e);
     }
   };
 
@@ -168,12 +214,12 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                   </div>
               </div>
 
-              {!isEmpty && (
+              {!isEmpty && isManagementMode && (
                 <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-3xl shadow-sm animate-in fade-in slide-in-from-right-4">
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-amber-200 text-amber-800 rounded-xl"><InfoIcon size={20} /></div>
                     <p className="text-royal-900 font-black uppercase text-[10px] md:text-xs tracking-wider leading-tight">
-                      IN ORDER TO REARRANGE THE ORDER OF MODULES IN THIS COURSE, GO TO “MY LIST” UNDER PERSONAL CONSOLE (Your members too will then access your module arrangement, based on you and your members’ preference).
+                      Registry Management: Change the Module Order numbers to rearrange your curriculum sequence. Linked members will inherit this structure automatically.
                     </p>
                   </div>
                 </div>
@@ -201,9 +247,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                             <tbody className="divide-y-0">
                                 {courses.map(course => {
                                     const courseModules = modulesByCourse[course.id] || [];
-                                    return courseModules.map((mod) => {
+                                    return courseModules.map((mod, modIndex) => {
                                         const modLessons = lessonsByModule[mod.id] || [];
-                                        return modLessons.map((les) => (
+                                        return modLessons.map((les, lesIndex) => (
                                             <tr key={les.id} className="group hover:bg-royal-50/10 transition-all align-top">
                                                 <td className="p-3 border-2 border-gray-300 bg-white">
                                                     <div className="h-[140px] flex flex-col justify-between">
@@ -215,15 +261,48 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                     </div>
                                                 </td>
                                                 <td className="p-3 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
-                                                    <div className="h-[140px] flex flex-col justify-center items-center">
-                                                        <span className="text-3xl font-serif font-black text-royal-900 leading-none">Module {mod.order}</span>
-                                                        <p className="text-[7px] font-black text-gray-300 uppercase mt-2">Sequential Unit</p>
+                                                    <div className="h-[140px] flex flex-col justify-center items-center gap-3">
+                                                        {editingModuleId === mod.id && lesIndex === 0 ? (
+                                                            <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
+                                                                <input 
+                                                                    autoFocus
+                                                                    type="number"
+                                                                    className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none"
+                                                                    value={newOrderValue}
+                                                                    onChange={(e) => setNewOrderValue(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue));
+                                                                        if (e.key === 'Escape') setEditingModuleId(null);
+                                                                    }}
+                                                                />
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button>
+                                                                    <button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <span className="text-3xl font-serif font-black text-royal-900 leading-none">Module {modIndex + 1}</span>
+                                                                <p className="text-[7px] font-black text-gray-300 uppercase mt-2">Sequential Unit</p>
+                                                                {isManagementMode && lesIndex === 0 && (
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setEditingModuleId(mod.id);
+                                                                            setNewOrderValue((modIndex + 1).toString());
+                                                                        }}
+                                                                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"
+                                                                    >
+                                                                        <Edit3 size={12} /> Edit Order
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="p-3 border-2 border-gray-300 bg-white">
                                                     <div className="h-[140px] flex flex-col justify-between">
                                                         <div className="shrink-0">
-                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">M-{mod.order}</p>
+                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">M-{modIndex + 1}</p>
                                                             <h4 className="text-lg font-serif font-black text-gray-900 uppercase truncate">{mod.title}</h4>
                                                         </div>
                                                         <button onClick={() => setAboutModal({ isOpen: true, title: mod.title, segments: mod.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-[14px] uppercase tracking-widest transition-all mt-4 border border-royal-200">READ MORE</button>
@@ -231,14 +310,14 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                 </td>
                                                 <td className="p-3 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
                                                     <div className="h-[140px] flex flex-col justify-center items-center">
-                                                        <span className="text-3xl font-serif font-black text-royal-900 leading-none">Lesson {les.orderInModule}</span>
+                                                        <span className="text-3xl font-serif font-black text-royal-900 leading-none">Lesson {lesIndex + 1}</span>
                                                         <p className="text-[7px] font-black text-gray-300 uppercase mt-2">Current Position</p>
                                                     </div>
                                                 </td>
                                                 <td className="p-3 border-2 border-gray-300 bg-white">
                                                     <div className="h-[140px] flex flex-col justify-between">
                                                         <div className="shrink-0">
-                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">L-{les.orderInModule}</p>
+                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">L-{lesIndex + 1}</p>
                                                             <h4 className="text-lg font-serif font-black text-gray-900 uppercase truncate">{les.title}</h4>
                                                         </div>
                                                         <button onClick={() => setAboutModal({ isOpen: true, title: les.title, segments: les.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-[14px] uppercase tracking-widest transition-all mt-4 border border-royal-200">READ MORE</button>
@@ -285,7 +364,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
             <div>
               <div className="flex items-center gap-8">
                 <div className="p-5 bg-indigo-600 rounded-[2rem] text-white shadow-2xl animate-float border-b-8 border-indigo-900"><Layers size={48} /></div>
-                <div><h2 className="text-6xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">Curriculum Browser</h2><div className="flex items-center gap-3 mt-4 ml-1"><span className="w-4 h-4 bg-indigo-100 rounded-full flex items-center justify-center"><CheckCircle size={10} className="text-indigo-600" /></span><p className="text-indigo-600 font-black uppercase tracking-[0.5em] text-[11px]">Independent Matrix Navigation (TABLE 3 Protocol)</p></div></div>
+                <div><h2 className="text-6xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">Curriculum Browser</h2><div className="flex items-center gap-3 mt-4 ml-1"><span className="w-4 h-4 bg-indigo-100 rounded-full flex items-center justify-center"><CheckCircle size={10} className="text-indigo-600" /></span><p className="text-indigo-600 font-black uppercase tracking-[0.5em] text-[11px]">{isManagementMode ? "Registry Management Protocol" : "Independent Matrix Navigation"} (TABLE 3 Protocol)</p></div></div>
               </div>
             </div>
             <div className="flex items-center gap-5">

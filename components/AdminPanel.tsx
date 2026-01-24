@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, AuditLog, Invite, Lesson, JoinRequest, Resource, NewsItem, Module, Certificate } from '../types';
 import { authService } from '../services/authService';
 import { lessonService } from '../services/lessonService';
 import LessonUpload from './LessonUpload';
+import StudentPanel from './StudentPanel';
 import Tooltip from './Tooltip'; 
 import CertificateGenerator from './CertificateGenerator';
 import { 
@@ -16,12 +16,13 @@ import {
 
 interface AdminPanelProps {
   currentUser: User;
+  onUpdateUser?: (user: User) => void;
   activeTab?: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'news' | 'resources';
   onTabChange?: (tab: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'news' | 'resources') => void;
   onBack?: () => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange, onBack }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange, onBack, onUpdateUser }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'news' | 'resources'>('users');
   const [curatedSubTab, setCuratedSubTab] = useState<'modules' | 'resources'>('modules');
 
@@ -103,11 +104,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
         const data = await authService.getJoinRequests(currentUser);
         setRequests(data);
       } else if (activeTab === 'curated') {
-        const ids = currentUser.curatedLessonIds || [];
-        const lData = await lessonService.getLessonsByIds(ids);
-        setLessons(lData);
-        const rData = await lessonService.getResources();
-        setResources(rData);
+        // Handled by StudentPanel in management mode
       }
     } catch (error) {
       console.error(error);
@@ -209,13 +206,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
     } catch (err: any) { setNotification({ msg: err.message, type: 'error' }); }
   };
 
-  const getContentType = () => {
-      if (activeTab === 'lessons') return 'lesson';
-      if (activeTab === 'news') return 'news';
-      if (activeTab === 'resources') return 'resource';
-      return 'lesson';
-  };
-
   return (
     <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden min-h-[700px] animate-in fade-in slide-in-from-bottom-4">
       <div className="bg-royal-900 px-8 pt-16 pb-12 text-white flex flex-col xl:flex-row justify-between items-start xl:items-center gap-8 border-b-8 border-gold-500">
@@ -268,6 +258,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
 
       <div className="p-8 bg-[#fdfdfd]">
         
+        {/* CURATED TAB - NOW HOSTS REORDERABLE TABLE 3 CURRICULUM */}
+        {activeTab === 'curated' && (
+           <div className="space-y-6">
+              <div className="mb-6 bg-purple-50 p-6 rounded-[2rem] border-4 border-purple-100 shadow-sm flex items-center gap-6 animate-in slide-in-from-top-4">
+                 <div className="p-4 bg-purple-600 text-white rounded-2xl shadow-xl"><LayoutDashboard size={32}/></div>
+                 <div>
+                    <h3 className="text-2xl font-serif font-black text-purple-900 uppercase tracking-tight leading-none">Curriculum Orchestration</h3>
+                    <p className="text-purple-700 font-bold mt-1 text-sm">Rearrange modules below to customize the learning pathway for yourself and your linked members.</p>
+                 </div>
+              </div>
+              <StudentPanel 
+                currentUser={currentUser} 
+                activeTab="lessons" 
+                isManagementMode={true}
+                onUpdateUser={onUpdateUser}
+              />
+           </div>
+        )}
+
         {/* USERS TAB - BEAUTIFUL GRID TABLE WITH PERFORMANCE STATS */}
         {activeTab === 'users' && (
           <div className="space-y-6">

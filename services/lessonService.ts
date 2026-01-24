@@ -1,4 +1,4 @@
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError, LeadershipNote, ProficiencyLevel } from '../types';
 import { authService } from './authService';
 
 const DB_COURSES_KEY = 'bbl_db_courses';
@@ -16,48 +16,66 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTagline: "The #1 Bible Quiz Platform",
   heroTitle: "Build Biblical Leaders",
   heroSubtitle: "Empowering the next generation through interactive study, community competition, and spiritual growth.",
+  
+  stats1Val: "24",
+  stats1Label: "Active Groups",
+  stats2Val: "24",
+  stats2Label: "Dedicated Mentors",
+  stats3Val: "210",
+  stats3Label: "Engaged Students",
+
+  ctaHeading: "Start your Leadership Group",
+  ctaSubheading: "Join the movement of discipleship today.",
+  ctaButton: "Register Group Now",
+
   aboutMission: "Our Mission",
   aboutHeading: "Raising Up the Next Generation",
-  aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God.",
+  aboutBody: "Build Biblical Leaders is more than just a quiz platform. It is a comprehensive discipleship ecosystem designed to immerse students in the Word of God. We believe that hiding God's word in young hearts creates a foundation for lifelong leadership.",
+  
   knowledgeTitle: "Knowledge",
   knowledgeDesc: "Deep biblical literacy & understanding",
   communityTitle: "Community",
   communityDesc: "Faith-based connection & growth",
+  
   whyBblHeading: "Why BBL?",
   whyBblItem1: "Structured memorization plans",
   whyBblItem2: "Real-time competition & leaderboards",
   whyBblItem3: "Role-based tools for Mentors & Parents",
   whyBblItem4: "District & Regional tournament support",
+  
   resourcesHeading: "Study Materials",
   resourcesTitle: "Equipping the Saints",
-  resourcesSubtitle: "Everything you need to succeed in your quizzing journey.",
+  resourcesSubtitle: "Everything you need to succeed in your quizzing journey, from printable flashcards to AI-generated practice tests.",
+  
   feature1Title: "Study Guides",
-  feature1Desc: "Comprehensive chapter-by-chapter breakdowns.",
+  feature1Desc: "Comprehensive chapter-by-chapter breakdowns and commentaries.",
   feature1Button: "Access Now",
   feature2Title: "Flashcards",
-  feature2Desc: "Digital and printable sets.",
+  feature2Desc: "Digital and printable sets optimized for spaced repetition.",
   feature2Button: "Access Now",
   feature3Title: "Quiz Generator",
-  feature3Desc: "AI-powered custom quizzes.",
+  feature3Desc: "AI-powered custom quizzes to target your weak areas.",
   feature3Button: "Access Now",
+  
   newsTagline: "Latest Updates",
   newsHeading: "News & Announcements",
   news1Tag: "Tournament",
   news1Date: "Oct 15, 2023",
   news1Title: "Fall District Finals Registration Open",
-  news1Content: "Team registration for the upcoming district finals is now live.",
+  news1Content: "Team registration for the upcoming district finals at First Baptist Church is now live. Ensure all student rosters are updated by Sept 30th.",
   news2Tag: "New Feature",
   news2Date: "Sep 28, 2023",
   news2Title: "AI-Powered Study Buddy Launched",
-  news2Content: "Try out the new AI generator in the Student Dashboard!",
-  footerTagline: "Empowering the next generation of faith-filled leaders.",
+  news2Content: "We've integrated Gemini AI to generate infinite practice questions tailored to your specific study material. Try it out in the Student Dashboard!",
+  
+  footerTagline: "Empowering the next generation of faith-filled leaders through the rigorous study of the Word of God.",
   footerSocials: "Facebook, Twitter, Instagram",
   footerContactHeading: "Contact Us",
   footerEmail: "contact@buildbiblicalleaders.com",
   footerPhone: "+1 (555) 123-4567",
   footerAddress: "123 Faith Lane, Grace City, GC 77777",
   footerQuickInfoHeading: "Quick Info",
-  footerQuickInfoItems: "Tournament Schedule, Discipleship Resources, Mentor Guidelines",
+  footerQuickInfoItems: "Tournament Schedule, Discipleship Resources, Mentor Guidelines, Safety Policy",
   footerCopyright: "© 2024 Build Biblical Leaders. All rights reserved.",
   footerPrivacyText: "Privacy Policy",
   footerTermsText: "Terms of Service"
@@ -128,6 +146,20 @@ class LessonService {
   private saveHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
   private saveNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
 
+  // Helper to purge stale data associated with a lesson
+  private purgeStaleLessonData(lessonId: string) {
+    this.attempts = this.attempts.filter(a => a.lessonId !== lessonId);
+    Object.keys(this.timers).forEach(key => {
+        if (key.endsWith(`_${lessonId}`)) delete this.timers[key];
+    });
+    Object.keys(this.userNotes).forEach(key => {
+        if (key.endsWith(`_${lessonId}`)) delete this.userNotes[key];
+    });
+    this.saveAttempts();
+    this.saveTimers();
+    this.saveNotes();
+  }
+
   async saveUserLessonNote(userId: string, lessonId: string, text: string): Promise<void> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
@@ -161,9 +193,21 @@ class LessonService {
     return this.modules.find(m => m.id === id); 
   }
   
-  async getModulesByCourseId(courseId: string): Promise<Module[]> { 
+  async getModulesByCourseId(courseId: string, customOrder?: string[]): Promise<Module[]> { 
     this.forceSync();
-    return this.modules.filter(m => m.courseId === courseId); 
+    const filtered = this.modules.filter(m => m.courseId === courseId);
+    
+    if (customOrder && customOrder.length > 0) {
+        // Create a map for quick lookup
+        const orderMap = new Map(customOrder.map((id, idx) => [id, idx]));
+        return [...filtered].sort((a, b) => {
+            const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+            const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+            return idxA - idxB;
+        });
+    }
+    
+    return filtered.sort((a, b) => a.order - b.order);
   }
 
   async getLessons(): Promise<Lesson[]> { 
@@ -178,7 +222,7 @@ class LessonService {
   
   async getLessonsByModuleId(moduleId: string): Promise<Lesson[]> { 
     this.forceSync();
-    return this.lessons.filter(l => l.moduleId === moduleId); 
+    return this.lessons.filter(l => l.moduleId === moduleId).sort((a, b) => a.orderInModule - b.orderInModule); 
   }
 
   async getLessonsByIds(ids: string[]): Promise<Lesson[]> {
@@ -212,6 +256,8 @@ class LessonService {
     this.forceSync();
     const index = this.lessons.findIndex(l => l.id === lesson.id);
     if (index >= 0) {
+      // Overwriting existing lesson (deep-rooted fix: clear stale progress for the updated curriculum)
+      this.purgeStaleLessonData(lesson.id);
       this.lessons[index] = { ...lesson };
     } else {
       this.lessons.unshift({ ...lesson });
@@ -233,6 +279,8 @@ class LessonService {
   async deleteLesson(id: string): Promise<void> {
     this.forceSync();
     this.lessons = this.lessons.filter(l => l.id !== id);
+    // CRITICAL FIX: Purge all associated attempts, timers and notes when a lesson is removed
+    this.purgeStaleLessonData(id);
     this.saveLessons();
     this.modules.forEach(m => {
       if (m.lessonIds) {
@@ -519,6 +567,9 @@ class LessonService {
         draft.courseMetadata.authorId = author.id;
         draft.courseMetadata.organizationId = author.organizationId;
         draft.courseMetadata.author = author.name;
+        // Purge data for overwritten course to ensure fresh attempts
+        const existingLessons = await this.getLessonsByModuleId(draft.courseMetadata.id);
+        existingLessons.forEach(l => this.purgeStaleLessonData(l.id));
         await this.publishCourse(draft.courseMetadata);
     }
     

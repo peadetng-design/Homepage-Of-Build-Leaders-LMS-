@@ -28,6 +28,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    // Reset local state to ensure fresh lesson attempt rendering
+    setAttempts({});
+    setCurrentScore({ correct: 0, total: 0 });
     loadData();
     startTelemetry();
     return () => stopTelemetry();
@@ -106,17 +109,10 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     <div className="space-y-6 mt-4 h-full overflow-y-auto custom-scrollbar pr-3 pb-8">
         {segments.length > 0 ? segments.map((seg, idx) => (
             <div key={idx} className="p-6 bg-white border-2 border-gray-100 rounded-3xl shadow-sm hover:border-indigo-300 transition-all group/seg">
-                <div className="flex items-center gap-3 mb-3">
-                    <span className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs border border-indigo-100">P{seg.order}</span>
-                    <h5 className="text-[12px] font-black text-gray-900 uppercase tracking-tight group-hover/seg:text-indigo-600 transition-colors">{seg.title}</h5>
-                </div>
+                <div className="flex items-center gap-3 mb-3"><span className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center font-black text-xs border border-indigo-100">P{seg.order}</span><h5 className="text-[12px] font-black text-gray-900 uppercase tracking-tight group-hover/seg:text-indigo-600 transition-colors">{seg.title}</h5></div>
                 <div className="text-[13px] text-gray-600 leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: seg.body }} />
             </div>
-        )) : (
-            <div className="p-12 text-center bg-gray-50/50 rounded-3xl border-4 border-dashed border-gray-100 opacity-40">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Empty Perspectives</p>
-            </div>
-        )}
+        )) : <div className="p-12 text-center bg-gray-50/50 rounded-3xl border-4 border-dashed border-gray-100 opacity-40"><p className="text-[10px] font-black uppercase tracking-widest text-gray-300">Empty Perspectives</p></div>}
     </div>
   );
 
@@ -137,8 +133,8 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           {quiz.referenceText && (
             <div className="flex items-center gap-2 mb-1 px-4">
               <BookOpen size={14} className="text-indigo-500 shrink-0" />
-              {/* REFERENCE TEXT: INCREASED FONT SIZE BY 30% [12.5px] */}
-              <span className="text-[12.5px] font-bold text-indigo-600 leading-none w-full capitalize">
+              {/* (a) REDUCE THE FONT SIZE OF THE REFERENCE TEXT BY 10% (from 16px to 14.5px) */}
+              <span className="text-[14.5px] font-bold text-indigo-600 leading-none w-full capitalize">
                 {quiz.referenceText}
               </span>
             </div>
@@ -148,7 +144,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             {quiz.text}
           </h3>
 
-          {/* SINGLE COLUMN WIDE GRID - TIGHTENED SPACING */}
           <div className="grid grid-cols-1 gap-2 px-2 pt-2">
             {quiz.options.map((opt) => {
               const isSelected = selectedOptionId === opt.id;
@@ -157,46 +152,49 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
               let containerClass = "bg-white border-gray-100 hover:border-indigo-300";
               let animationClass = "";
               let separatorColor = "text-gray-200";
-              let explanationContainerClass = "bg-gray-100/60"; // DIMMED DEFAULT
-              let explanationTextClass = "text-gray-500";
+              let explanationContainerClass = "bg-gray-300/90"; 
+              let explanationTextClass = "text-gray-900";
               let borderAnimation = "";
               
               if (isAnswered) {
+                // (b) STOP THEM FROM CONSTANTLY MOVING. 
+                // Removed continuous vibration animations (animate-electric-glow, animate-green-pulse, animate-red-pulse) 
+                // from the persistent revealed state to ensure stable text.
                 if (userIsCorrect) {
                   if (isCorrect) {
                     containerClass = "bg-white border-emerald-500 scale-[1.01] z-30 ring-4 ring-emerald-100 shadow-[0_0_50px_rgba(16,185,129,0.4)]";
                     separatorColor = "text-emerald-500";
-                    explanationContainerClass = "bg-emerald-100/60"; // DIMMED EMERALD
-                    explanationTextClass = "text-emerald-900";
-                    borderAnimation = "animate-green-pulse";
-                    animationClass = "animate-electric-glow";
+                    explanationContainerClass = "bg-emerald-300/95 shadow-lg border-2 border-emerald-500/20"; 
+                    explanationTextClass = "text-emerald-950";
+                    borderAnimation = ""; 
+                    animationClass = "";
                   } else {
                     containerClass = "bg-white border-red-500 opacity-90";
                     separatorColor = "text-red-500";
-                    explanationContainerClass = "bg-red-100/60"; // DIMMED RED
-                    explanationTextClass = "text-red-900";
-                    borderAnimation = "animate-red-pulse";
+                    explanationContainerClass = "bg-red-300/90 shadow-inner";
+                    explanationTextClass = "text-red-950 font-bold";
+                    borderAnimation = "";
                   }
                 } else {
                   if (isSelected) {
                     containerClass = "bg-white border-red-600 shadow-[0_0_60px_rgba(220,38,38,0.5)] animate-shake z-30 ring-4 ring-red-100 scale-[1.01]";
                     separatorColor = "text-red-500";
-                    explanationContainerClass = "bg-red-100/60"; // DIMMED RED
-                    explanationTextClass = "text-red-900";
-                    borderAnimation = "animate-red-pulse";
-                    animationClass = "animate-electric-glow";
+                    explanationContainerClass = "bg-red-300/95 shadow-xl border-2 border-red-600/20";
+                    explanationTextClass = "text-red-950 font-black";
+                    borderAnimation = ""; 
+                    animationClass = "";
                   } else if (isCorrect) {
                     containerClass = "bg-white border-emerald-500 scale-[1.02] z-20 shadow-[0_0_40px_rgba(16,185,129,0.3)]";
                     separatorColor = "text-emerald-500";
-                    explanationContainerClass = "bg-emerald-100/60"; // DIMMED EMERALD
-                    explanationTextClass = "text-emerald-900";
-                    borderAnimation = "animate-green-pulse";
+                    explanationContainerClass = "bg-emerald-300/90 shadow-md border border-emerald-400/20";
+                    explanationTextClass = "text-emerald-950 font-bold";
+                    borderAnimation = "";
                   } else {
                     containerClass = "bg-white border-orange-400 opacity-80 shadow-inner";
                     separatorColor = "text-orange-400";
-                    explanationContainerClass = "bg-orange-100/60"; // DIMMED ORANGE
-                    explanationTextClass = "text-orange-900";
-                    borderAnimation = "animate-orange-pulse";
+                    explanationContainerClass = "bg-orange-300/90"; 
+                    explanationTextClass = "text-orange-950";
+                    borderAnimation = "";
                   }
                 }
               }
@@ -215,7 +213,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                   )}
 
                   <div className="flex items-start gap-1 h-full">
-                    {/* LEFT GUTTER: BIG OPTION LETTER & BOUNCING CHECKMARK - PRESERVED SIZE */}
                     <div className="flex flex-col items-center justify-start gap-4 shrink-0 pt-0.5 w-16">
                       <div className={`text-4xl font-black font-serif transition-all duration-500 drop-shadow-sm ${
                         isAnswered ? 'text-current opacity-100' : isSelected ? 'text-royal-900' : 'text-gray-300'
@@ -230,9 +227,8 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                       )}
                     </div>
 
-                    {/* RIGHT CONTENT: REDUCED FONT & TIGHTENED SPACING */}
                     <div className="flex-1 flex flex-col justify-center pr-1">
-                      <p className={`font-black text-sm md:text-base leading-tight w-full mb-0.5 ${
+                      <p className={`font-black text-sm md:text-base leading-tight w-full mb-[2.5px] ${
                         isAnswered ? 'text-gray-950' : isSelected ? 'text-royal-900' : 'text-gray-800'
                       }`}>
                         {opt.text}
@@ -240,13 +236,11 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
                       {isAnswered && (
                         <div className="mt-0 animate-in slide-in-from-left-6 duration-1000">
-                           {/* LINE SEPARATOR: REDUCED THICKNESS & MOVED UP */}
                            <div 
-                              className={`h-[4px] w-full bg-gradient-to-r from-transparent via-current to-transparent mb-1 animate-dazzle-line shadow-[0_0_20px_currentColor] scale-x-110 ${separatorColor}`}
+                              className={`h-[5px] w-full bg-gradient-to-r from-transparent via-current to-transparent mb-[5px] animate-dazzle-line shadow-[0_0_20px_currentColor] scale-x-110 ${separatorColor}`}
                               style={{ transformOrigin: 'center' }}
                             ></div>
-                          {/* EXPLANATION BOX: COMPRESSED & WIDENED - DIMMED BACKGROUND */}
-                          <div className={`p-3 rounded-2xl border border-black/5 shadow-inner transition-colors duration-700 mt-1 ${explanationContainerClass}`}>
+                          <div className={`p-4 rounded-2xl border border-black/10 shadow-[inner_0_2px_4px_rgba(0,0,0,0.1)] transition-colors duration-700 mt-[5px] ${explanationContainerClass}`}>
                             <p className={`text-[13px] leading-tight font-black w-full ${explanationTextClass}`}>
                               {opt.explanation}
                             </p>
@@ -266,7 +260,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   return (
     <div className="max-w-6xl mx-auto pb-32 animate-in fade-in duration-700 relative">
-      {/* Header Panel */}
       <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden mb-12">
         <div className="bg-royal-900 p-8 text-white relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
@@ -300,7 +293,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-12">
-          {/* Metadata Grid */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <button onClick={() => setActiveAboutType('course')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group">
                <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Globe size={20}/></div>
@@ -316,7 +308,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             </button>
           </div>
 
-          {/* Instructional Notes */}
           {lesson.leadershipNotes && lesson.leadershipNotes.length > 0 && (
             <div className="space-y-6">
                 {lesson.leadershipNotes.map((note) => (
@@ -334,7 +325,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
             </div>
           )}
 
-          {/* Quizzes */}
           <div className="space-y-8">
             <h2 className="text-3xl font-serif font-black text-gray-900 uppercase tracking-tighter flex items-center gap-4">
                 <Target className="text-royal-800" size={32} /> PROFICIENCY EVALUATION
@@ -344,65 +334,73 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         </div>
 
-        {/* Floating Side Action - INSIGHT BOX (RE-IMPLEMENTED SAVE & UPLOAD) */}
+        {/* Floating Side Action - INSIGHT BOX (Enhanced Layout & Mandatory Save Button) */}
         <div className="fixed bottom-24 right-10 z-[100] flex flex-col items-end gap-4 pointer-events-none">
             {isInsightOpen && (
                 <div className="w-[300px] md:w-[420px] max-h-[85vh] bg-white/95 backdrop-blur-2xl border-4 border-indigo-600 rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col pointer-events-auto animate-in slide-in-from-bottom-12 duration-500 overflow-hidden">
-                    <div className="bg-indigo-600 p-5 text-white flex justify-between items-center shrink-0 border-b-4 border-indigo-700">
+                    {/* Header Portal - Guaranteed Visibility */}
+                    <div className="bg-indigo-600 p-5 text-white flex justify-between items-center shrink-0 border-b-4 border-indigo-700 shadow-md relative z-10">
                         <div className="flex items-center gap-3">
-                            <PenTool size={20} className="text-white" />
-                            <h3 className="font-serif font-black text-xs uppercase tracking-widest">PERSONAL INSIGHT</h3>
+                            <PenTool size={24} className="text-white animate-pulse" />
+                            <h3 className="font-serif font-black text-sm uppercase tracking-widest leading-none">PERSONAL INSIGHT PORTAL</h3>
                         </div>
                         <button 
                             onClick={() => setIsInsightOpen(false)} 
-                            className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-all shadow-inner"
+                            className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-all shadow-inner hover:scale-110 active:scale-95"
                         >
-                            <X size={18}/>
+                            <X size={20} strokeWidth={3}/>
                         </button>
                     </div>
-                    <div className="flex-1 p-5 flex flex-col gap-4 overflow-hidden">
+                    
+                    <div className="flex-1 p-5 flex flex-col gap-4 overflow-hidden bg-white">
                         <div className="relative flex-1 flex flex-col">
                              <button 
                                 onClick={() => setNoteText("")}
-                                className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg opacity-60 hover:opacity-100 transition-opacity z-10"
-                                title="Clear Insight"
+                                className="absolute top-3 right-3 p-2 bg-red-100 text-red-600 rounded-xl opacity-60 hover:opacity-100 transition-opacity z-20 shadow-sm font-black text-[10px] uppercase tracking-widest"
+                                title="Purge Reflection"
                              >
-                                 <X size={14} />
+                                 Clear
                              </button>
                             <textarea 
                                 value={noteText}
                                 onChange={(e) => setNoteText(e.target.value)}
-                                placeholder="Type spiritual reflections..."
-                                className="flex-1 w-full bg-indigo-50/20 border-2 border-indigo-100 rounded-2xl p-4 outline-none font-black text-gray-800 text-sm resize-none custom-scrollbar placeholder:text-indigo-200 focus:border-indigo-400 focus:bg-white transition-all shadow-inner min-h-[450px]"
+                                placeholder="Capture spiritual revelations and reflections here..."
+                                className="flex-1 w-full bg-indigo-50/20 border-4 border-indigo-50 rounded-[2rem] p-6 pt-10 outline-none font-bold text-gray-800 text-lg resize-none custom-scrollbar placeholder:text-indigo-200 focus:border-indigo-400 focus:bg-white transition-all shadow-inner"
                             />
                         </div>
-                        {/* RE-IMPLEMENTED SAVE & UPLOAD BUTTON */}
+                        
+                        {/* MANDATORY REGISTRY COMMIT ACTION - BOLD & PROMINENT */}
                         <button 
                             onClick={handleSaveNote} 
                             disabled={isSavingNote}
-                            className="w-full py-5 bg-royal-800 text-white font-black rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-[0.2em] shadow-xl border-b-4 border-royal-950 active:scale-95 shrink-0"
+                            className="w-full py-6 bg-royal-900 text-white font-black rounded-3xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase text-sm tracking-[0.3em] shadow-[0_15px_30px_rgba(30,27,75,0.4)] border-b-8 border-black active:scale-95 transform hover:-translate-y-1 shrink-0"
                         >
                             {isSavingNote ? (
-                                <Loader2 className="animate-spin" size={20} />
+                                <>
+                                    <Loader2 className="animate-spin" size={24} />
+                                    <span>SYNCHRONIZING...</span>
+                                </>
                             ) : (
-                                <CloudUpload size={20} />
+                                <>
+                                    <CloudUpload size={24} className="text-gold-400" />
+                                    <span>SAVE & UPLOAD TO REGISTRY</span>
+                                </>
                             )} 
-                            SAVE & UPLOAD
                         </button>
                     </div>
                 </div>
             )}
             <button 
                 onClick={() => setIsInsightOpen(!isInsightOpen)}
-                className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all pointer-events-auto group border-4 border-white"
+                className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all pointer-events-auto group border-4 border-white relative"
             >
                 {isInsightOpen ? <X size={28} /> : <PenTool size={32} className="group-hover:rotate-12 transition-transform" />}
-                <span className="absolute -top-2 -left-2 bg-royal-900 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter shadow-xl">Insight</span>
+                {/* (c) MAKE THE TEXT LABEL “INSIGHT” ON THE “INSIGHT BUTTON MORE BOLD AND VISIBLE. CHANGE COLOUR TO GOLD. */}
+                <span className="absolute -top-4 -left-4 bg-royal-950 text-gold-400 text-[14px] font-black px-5 py-2.5 rounded-full uppercase tracking-[0.25em] shadow-2xl border-2 border-gold-500 ring-4 ring-royal-900/50">Insight</span>
             </button>
         </div>
       </div>
 
-      {/* Overlay Modal for About Content */}
       {activeAboutType && (
         <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm animate-in fade-in duration-300">
            <div className="bg-white rounded-[3.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[85vh] border-8 border-royal-900">

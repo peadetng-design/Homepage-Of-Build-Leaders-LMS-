@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Lesson, Module, Course, AboutSegment } from '../types';
 import { lessonService } from '../services/lessonService';
@@ -64,12 +63,21 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
 
       const isSysAdmin = (email: string) => email === 'peadetng@gmail.com';
 
+      // FIX: Ensure global courses or courses by current user are visible
       const filteredCourses = allCourses.filter(c => {
           if (c.authorId === 'usr_main_admin' || isSysAdmin(c.author || '')) return true;
           if (c.authorId === currentUser.id) return true;
           const isFromMyMentor = currentUser.mentorId === c.authorId;
           const isFromMyOrg = currentUser.organizationId === c.authorId || currentUser.organizationId === c.organizationId;
-          return isFromMyMentor || isFromMyOrg;
+          
+          // Also check if any lesson in any module of this course is for 'All'
+          const courseModules = allModules.filter(m => m.courseId === c.id);
+          const hasGlobalContent = courseModules.some(m => {
+              const moduleLessons = allLessons.filter(l => l.moduleId === m.id);
+              return moduleLessons.some(l => l.targetAudience === 'All');
+          });
+
+          return isFromMyMentor || isFromMyOrg || hasGlobalContent;
       });
 
       const levels: Record<string, Course[]> = {
@@ -82,10 +90,11 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           if (levels[c.level]) {
               levels[c.level].push(c);
           } else {
-              const lower = c.level.toLowerCase();
+              const lower = (c.level || '').toLowerCase();
               if (lower.includes('beginner')) levels['student (Beginner)'].push(c);
               else if (lower.includes('intermediate')) levels['Mentor, Organization & Parent (Intermediate)'].push(c);
               else if (lower.includes('advanced')) levels['Mentor, Organization & Parent (Advanced)'].push(c);
+              else levels['student (Beginner)'].push(c); // Default
           }
       });
       setCoursesByLevel(levels);

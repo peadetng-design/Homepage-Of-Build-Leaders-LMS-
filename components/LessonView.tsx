@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, QuizQuestion, QuizOption, User, Module, Course, AboutSegment, LeadershipNote } from '../types';
 import { lessonService } from '../services/lessonService';
-import { ArrowLeft, BookOpen, X, CheckCircle, Target, Sparkles, Globe, Layers, PenTool, Save, Activity, Loader2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, X, CheckCircle, Target, Sparkles, Globe, Layers, PenTool, Save, Activity, Loader2, CloudUpload } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -22,6 +21,9 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const [isInsightOpen, setIsInsightOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
+
+  // Sparkle tracking for visual burst
+  const [burstingQuizId, setBurstingQuizId] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -75,6 +77,11 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
   const handleOptionSelect = async (quiz: QuizQuestion, option: QuizOption) => {
     if (attempts[quiz.id]) return;
+    
+    // Trigger sparkle burst
+    setBurstingQuizId(quiz.id);
+    setTimeout(() => setBurstingQuizId(null), 600);
+
     setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
     if (option.isCorrect) {
         setCurrentScore(prev => ({ ...prev, correct: prev.correct + 1 }));
@@ -116,43 +123,81 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const renderQuizCard = (quiz: QuizQuestion) => {
     const selectedOptionId = attempts[quiz.id];
     const isAnswered = !!selectedOptionId;
+    const selectedOption = quiz.options.find(o => o.id === selectedOptionId);
+    const userIsCorrect = selectedOption?.isCorrect;
 
     return (
-      <div key={quiz.id} className="bg-slate-50/50 rounded-[3rem] shadow-2xl border border-gray-200 overflow-hidden mb-12 animate-in fade-in slide-in-from-bottom-6 group/card">
-        <div className="p-1 md:p-3"> 
+      <div key={quiz.id} className={`bg-white rounded-[3rem] shadow-2xl border border-gray-200 overflow-hidden mb-12 relative group/card ${isAnswered ? 'animate-flash-zoom' : 'animate-in fade-in slide-in-from-bottom-6'}`}>
+        {/* Parchment Unroll Overlay Background (Shown when answered) */}
+        {isAnswered && (
+          <div className="absolute inset-0 bg-[#fdf5e6] opacity-30 animate-parchment-unroll z-0 pointer-events-none"></div>
+        )}
+
+        <div className="p-4 md:p-6 relative z-10"> 
           {quiz.referenceText && (
-            <div className="flex items-center gap-2 mb-1 px-1">
+            <div className="flex items-center gap-2 mb-1 px-4">
               <BookOpen size={14} className="text-indigo-500 shrink-0" />
-              <span className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.2em] leading-[1.1] w-full">
+              {/* REFERENCE TEXT: INCREASED FONT SIZE BY 30% [12.5px] */}
+              <span className="text-[12.5px] font-bold text-indigo-600 leading-none w-full capitalize">
                 {quiz.referenceText}
               </span>
             </div>
           )}
 
-          {/* QUESTION TEXT: Changed font-serif to font-sans for mixed-case support */}
-          <h3 className="text-[1.3rem] font-sans font-black text-gray-900 leading-[1.2] mb-6 px-1 w-full">
+          <h3 className="text-base md:text-lg font-sans font-black text-gray-900 leading-[1.2] mb-0 px-4 w-full">
             {quiz.text}
           </h3>
 
-          {/* OPTIONS GRID: Increased gap from gap-1 to gap-12 to prevent overlap during magnification */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 px-4 py-4">
+          {/* SINGLE COLUMN WIDE GRID - TIGHTENED SPACING */}
+          <div className="grid grid-cols-1 gap-2 px-2 pt-2">
             {quiz.options.map((opt) => {
               const isSelected = selectedOptionId === opt.id;
               const isCorrect = opt.isCorrect;
-              const userCorrect = quiz.options.find(o => o.id === selectedOptionId)?.isCorrect;
               
-              let statusClass = "border-gray-100 bg-white hover:border-indigo-300";
+              let containerClass = "bg-white border-gray-100 hover:border-indigo-300";
+              let animationClass = "";
+              let separatorColor = "text-gray-200";
+              let explanationContainerClass = "bg-gray-100/60"; // DIMMED DEFAULT
+              let explanationTextClass = "text-gray-500";
+              let borderAnimation = "";
               
               if (isAnswered) {
-                if (userCorrect) {
-                    // Logic A: Correct Selected
-                    if (isCorrect) statusClass = "border-emerald-500 bg-emerald-50 shadow-[0_20px_40px_rgba(16,185,129,0.2)] scale-[1.25] z-20 rotate-1";
-                    else statusClass = "border-red-600 bg-red-100 opacity-90 grayscale-[0.2]";
+                if (userIsCorrect) {
+                  if (isCorrect) {
+                    containerClass = "bg-white border-emerald-500 scale-[1.01] z-30 ring-4 ring-emerald-100 shadow-[0_0_50px_rgba(16,185,129,0.4)]";
+                    separatorColor = "text-emerald-500";
+                    explanationContainerClass = "bg-emerald-100/60"; // DIMMED EMERALD
+                    explanationTextClass = "text-emerald-900";
+                    borderAnimation = "animate-green-pulse";
+                    animationClass = "animate-electric-glow";
+                  } else {
+                    containerClass = "bg-white border-red-500 opacity-90";
+                    separatorColor = "text-red-500";
+                    explanationContainerClass = "bg-red-100/60"; // DIMMED RED
+                    explanationTextClass = "text-red-900";
+                    borderAnimation = "animate-red-pulse";
+                  }
                 } else {
-                    // Logic B: Incorrect Selected
-                    if (isSelected) statusClass = "border-red-600 bg-red-100 shake scale-[1.25] z-20";
-                    else if (isCorrect) statusClass = "border-emerald-500 bg-emerald-100 shadow-[0_20px_40px_rgba(16,185,129,0.2)] scale-[1.25] z-10 rotate-1";
-                    else statusClass = "border-orange-500 bg-orange-50 opacity-90";
+                  if (isSelected) {
+                    containerClass = "bg-white border-red-600 shadow-[0_0_60px_rgba(220,38,38,0.5)] animate-shake z-30 ring-4 ring-red-100 scale-[1.01]";
+                    separatorColor = "text-red-500";
+                    explanationContainerClass = "bg-red-100/60"; // DIMMED RED
+                    explanationTextClass = "text-red-900";
+                    borderAnimation = "animate-red-pulse";
+                    animationClass = "animate-electric-glow";
+                  } else if (isCorrect) {
+                    containerClass = "bg-white border-emerald-500 scale-[1.02] z-20 shadow-[0_0_40px_rgba(16,185,129,0.3)]";
+                    separatorColor = "text-emerald-500";
+                    explanationContainerClass = "bg-emerald-100/60"; // DIMMED EMERALD
+                    explanationTextClass = "text-emerald-900";
+                    borderAnimation = "animate-green-pulse";
+                  } else {
+                    containerClass = "bg-white border-orange-400 opacity-80 shadow-inner";
+                    separatorColor = "text-orange-400";
+                    explanationContainerClass = "bg-orange-100/60"; // DIMMED ORANGE
+                    explanationTextClass = "text-orange-900";
+                    borderAnimation = "animate-orange-pulse";
+                  }
                 }
               }
 
@@ -161,41 +206,54 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                   key={opt.id}
                   disabled={isAnswered}
                   onClick={() => handleOptionSelect(quiz, opt)}
-                  className={`relative p-2 rounded-2xl border-4 transition-all duration-500 cubic-bezier(0.16, 1, 0.3, 1) text-left group overflow-hidden ${statusClass}`}
+                  className={`relative p-5 md:p-8 rounded-[2rem] border-4 transition-all duration-700 text-left group/opt overflow-visible w-full ${containerClass} ${animationClass} ${borderAnimation}`}
                 >
-                  <div className="flex items-start gap-1">
-                    <div className={`absolute top-1 left-1 w-7 h-7 rounded-lg flex items-center justify-center font-black text-[11px] shadow-sm transition-all shrink-0 ${
-                      isSelected ? 'bg-royal-900 text-white' : 'bg-white text-gray-400'
-                    }`}>
-                      {opt.label}
+                  {burstingQuizId === quiz.id && isSelected && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-1 h-1 bg-gold-400 rounded-full animate-sparkle-burst"></div>
+                    </div>
+                  )}
+
+                  <div className="flex items-start gap-1 h-full">
+                    {/* LEFT GUTTER: BIG OPTION LETTER & BOUNCING CHECKMARK - PRESERVED SIZE */}
+                    <div className="flex flex-col items-center justify-start gap-4 shrink-0 pt-0.5 w-16">
+                      <div className={`text-4xl font-black font-serif transition-all duration-500 drop-shadow-sm ${
+                        isAnswered ? 'text-current opacity-100' : isSelected ? 'text-royal-900' : 'text-gray-300'
+                      }`}>
+                        {opt.label}
+                      </div>
+
+                      {isAnswered && isCorrect && (
+                         <div className="animate-checkmark-bounce">
+                            <CheckCircle size={48} className="text-emerald-600 drop-shadow-xl" fill="rgba(16, 185, 129, 0.1)" />
+                         </div>
+                      )}
                     </div>
 
-                    <div className="flex-1 min-w-0 pl-10 pt-1 pb-1">
-                      <p className={`font-black text-[1.1rem] leading-[1.2] w-full ${
-                        isSelected ? 'text-royal-900' : 'text-gray-700'
+                    {/* RIGHT CONTENT: REDUCED FONT & TIGHTENED SPACING */}
+                    <div className="flex-1 flex flex-col justify-center pr-1">
+                      <p className={`font-black text-sm md:text-base leading-tight w-full mb-0.5 ${
+                        isAnswered ? 'text-gray-950' : isSelected ? 'text-royal-900' : 'text-gray-800'
                       }`}>
                         {opt.text}
                       </p>
 
                       {isAnswered && (
-                        <div className="mt-1 pt-2 border-t border-black/5 animate-in zoom-in-95 duration-700 delay-150">
-                          <p className={`text-[12px] leading-relaxed font-bold py-0.5 w-full ${isCorrect ? 'text-emerald-800' : isSelected ? 'text-red-800' : 'text-orange-800'}`}>
-                            {opt.explanation}
-                          </p>
+                        <div className="mt-0 animate-in slide-in-from-left-6 duration-1000">
+                           {/* LINE SEPARATOR: REDUCED THICKNESS & MOVED UP */}
+                           <div 
+                              className={`h-[4px] w-full bg-gradient-to-r from-transparent via-current to-transparent mb-1 animate-dazzle-line shadow-[0_0_20px_currentColor] scale-x-110 ${separatorColor}`}
+                              style={{ transformOrigin: 'center' }}
+                            ></div>
+                          {/* EXPLANATION BOX: COMPRESSED & WIDENED - DIMMED BACKGROUND */}
+                          <div className={`p-3 rounded-2xl border border-black/5 shadow-inner transition-colors duration-700 mt-1 ${explanationContainerClass}`}>
+                            <p className={`text-[13px] leading-tight font-black w-full ${explanationTextClass}`}>
+                              {opt.explanation}
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
-
-                    {isAnswered && isCorrect && (
-                      <div className="absolute right-3 top-3 text-emerald-600 animate-bounce-pulse scale-150 z-30">
-                        <CheckCircle size={28} fill="white" className="drop-shadow-md" />
-                      </div>
-                    )}
-                    {isAnswered && isSelected && !isCorrect && (
-                      <div className="absolute right-3 top-3 text-red-600 animate-bounce scale-150 z-30">
-                        <X size={28} strokeWidth={4} className="drop-shadow-md" />
-                      </div>
-                    )}
                   </div>
                 </button>
               );
@@ -286,43 +344,59 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         </div>
 
-        {/* Floating Side Action */}
-        <div className="fixed bottom-10 right-10 z-[100] flex flex-col items-end gap-4 pointer-events-none">
+        {/* Floating Side Action - INSIGHT BOX (RE-IMPLEMENTED SAVE & UPLOAD) */}
+        <div className="fixed bottom-24 right-10 z-[100] flex flex-col items-end gap-4 pointer-events-none">
             {isInsightOpen && (
-                <div className="w-[350px] md:w-[450px] h-[500px] bg-white/80 backdrop-blur-xl border-4 border-indigo-200 rounded-[3rem] shadow-2xl p-8 flex flex-col pointer-events-auto animate-in slide-in-from-right-12 duration-500">
-                    <div className="flex items-center justify-between mb-6 border-b-2 border-indigo-50 pb-4">
-                        <h3 className="font-serif font-black text-royal-900 uppercase tracking-widest flex items-center gap-2">
-                            <PenTool size={20} className="text-indigo-600" /> PERSONAL INSIGHT
-                        </h3>
+                <div className="w-[300px] md:w-[420px] max-h-[85vh] bg-white/95 backdrop-blur-2xl border-4 border-indigo-600 rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col pointer-events-auto animate-in slide-in-from-bottom-12 duration-500 overflow-hidden">
+                    <div className="bg-indigo-600 p-5 text-white flex justify-between items-center shrink-0 border-b-4 border-indigo-700">
                         <div className="flex items-center gap-3">
-                            {isSavingNote && <Loader2 size={16} className="animate-spin text-indigo-600" />}
-                            <button 
-                              onClick={() => setIsInsightOpen(false)} 
-                              className="p-2 bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all shadow-sm"
-                            >
-                                <X size={20}/>
-                            </button>
+                            <PenTool size={20} className="text-white" />
+                            <h3 className="font-serif font-black text-xs uppercase tracking-widest">PERSONAL INSIGHT</h3>
                         </div>
+                        <button 
+                            onClick={() => setIsInsightOpen(false)} 
+                            className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-all shadow-inner"
+                        >
+                            <X size={18}/>
+                        </button>
                     </div>
-                    <textarea 
-                        value={noteText}
-                        onChange={(e) => setNoteText(e.target.value)}
-                        onBlur={handleSaveNote}
-                        placeholder="Type spiritual reflections or study notes here..."
-                        className="flex-1 w-full bg-transparent border-none outline-none font-bold text-gray-800 text-lg resize-none custom-scrollbar placeholder:text-gray-300"
-                    />
-                    <div className="pt-4 border-t border-indigo-50 flex gap-2">
-                        <button onClick={handleSaveNote} className="flex-1 py-4 bg-royal-800 text-white font-black rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-widest shadow-xl border-b-4 border-royal-950">
-                            <Save size={18}/> Archive Insight
+                    <div className="flex-1 p-5 flex flex-col gap-4 overflow-hidden">
+                        <div className="relative flex-1 flex flex-col">
+                             <button 
+                                onClick={() => setNoteText("")}
+                                className="absolute top-2 right-2 p-1.5 bg-red-50 text-red-500 rounded-lg opacity-60 hover:opacity-100 transition-opacity z-10"
+                                title="Clear Insight"
+                             >
+                                 <X size={14} />
+                             </button>
+                            <textarea 
+                                value={noteText}
+                                onChange={(e) => setNoteText(e.target.value)}
+                                placeholder="Type spiritual reflections..."
+                                className="flex-1 w-full bg-indigo-50/20 border-2 border-indigo-100 rounded-2xl p-4 outline-none font-black text-gray-800 text-sm resize-none custom-scrollbar placeholder:text-indigo-200 focus:border-indigo-400 focus:bg-white transition-all shadow-inner min-h-[450px]"
+                            />
+                        </div>
+                        {/* RE-IMPLEMENTED SAVE & UPLOAD BUTTON */}
+                        <button 
+                            onClick={handleSaveNote} 
+                            disabled={isSavingNote}
+                            className="w-full py-5 bg-royal-800 text-white font-black rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-3 uppercase text-xs tracking-[0.2em] shadow-xl border-b-4 border-royal-950 active:scale-95 shrink-0"
+                        >
+                            {isSavingNote ? (
+                                <Loader2 className="animate-spin" size={20} />
+                            ) : (
+                                <CloudUpload size={20} />
+                            )} 
+                            SAVE & UPLOAD
                         </button>
                     </div>
                 </div>
             )}
             <button 
                 onClick={() => setIsInsightOpen(!isInsightOpen)}
-                className="w-20 h-20 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all pointer-events-auto group border-4 border-white"
+                className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all pointer-events-auto group border-4 border-white"
             >
-                <PenTool size={32} className="group-hover:rotate-12 transition-transform" />
+                {isInsightOpen ? <X size={28} /> : <PenTool size={32} className="group-hover:rotate-12 transition-transform" />}
                 <span className="absolute -top-2 -left-2 bg-royal-900 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter shadow-xl">Insight</span>
             </button>
         </div>

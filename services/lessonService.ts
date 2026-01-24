@@ -1,4 +1,3 @@
-
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError } from '../types';
 import { authService } from './authService';
 
@@ -114,10 +113,6 @@ class LessonService {
     }
   }
 
-  /**
-   * CRITICAL: Force synchronization from LocalStorage before any read.
-   * This fixes the bug where newly added content doesn't show up in tables immediately.
-   */
   private forceSync() {
     this.init();
   }
@@ -225,9 +220,12 @@ class LessonService {
     
     if (lesson.moduleId) {
         const mod = this.modules.find(m => m.id === lesson.moduleId);
-        if (mod && !mod.lessonIds.includes(lesson.id)) {
-            mod.lessonIds.push(lesson.id);
-            this.saveModules();
+        if (mod) {
+            if (!mod.lessonIds) mod.lessonIds = [];
+            if (!mod.lessonIds.includes(lesson.id)) {
+                mod.lessonIds.push(lesson.id);
+                this.saveModules();
+            }
         }
     }
   }
@@ -237,7 +235,9 @@ class LessonService {
     this.lessons = this.lessons.filter(l => l.id !== id);
     this.saveLessons();
     this.modules.forEach(m => {
-      m.lessonIds = m.lessonIds.filter(lId => lId !== id);
+      if (m.lessonIds) {
+        m.lessonIds = m.lessonIds.filter(lId => lId !== id);
+      }
     });
     this.saveModules();
   }
@@ -312,9 +312,10 @@ class LessonService {
           let lessonsProcessed = 0;
           let totalScore = 0;
           let lessonsDone = 0;
-          const requiredCount = Math.max(mod.totalLessonsRequired, mod.lessonIds.length);
+          const lessonIds = mod.lessonIds || [];
+          const requiredCount = Math.max(mod.totalLessonsRequired, lessonIds.length);
           if (requiredCount === 0) continue;
-          for (const lId of mod.lessonIds) {
+          for (const lId of lessonIds) {
               const lesson = this.lessons.find(l => l.id === lId);
               if (!lesson) continue;
               const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);

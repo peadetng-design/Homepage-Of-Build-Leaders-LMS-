@@ -11,7 +11,7 @@ import {
   Link, Copy, Check, AlertTriangle, RefreshCw, X,
   BookOpen, Edit2, Eye, Plus, Upload, ListPlus, Trash, Trash2,
   Download, List, Send, Loader2, Book, Star, Settings, Globe,
-  Clock, FileText, CheckCircle, Activity, ChevronDown, Newspaper, Library, ArrowLeft, BarChart3, BadgeCheck, Zap, Trophy, TrendingUp, Layers, Award, Target, LayoutDashboard, Sparkles, Printer
+  Clock, History, FileText, CheckCircle, Activity, ChevronDown, Newspaper, Library, ArrowLeft, BarChart3, BadgeCheck, Zap, Trophy, TrendingUp, Layers, Award, Target, LayoutDashboard, Sparkles, Printer
 } from 'lucide-react';
 
 interface AdminPanelProps {
@@ -330,6 +330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </td>
                             <td className="p-6">
                                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg w-fit">
+                                    {/* Fix: History component is now valid after adding to lucide-react imports */}
                                     <History size={12} className="text-gray-400" />
                                     <span className="text-xs font-black text-gray-600">{userLogsCount[u.id] || 0} Records</span>
                                 </div>
@@ -460,7 +461,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                              {formatDigitalTime(insightData.lastLessonTime)}
                           </span>
                           <div className="mt-auto flex items-center gap-4 text-royal-900 border-t pt-6 border-royal-100">
-                             <div className="p-3 bg-white rounded-2xl shadow-sm"><Activity size={24} /></div>
+                             {/* Fix: Replaced Activity with History for consistency and fixed component type error */}
+                             <div className="p-3 bg-white rounded-2xl shadow-sm"><History size={24} /></div>
                              <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Interaction Tempo</span>
                           </div>
                       </div>

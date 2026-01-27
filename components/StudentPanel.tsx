@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Lesson, Module, Course, AboutSegment } from '../types';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
-import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap } from 'lucide-react';
+import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap, Search } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
@@ -35,8 +35,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [newOrderValue, setNewOrderValue] = useState<string>("");
 
-  // Expandable Module State
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  // New Selection State for "Single Row" mode
+  const [tierSelections, setTierSelections] = useState<Record<string, { courseId: string; moduleId: string; lessonId: string }>>({});
+  const [openDropdown, setOpenDropdown] = useState<{ tier: string; type: 'course' | 'module' | 'lesson' } | null>(null);
 
   // Modal States
   const [aboutModal, setAboutModal] = useState<{ isOpen: boolean; title: string; segments: AboutSegment[] }>({
@@ -62,13 +63,6 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
-  };
-
-  const toggleModule = (moduleId: string) => {
-      const next = new Set(expandedModules);
-      if (next.has(moduleId)) next.delete(moduleId);
-      else next.add(moduleId);
-      setExpandedModules(next);
   };
 
   const fetchHierarchy = async () => {
@@ -171,6 +165,23 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           statusMap[les.id] = { status, label, score: `${correct}/${totalQ}`, timeSpent: time, percent };
       }
       setLessonStatuses(statusMap);
+
+      // Initialize tier selections with first available data
+      const initialSelections: Record<string, any> = {};
+      Object.keys(levels).forEach(tier => {
+          const firstCourse = levels[tier][0];
+          if (firstCourse) {
+              const firstMod = modMap[firstCourse.id]?.[0];
+              const firstLesson = firstMod ? lesMap[firstMod.id]?.[0] : null;
+              initialSelections[tier] = {
+                  courseId: firstCourse.id,
+                  moduleId: firstMod?.id || '',
+                  lessonId: firstLesson?.id || ''
+              };
+          }
+      });
+      setTierSelections(initialSelections);
+
       const stats = await lessonService.getStudentSummary(currentUser.id);
       setSummary(stats);
     } catch (e) {
@@ -178,6 +189,27 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTierSelection = (tier: string, type: 'course' | 'module' | 'lesson', id: string) => {
+      setTierSelections(prev => {
+          const current = { ...prev[tier] };
+          if (type === 'course') {
+              current.courseId = id;
+              const mods = modulesByCourse[id] || [];
+              current.moduleId = mods[0]?.id || '';
+              const lessons = lessonsByModule[current.moduleId] || [];
+              current.lessonId = lessons[0]?.id || '';
+          } else if (type === 'module') {
+              current.moduleId = id;
+              const lessons = lessonsByModule[id] || [];
+              current.lessonId = lessons[0]?.id || '';
+          } else if (type === 'lesson') {
+              current.lessonId = id;
+          }
+          return { ...prev, [tier]: current };
+      });
+      setOpenDropdown(null);
   };
 
   const getModuleStatusLabel = (moduleId: string) => {
@@ -258,6 +290,17 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
 
   const renderTierTable = (levelLabel: string, courses: Course[], tierIcon: React.ReactNode, tierColor: string) => {
       const isEmpty = courses.length === 0;
+      const selection = tierSelections[levelLabel];
+      const activeCourse = courses.find(c => c.id === selection?.courseId) || courses[0];
+      const activeModules = modulesByCourse[activeCourse?.id] || [];
+      const activeModule = activeModules.find(m => m.id === selection?.moduleId) || activeModules[0];
+      const activeLessons = lessonsByModule[activeModule?.id] || [];
+      const activeLesson = activeLessons.find(l => l.id === selection?.lessonId) || activeLessons[0];
+      
+      const moduleStatus = activeModule ? getModuleStatusLabel(activeModule.id) : 'Not started';
+      const moduleProgress = activeModule ? getModuleProgress(activeModule.id) : 0;
+      const courseStatus = activeCourse ? getCourseStatusLabel(activeCourse.id) : 'Not started';
+      const lessonStat = activeLesson ? lessonStatuses[activeLesson.id] : null;
 
       return (
           <div className={`space-y-6 animate-in slide-in-from-bottom-8 duration-1000 ${isEmpty ? 'opacity-50' : ''}`}>
@@ -275,182 +318,207 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                   <div className="flex items-center gap-4">
                     <div className="p-2 bg-amber-200 text-amber-800 rounded-xl"><InfoIcon size={20} /></div>
                     <p className="text-royal-900 font-black uppercase text-[10px] md:text-xs tracking-wider leading-tight">
-                      Registry Management: Change the Module Order numbers to rearrange your curriculum sequence. Linked members will inherit this structure automatically.
+                      Registry Management: Select courses and modules to configure sequences.
                     </p>
                   </div>
                 </div>
               )}
               
-              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col min-h-[500px]">
+              {/* Reduced height by 25%: min-h-[500px] -> min-h-[375px] */}
+              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col min-h-[375px]">
                   {isEmpty ? (
-                      <div className="py-32 text-center flex flex-col items-center gap-4">
+                      <div className="py-24 text-center flex flex-col items-center gap-4">
                          <Database size={60} className="text-gray-100 animate-pulse" />
                          <p className="text-xs font-black text-gray-300 uppercase tracking-[0.5em] animate-pulse">Waiting for Deposit...</p>
                       </div>
                   ) : (
-                      <div className="overflow-x-auto custom-scrollbar flex-1 border-collapse">
-                        <table className="w-full text-left border-collapse min-w-[2000px]">
+                      <div className="overflow-x-auto custom-scrollbar flex-1 border-collapse relative">
+                        <table className="w-full text-left border-collapse min-w-[1800px]">
                             <thead>
-                                <tr className="bg-royal-900 text-white text-[13px] font-black uppercase tracking-[0.4em] sticky top-0 z-30 shadow-xl border-b-4 border-gold-500">
-                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[450px]">COURSE IDENTITY</th>
-                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[550px]">MODULE STRUCTURE</th>
-                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[200px] text-center">ORDER</th>
-                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[650px] text-center">CURRICULUM CONTROLS</th>
+                                <tr className="bg-royal-900 text-white text-[13px] font-black uppercase tracking-[0.4em] sticky top-0 z-50 shadow-xl border-b-4 border-gold-500">
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[400px]">COURSE IDENTITY</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[500px]">MODULE STRUCTURE</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[150px] text-center">ORDER</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[600px] text-center">CURRICULUM CONTROLS</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y-0">
-                                {courses.map(course => {
-                                    const courseModules = modulesByCourse[course.id] || [];
-                                    const courseStatus = getCourseStatusLabel(course.id);
-
-                                    return courseModules.map((mod, modIndex) => {
-                                        const modLessons = lessonsByModule[mod.id] || [];
-                                        const isExpanded = expandedModules.has(mod.id);
-                                        const moduleStatus = getModuleStatusLabel(mod.id);
-                                        const moduleProgress = getModuleProgress(mod.id);
-
-                                        return (
-                                            <React.Fragment key={mod.id}>
-                                                {/* MODULE ROW */}
-                                                <tr className={`group transition-all align-top ${isExpanded ? 'bg-indigo-50/20' : 'hover:bg-royal-50/10'}`}>
-                                                    {/* COURSE COLUMN (Merged-style) */}
-                                                    {modIndex === 0 ? (
-                                                        <td rowSpan={courseModules.length} className="p-6 border-2 border-gray-300 bg-white">
-                                                            <div className="flex flex-col gap-4">
-                                                                <div>
-                                                                    <h3 className="text-2xl font-serif font-black text-royal-950 uppercase leading-tight mb-2">{course.title}</h3>
-                                                                    <div className="flex flex-wrap gap-2 items-center">
-                                                                        <StatusBadge label={courseStatus} />
-                                                                        <span className="text-[10px] font-black text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-100 uppercase">{course.level}</span>
-                                                                    </div>
-                                                                </div>
-                                                                <button onClick={() => setAboutModal({ isOpen: true, title: course.title, segments: course.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-xs uppercase tracking-widest transition-all border border-royal-200">View Course Details</button>
+                                <tr className="group transition-all align-top bg-white">
+                                    {/* COURSE COLUMN */}
+                                    <td className="p-6 border-2 border-gray-300 bg-white relative">
+                                        <div className="flex flex-col gap-4">
+                                            {activeCourse ? (
+                                                <>
+                                                    <div>
+                                                        <h3 className="text-2xl font-serif font-black text-royal-950 uppercase leading-tight mb-2">{activeCourse.title}</h3>
+                                                        <div className="flex flex-wrap gap-2 items-center">
+                                                            <StatusBadge label={courseStatus} />
+                                                            <span className="text-[10px] font-black text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-100 uppercase">{activeCourse.level}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <button 
+                                                            onClick={() => setOpenDropdown(openDropdown?.type === 'course' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'course' })}
+                                                            className="w-full py-3 bg-royal-800 hover:bg-black text-white font-black rounded-xl text-[10px] uppercase tracking-[0.2em] transition-all border-b-4 border-black flex items-center justify-center gap-2"
+                                                        >
+                                                            <Globe size={14} /> BROWSE COURSES <ChevronDown size={14} className={openDropdown?.type === 'course' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                                                        </button>
+                                                        
+                                                        {openDropdown?.tier === levelLabel && openDropdown?.type === 'course' && (
+                                                            <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-royal-900 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
+                                                                {courses.map(c => (
+                                                                    <button 
+                                                                        key={c.id} 
+                                                                        onClick={() => handleTierSelection(levelLabel, 'course', c.id)}
+                                                                        className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.courseId === c.id ? 'bg-royal-900 text-white shadow-lg' : 'hover:bg-royal-50 text-gray-700'}`}
+                                                                    >
+                                                                        {c.title}
+                                                                    </button>
+                                                                ))}
                                                             </div>
-                                                        </td>
-                                                    ) : null}
+                                                        )}
+                                                    </div>
+                                                    <button onClick={() => setAboutModal({ isOpen: true, title: activeCourse.title, segments: activeCourse.about })} className="w-full py-2.5 bg-gray-50 hover:bg-royal-100 text-royal-800 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all border border-royal-200">View Course Identity</button>
+                                                </>
+                                            ) : <div className="p-10 text-center opacity-20"><Database size={40}/></div>}
+                                        </div>
+                                    </td>
 
-                                                    {/* MODULE COLUMN */}
-                                                    <td className={`p-6 border-2 border-gray-300 bg-white cursor-pointer group/mod`} onClick={() => toggleModule(mod.id)}>
-                                                        <div className="flex flex-col justify-between h-full">
-                                                            <div className="flex justify-between items-start mb-4">
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className={`p-3 rounded-2xl transition-all ${isExpanded ? 'bg-indigo-600 text-white shadow-lg rotate-12' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
-                                                                        <Layers size={24} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">M-{modIndex + 1}</p>
-                                                                        <h4 className="text-lg font-serif font-black text-gray-900 uppercase">{mod.title}</h4>
-                                                                    </div>
-                                                                </div>
-                                                                <StatusBadge label={moduleStatus} />
+                                    {/* MODULE COLUMN */}
+                                    <td className="p-6 border-2 border-gray-300 bg-white relative">
+                                        <div className="flex flex-col h-full">
+                                            {activeModule ? (
+                                                <>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
+                                                                <Layers size={24} />
                                                             </div>
-                                                            
-                                                            <ProgressBar percent={moduleProgress} />
-
-                                                            <div className="flex gap-3 mt-6">
-                                                                <button onClick={(e) => { e.stopPropagation(); setAboutModal({ isOpen: true, title: mod.title, segments: mod.about }); }} className="flex-1 py-2.5 bg-gray-50 hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 font-black rounded-xl text-[10px] uppercase tracking-widest border-2 border-gray-100 hover:border-indigo-100 transition-all">Details</button>
-                                                                <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest group-hover/mod:translate-x-1 transition-transform">
-                                                                    {isExpanded ? 'Collapse Units' : 'Expand Units'} {isExpanded ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-                                                                </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">MODULE STRUCTURE</p>
+                                                                <h4 className="text-lg font-serif font-black text-gray-900 uppercase">{activeModule.title}</h4>
                                                             </div>
                                                         </div>
-                                                    </td>
+                                                        <StatusBadge label={moduleStatus} />
+                                                    </div>
+                                                    
+                                                    <ProgressBar percent={moduleProgress} />
 
-                                                    {/* MODULE ORDER COLUMN */}
-                                                    <td className="p-6 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
-                                                        <div className="flex flex-col justify-center items-center gap-3">
-                                                            {editingModuleId === mod.id ? (
-                                                                <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
-                                                                    <input autoFocus type="number" className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none" value={newOrderValue} onChange={(e) => setNewOrderValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue)); if (e.key === 'Escape') setEditingModuleId(null); }} />
-                                                                    <div className="flex gap-1"><button onClick={() => handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button><button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button></div>
+                                                    <div className="grid grid-cols-2 gap-3 mt-6">
+                                                        <div className="relative">
+                                                            <button 
+                                                                onClick={() => setOpenDropdown(openDropdown?.type === 'module' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'module' })}
+                                                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-[10px] uppercase tracking-[0.15em] transition-all border-b-4 border-indigo-900 flex items-center justify-center gap-2"
+                                                            >
+                                                                <Layers size={14} /> BROWSE MODULES <ChevronDown size={14} />
+                                                            </button>
+                                                            {openDropdown?.tier === levelLabel && openDropdown?.type === 'module' && (
+                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-indigo-600 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
+                                                                    {activeModules.map(m => (
+                                                                        <button 
+                                                                            key={m.id} 
+                                                                            onClick={() => handleTierSelection(levelLabel, 'module', m.id)}
+                                                                            className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.moduleId === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-indigo-50 text-gray-700'}`}
+                                                                        >
+                                                                            {m.title}
+                                                                        </button>
+                                                                    ))}
                                                                 </div>
-                                                            ) : (
-                                                                <>
-                                                                    <span className="text-4xl font-serif font-black text-royal-900 leading-none">{modIndex + 1}</span>
-                                                                    <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest">Sequential Unit</p>
-                                                                    {isManagementMode && (
-                                                                        <button onClick={(e) => { e.stopPropagation(); setEditingModuleId(mod.id); setNewOrderValue((modIndex + 1).toString()); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"><Edit3 size={12} /> Edit Order</button>
-                                                                    )}
-                                                                </>
                                                             )}
                                                         </div>
-                                                    </td>
-
-                                                    {/* CURRICULUM CONTROLS COLUMN (Summary view for module) */}
-                                                    <td className="p-6 border-2 border-gray-300 align-middle bg-gray-50/50">
-                                                        <div className="flex flex-col items-center gap-4 max-w-[400px] mx-auto text-center">
-                                                            <div className="bg-white p-6 rounded-[2rem] border-2 border-gray-200 shadow-inner w-full flex items-center justify-around">
-                                                                <div className="text-center">
-                                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Total Lessons</p>
-                                                                    <p className="text-xl font-black text-royal-900 leading-none">{modLessons.length}</p>
-                                                                </div>
-                                                                <div className="h-8 w-px bg-gray-100"></div>
-                                                                <div className="text-center">
-                                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Attempted</p>
-                                                                    <p className="text-xl font-black text-indigo-600 leading-none">{modLessons.filter(l => lessonStatuses[l.id]?.status !== 'UNATTEMPTED').length}</p>
-                                                                </div>
-                                                            </div>
+                                                        <div className="relative">
                                                             <button 
-                                                                onClick={() => toggleModule(mod.id)}
-                                                                className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all shadow-lg transform active:scale-95 flex items-center justify-center gap-4 border-b-8 ${moduleStatus === 'Completed' ? 'bg-emerald-600 text-white border-emerald-900' : moduleStatus === 'In progress' ? 'bg-indigo-600 text-white border-indigo-900' : 'bg-royal-900 text-white border-black'}`}
+                                                                onClick={() => setOpenDropdown(openDropdown?.type === 'lesson' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'lesson' })}
+                                                                className="w-full py-3 bg-white text-indigo-600 border-4 border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
                                                             >
-                                                                {isExpanded ? <Zap size={20} className="text-gold-400 fill-current" /> : <Play size={20} className="fill-current" />}
-                                                                {isExpanded ? 'MANAGE LESSON REGISTRY' : moduleStatus === 'Not started' ? 'START MODULE PATHWAY' : 'RESUME MODULE PERSISTENCE'}
+                                                                <BookOpen size={14} /> EXPAND UNITS <ChevronDown size={14} />
                                                             </button>
+                                                            {openDropdown?.tier === levelLabel && openDropdown?.type === 'lesson' && (
+                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-indigo-200 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
+                                                                    {activeLessons.map(l => (
+                                                                        <button 
+                                                                            key={l.id} 
+                                                                            onClick={() => handleTierSelection(levelLabel, 'lesson', l.id)}
+                                                                            className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.lessonId === l.id ? 'bg-indigo-50 text-indigo-800 font-black' : 'hover:bg-gray-50 text-gray-600'}`}
+                                                                        >
+                                                                            {l.title}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                    </div>
+                                                </>
+                                            ) : <div className="p-10 text-center opacity-10"><Layers size={40}/></div>}
+                                        </div>
+                                    </td>
 
-                                                {/* LESSON ROWS (Conditional rendering) */}
-                                                {isExpanded && modLessons.map((les, lesIndex) => {
-                                                    const stat = lessonStatuses[les.id];
-                                                    const isComplete = stat?.status === 'COMPLETED';
-                                                    const isStarted = stat?.status === 'STARTED';
+                                    {/* MODULE ORDER COLUMN */}
+                                    <td className="p-6 border-2 border-gray-300 text-center align-middle bg-gray-50/30">
+                                        <div className="flex flex-col justify-center items-center gap-3">
+                                            {activeModule && (
+                                                editingModuleId === activeModule.id ? (
+                                                    <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
+                                                        <input autoFocus type="number" className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none" value={newOrderValue} onChange={(e) => setNewOrderValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateOrder(activeCourse.id, activeModule.id, parseInt(newOrderValue)); if (e.key === 'Escape') setEditingModuleId(null); }} />
+                                                        <div className="flex gap-1"><button onClick={() => handleUpdateOrder(activeCourse.id, activeModule.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button><button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button></div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-5xl font-serif font-black text-royal-900 leading-none">{activeModules.indexOf(activeModule) + 1}</span>
+                                                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mt-1">Registry Rank</p>
+                                                        {isManagementMode && (
+                                                            <button onClick={() => { setEditingModuleId(activeModule.id); setNewOrderValue((activeModules.indexOf(activeModule) + 1).toString()); }} className="mt-2 p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"><Edit3 size={12} /> Edit Seq</button>
+                                                        )}
+                                                    </>
+                                                )
+                                            )}
+                                        </div>
+                                    </td>
 
-                                                    return (
-                                                        <tr key={les.id} className="bg-gray-50/30 animate-in slide-in-from-top-2 duration-300">
-                                                            <td className="border-x-2 border-gray-300"></td> {/* Course Spacer */}
-                                                            <td className="p-4 border-2 border-gray-300 pl-16">
-                                                                <div className="flex items-center gap-5">
-                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-sm border-2 ${isComplete ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : isStarted ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-gray-300 border-gray-200'}`}>
-                                                                        {lesIndex + 1}
-                                                                    </div>
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <h4 className="text-base font-black text-gray-800 leading-tight truncate">{les.title}</h4>
-                                                                        <div className="flex items-center gap-3 mt-1.5">
-                                                                            <StatusBadge label={stat?.label || 'Not started'} />
-                                                                            {stat?.percent > 0 && <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">{stat.percent}% Persistance</span>}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-4 border-2 border-gray-300 text-center bg-white/50">
-                                                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">L-{lesIndex + 1}</span>
-                                                            </td>
-                                                            <td className="p-4 border-2 border-gray-300 bg-white">
-                                                                <div className="grid grid-cols-3 gap-3">
-                                                                    <button 
-                                                                        onClick={() => onTakeLesson?.(les.id)}
-                                                                        className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-b-4 active:scale-95 group/lbtn ${isComplete ? 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50' : isStarted ? 'bg-indigo-600 text-white border-indigo-900 hover:bg-indigo-700' : 'bg-royal-800 text-white border-black hover:bg-black'}`}
-                                                                    >
-                                                                        <Play size={12} className="fill-current" />
-                                                                        {isComplete ? 'REVIEW LESSON' : isStarted ? 'RESUME LESSON' : 'START LESSON'}
-                                                                    </button>
-                                                                    <button onClick={() => setAboutModal({ isOpen: true, title: les.title, segments: les.about })} className="py-3 bg-white text-royal-800 border-2 border-royal-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-royal-50 transition-all flex items-center justify-center gap-2 shadow-sm">
-                                                                        <InfoIcon size={14} /> ABOUT
-                                                                    </button>
-                                                                    <button onClick={() => handleOpenInsights(les)} className="py-3 bg-white text-indigo-600 border-2 border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
-                                                                        <PenTool size={14} /> INSIGHTS
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </React.Fragment>
-                                        );
-                                    });
-                                })}
+                                    {/* CURRICULUM CONTROLS COLUMN */}
+                                    <td className="p-6 border-2 border-gray-300 align-middle bg-gray-50/50">
+                                        {activeLesson ? (
+                                            <div className="flex flex-col gap-6 animate-in fade-in">
+                                                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-indigo-100 shadow-inner flex flex-col md:flex-row items-center justify-between gap-6">
+                                                    <div className="flex items-center gap-5">
+                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-lg border-2 ${lessonStat?.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : lessonStat?.status === 'STARTED' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-gray-300 border-gray-200'}`}>
+                                                            {activeLessons.indexOf(activeLesson) + 1}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">SELECTED COMPONENT</p>
+                                                            <h4 className="text-xl font-black text-gray-950 leading-tight truncate max-w-[250px]">{activeLesson.title}</h4>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end">
+                                                        <StatusBadge label={lessonStat?.label || 'Not started'} />
+                                                        {lessonStat?.percent! > 0 && <span className="text-[10px] font-black text-indigo-400 uppercase mt-2">{lessonStat?.percent}% Mastery</span>}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <button 
+                                                        onClick={() => onTakeLesson?.(activeLesson.id)}
+                                                        className="py-5 bg-royal-900 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase text-xs tracking-[0.3em] border-b-8 border-black active:scale-95"
+                                                    >
+                                                        <Play size={20} className="fill-gold-400 text-gold-400" /> START COMPONENT
+                                                    </button>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <button onClick={() => setAboutModal({ isOpen: true, title: activeLesson.title, segments: activeLesson.about })} className="py-4 bg-white text-indigo-700 border-4 border-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                                            <InfoIcon size={16} /> Details
+                                                        </button>
+                                                        <button onClick={() => handleOpenInsights(activeLesson)} className="py-4 bg-white text-emerald-700 border-4 border-emerald-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                                            <PenTool size={16} /> Insight
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-10 opacity-30 italic font-black text-xs uppercase tracking-widest">
+                                                Select a Lesson to Access Controls
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                       </div>

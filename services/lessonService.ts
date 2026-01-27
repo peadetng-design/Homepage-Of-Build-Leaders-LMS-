@@ -233,12 +233,10 @@ class LessonService {
       const currentCourse = this.courses.find(c => c.id === currentModule.courseId);
       if (!currentCourse) return {};
 
-      // Identify entire course module registry in order
       const courseModules = this.modules
         .filter(m => m.courseId === currentCourse.id)
         .sort((a, b) => a.order - b.order);
 
-      // Identify entire module lesson registry in order
       const moduleLessons = this.lessons
         .filter(l => l.moduleId === currentModule.id)
         .sort((a, b) => a.orderInModule - b.orderInModule);
@@ -249,7 +247,7 @@ class LessonService {
       let prevId: string | undefined;
       let nextId: string | undefined;
 
-      // PREVIOUS LESSON CALCULATION
+      // Adjacency Rule: Previous
       if (currentIdx > 0) {
           prevId = moduleLessons[currentIdx - 1].id;
       } else if (modIdx > 0) {
@@ -260,7 +258,7 @@ class LessonService {
           if (prevModLessons.length > 0) prevId = prevModLessons[prevModLessons.length - 1].id;
       }
 
-      // NEXT LESSON CALCULATION
+      // Adjacency Rule: Next
       if (currentIdx < moduleLessons.length - 1) {
           nextId = moduleLessons[currentIdx + 1].id;
       } else if (modIdx < courseModules.length - 1) {
@@ -458,7 +456,6 @@ class LessonService {
         return 'student (Beginner)';
     };
 
-    // Mandatory Sheet Names mapped case-insensitively
     const courseData = getSheet('Course_Metadata') as any[];
     const aboutCourseData = getSheet('About_Course (NEW)') as any[];
     const moduleData = getSheet('Module_Metadata (UPDATED)') as any[];
@@ -472,7 +469,6 @@ class LessonService {
         errors.push({ sheet: 'Course_Metadata', row: 1, column: 'All', message: 'Registry Error: Course record required.', severity: 'error' });
     }
 
-    // Step 1: Course
     const rawCourse = courseData[0];
     const course: Course = {
         id: (getRowValue(rawCourse, ['course_id', 'id']) || 'ID-MISSING').toString(),
@@ -493,9 +489,6 @@ class LessonService {
             .sort((a, b) => a.order - b.order)
     };
 
-    if (course.about.length === 0 && courseData.length > 0) errors.push({ sheet: 'About_Course (NEW)', row: 1, column: 'Segments', message: 'Registry Requirement: At least 1 segment required.', severity: 'error' });
-
-    // Step 2: Modules
     const modules: Module[] = moduleData.map((m, idx) => {
         return {
             id: (getRowValue(m, ['module_id', 'id']) || '').toString(), 
@@ -523,7 +516,6 @@ class LessonService {
     });
     course.totalModulesRequired = modules.length;
 
-    // Step 3: Lessons
     const lessons: Lesson[] = lessonData.map((l, idx) => {
         const moduleId = (getRowValue(l, ['module_id', 'id']) || '').toString();
         const lessonId = (getRowValue(l, ['lesson_id', 'id']) || '').toString();
@@ -558,20 +550,15 @@ class LessonService {
                 })).sort((a, b) => a.order - b.order),
             bibleQuizzes: [], noteQuizzes: [], sections: []
         };
-
-        if (currentLesson.about.length === 0) errors.push({ sheet: 'About_Lesson (NEW)', row: idx + 2, column: 'Segments', message: `Protocol Violation: Lesson ${lessonId} requires 1+ 'About' segments.`, severity: 'error' });
-        
         return currentLesson;
     });
 
-    // Step 4: Quizzes - Forced unique question IDs for independent scoring
     bibleQuizData.forEach((q, idx) => {
         const lessonId = (getRowValue(q, ['lesson_id', 'id']) || '').toString();
         const les = lessons.find(l => l.id === lessonId);
         if (les) {
             const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
-            // Use a globally unique seed to ensure questions across different lessons never conflict
-            const uniqueId = questionId ? `${lessonId}_${questionId}_b${idx}` : `bq_${lessonId}_${idx}_${crypto.randomUUID().substring(0, 4)}`;
+            const uniqueId = questionId ? `${lessonId}_${questionId}_b${idx}` : `bq_${lessonId}_${idx}`;
             les.bibleQuizzes.push({
                 id: uniqueId, 
                 type: 'Bible Quiz', 
@@ -582,7 +569,7 @@ class LessonService {
                     id: lbl.toLowerCase(), 
                     label: lbl, 
                     text: (getRowValue(q, [`option_${lbl}`]) || '').toString(), 
-                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}` || (getRowValue(q, ['correct_option']) || '').toString() === lbl, 
+                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString() === lbl || (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}`, 
                     explanation: (getRowValue(q, [`explanation_${lbl}`]) || '').toString() 
                 }))
             });
@@ -594,8 +581,7 @@ class LessonService {
         const les = lessons.find(l => l.id === lessonId);
         if (les) {
             const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
-            // Use a globally unique seed to ensure questions across different lessons never conflict
-            const uniqueId = questionId ? `${lessonId}_${questionId}_n${idx}` : `nq_${lessonId}_${idx}_${crypto.randomUUID().substring(0, 4)}`;
+            const uniqueId = questionId ? `${lessonId}_${questionId}_n${idx}` : `nq_${lessonId}_${idx}`;
             les.noteQuizzes.push({
                 id: uniqueId, 
                 type: 'Note Quiz', 
@@ -606,14 +592,13 @@ class LessonService {
                     id: lbl.toLowerCase(), 
                     label: lbl, 
                     text: (getRowValue(q, [`option_${lbl}`]) || '').toString(), 
-                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}` || (getRowValue(q, ['correct_option']) || '').toString() === lbl, 
+                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString() === lbl || (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}`, 
                     explanation: (getRowValue(q, [`explanation_${lbl}`]) || '').toString() 
                 }))
             });
         }
     });
 
-    // Final Mapping Check
     modules.forEach(m => { 
         m.lessonIds = lessons.filter(l => l.moduleId === m.id).map(l => l.id); 
         m.totalLessonsRequired = m.lessonIds.length; 

@@ -177,7 +177,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     switch (internalView) {
       case 'upload': return <LessonUpload currentUser={user} onSuccess={() => setInternalView('dashboard')} onCancel={() => setInternalView('dashboard')} />;
       case 'admin': case 'users': case 'requests': case 'logs': case 'invites': case 'curated': case 'news': case 'resources':
-        return <AdminPanel currentUser={user} activeTab={internalView === 'dashboard' ? 'users' : internalView as any} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
+        { /* Fix: Comparison against 'dashboard' was redundant; logic corrected to handle 'admin' view defaulting to 'users' tab */ }
+        return <AdminPanel currentUser={user} activeTab={internalView === 'admin' ? 'users' : internalView as any} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
       case 'org-panel': case 'staff': return <OrganizationPanel currentUser={user} />;
       case 'lessons': case 'progress': return <StudentPanel currentUser={user} activeTab="lessons" onTakeLesson={setSelectedLessonId} />;
       case 'group' : case 'assignments': return <AdminPanel currentUser={user} activeTab={internalView === 'group' ? 'requests' : 'lessons'} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;

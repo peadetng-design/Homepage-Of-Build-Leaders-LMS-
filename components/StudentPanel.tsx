@@ -2,21 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { User, Lesson, Module, Course, AboutSegment } from '../types';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
-import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3 } from 'lucide-react';
+import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
   activeTab: 'join' | 'browse' | 'lessons';
   onTakeLesson?: (lessonId: string) => void;
-  // New props for Edit Capability in "My List" mode
   isManagementMode?: boolean;
   onUpdateUser?: (user: User) => void;
 }
 
 interface LessonStatusData {
     status: 'COMPLETED' | 'STARTED' | 'UNATTEMPTED';
+    label: 'Not started' | 'In progress' | 'Completed';
     score: string;
     timeSpent: number;
+    percent: number;
 }
 
 const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson, isManagementMode = false, onUpdateUser }) => {
@@ -33,6 +34,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   const [isLoading, setIsLoading] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [newOrderValue, setNewOrderValue] = useState<string>("");
+
+  // Expandable Module State
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
   // Modal States
   const [aboutModal, setAboutModal] = useState<{ isOpen: boolean; title: string; segments: AboutSegment[] }>({
@@ -60,6 +64,13 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
     return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
   };
 
+  const toggleModule = (moduleId: string) => {
+      const next = new Set(expandedModules);
+      if (next.has(moduleId)) next.delete(moduleId);
+      else next.add(moduleId);
+      setExpandedModules(next);
+  };
+
   const fetchHierarchy = async () => {
     setIsLoading(true);
     try {
@@ -69,10 +80,8 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
 
       const isSysAdmin = (email: string) => email === 'peadetng@gmail.com';
 
-      // 1. Identify "Provider" for custom orders
       let providerOrder: Record<string, string[]> = currentUser.customModuleOrder || {};
       
-      // If student, check mentor then org for custom order overrides
       if (!isManagementMode && (currentUser.mentorId || currentUser.organizationId)) {
           const managerId = currentUser.mentorId || currentUser.organizationId;
           if (managerId) {
@@ -83,14 +92,12 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           }
       }
 
-      // FIX: Ensure global courses or courses by current user are visible
       const filteredCourses = allCourses.filter(c => {
           if (c.authorId === 'usr_main_admin' || isSysAdmin(c.author || '')) return true;
           if (c.authorId === currentUser.id) return true;
           const isFromMyMentor = currentUser.mentorId === c.authorId;
           const isFromMyOrg = currentUser.organizationId === c.authorId || currentUser.organizationId === c.organizationId;
           
-          // Also check if any lesson in any module of this course is for 'All'
           const courseModules = allModules.filter(m => m.courseId === c.id);
           const hasGlobalContent = courseModules.some(m => {
               const moduleLessons = allLessons.filter(l => l.moduleId === m.id);
@@ -107,14 +114,20 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       };
 
       filteredCourses.forEach(c => {
-          if (levels[c.level]) {
-              levels[c.level].push(c);
+          const lvl = (c.level || '').toString();
+          if (levels[lvl]) {
+              levels[lvl].push(c);
           } else {
-              const lower = (c.level || '').toLowerCase();
-              if (lower.includes('beginner')) levels['student (Beginner)'].push(c);
-              else if (lower.includes('intermediate')) levels['Mentor, Organization & Parent (Intermediate)'].push(c);
-              else if (lower.includes('advanced')) levels['Mentor, Organization & Parent (Advanced)'].push(c);
-              else levels['student (Beginner)'].push(c); // Default
+              const lower = lvl.toLowerCase();
+              if (lower.includes('beginner') || lower.includes('student')) {
+                  levels['student (Beginner)'].push(c);
+              } else if (lower.includes('advanced')) {
+                  levels['Mentor, Organization & Parent (Advanced)'].push(c);
+              } else if (lower.includes('intermediate') || lower.includes('mentor') || lower.includes('parent') || lower.includes('organization')) {
+                  levels['Mentor, Organization & Parent (Intermediate)'].push(c);
+              } else {
+                  levels['student (Beginner)'].push(c);
+              }
           }
       });
       setCoursesByLevel(levels);
@@ -142,9 +155,20 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           const uniqueAnswered = new Set(attempts.map(a => a.quizId)).size;
           const correct = attempts.filter(a => a.isCorrect).length;
           let status: 'COMPLETED' | 'STARTED' | 'UNATTEMPTED' = 'UNATTEMPTED';
-          if (uniqueAnswered >= totalQ && totalQ > 0) status = 'COMPLETED';
-          else if (uniqueAnswered > 0 || time > 0) status = 'STARTED';
-          statusMap[les.id] = { status, score: `${correct}/${totalQ}`, timeSpent: time };
+          let label: 'Not started' | 'In progress' | 'Completed' = 'Not started';
+          let percent = 0;
+          
+          if (uniqueAnswered >= totalQ && totalQ > 0) {
+              status = 'COMPLETED';
+              label = 'Completed';
+              percent = 100;
+          }
+          else if (uniqueAnswered > 0 || time > 0) {
+              status = 'STARTED';
+              label = 'In progress';
+              percent = totalQ > 0 ? Math.round((uniqueAnswered / totalQ) * 100) : 50;
+          }
+          statusMap[les.id] = { status, label, score: `${correct}/${totalQ}`, timeSpent: time, percent };
       }
       setLessonStatuses(statusMap);
       const stats = await lessonService.getStudentSummary(currentUser.id);
@@ -156,39 +180,49 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
     }
   };
 
+  const getModuleStatusLabel = (moduleId: string) => {
+      const lessons = lessonsByModule[moduleId] || [];
+      if (lessons.length === 0) return 'Not started';
+      const stats = lessons.map(l => lessonStatuses[l.id]);
+      if (stats.every(s => s?.status === 'COMPLETED')) return 'Completed';
+      if (stats.some(s => s?.status !== 'UNATTEMPTED')) return 'In progress';
+      return 'Not started';
+  };
+
+  const getModuleProgress = (moduleId: string) => {
+      const lessons = lessonsByModule[moduleId] || [];
+      if (lessons.length === 0) return 0;
+      const completed = lessons.filter(l => lessonStatuses[l.id]?.status === 'COMPLETED').length;
+      return Math.round((completed / lessons.length) * 100);
+  };
+
+  const getCourseStatusLabel = (courseId: string) => {
+      const modules = modulesByCourse[courseId] || [];
+      const moduleLabels = modules.map(m => getModuleStatusLabel(m.id));
+      if (moduleLabels.every(l => l === 'Completed')) return 'Completed';
+      if (moduleLabels.some(l => l !== 'Not started')) return 'In progress';
+      return 'Not started';
+  };
+
   const handleUpdateOrder = async (courseId: string, moduleId: string, newVal: number) => {
     if (!onUpdateUser) return;
-    
     const courseModules = [...(modulesByCourse[courseId] || [])];
     const targetIdx = courseModules.findIndex(m => m.id === moduleId);
     if (targetIdx === -1) return;
-
-    // Remove item and re-insert at new position
     const [movedItem] = courseModules.splice(targetIdx, 1);
     const destinationIdx = Math.max(0, Math.min(newVal - 1, courseModules.length));
     courseModules.splice(destinationIdx, 0, movedItem);
-
-    // Get the new array of IDs
     const newOrderedIds = courseModules.map(m => m.id);
-    
     try {
         const updatedUser = await authService.saveCustomModuleOrder(currentUser.id, courseId, newOrderedIds);
         onUpdateUser(updatedUser);
         setEditingModuleId(null);
-        // fetchHierarchy will trigger due to currentUser dependency
-    } catch (e) {
-        console.error("Failed to save custom order:", e);
-    }
+    } catch (e) { console.error("Failed to save custom order:", e); }
   };
 
   const handleOpenInsights = async (lesson: Lesson) => {
       const savedNote = await lessonService.getUserLessonNote(currentUser.id, lesson.id);
-      setInsightModal({
-          isOpen: true,
-          lessonId: lesson.id,
-          lessonTitle: lesson.title,
-          text: savedNote
-      });
+      setInsightModal({ isOpen: true, lessonId: lesson.id, lessonTitle: lesson.title, text: savedNote });
   };
 
   const handleSaveInsight = async () => {
@@ -199,6 +233,28 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           setInsightModal({ ...insightModal, isOpen: false });
       }, 600);
   };
+
+  const StatusBadge = ({ label }: { label: string }) => {
+      const color = label === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 
+                    label === 'In progress' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 
+                    'bg-gray-50 text-gray-500 border-gray-200';
+      return <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 shadow-sm whitespace-nowrap ${color}`}>{label}</span>;
+  };
+
+  const ProgressBar = ({ percent }: { percent: number }) => (
+      <div className="w-full mt-4">
+          <div className="flex justify-between items-end mb-1.5">
+              <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Mastery Velocity</span>
+              <span className="text-sm font-black text-indigo-600">{percent}%</span>
+          </div>
+          <div className="h-3 w-full bg-gray-100 rounded-full border-2 border-gray-200 overflow-hidden p-0.5">
+              <div 
+                  className="h-full bg-indigo-600 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(79,70,229,0.4)]" 
+                  style={{ width: `${percent}%` }}
+              />
+          </div>
+      </div>
+  );
 
   const renderTierTable = (levelLabel: string, courses: Course[], tierIcon: React.ReactNode, tierColor: string) => {
       const isEmpty = courses.length === 0;
@@ -225,7 +281,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                 </div>
               )}
               
-              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col h-[440px]">
+              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col min-h-[500px]">
                   {isEmpty ? (
                       <div className="py-32 text-center flex flex-col items-center gap-4">
                          <Database size={60} className="text-gray-100 animate-pulse" />
@@ -233,120 +289,166 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                       </div>
                   ) : (
                       <div className="overflow-x-auto custom-scrollbar flex-1 border-collapse">
-                        <table className="w-full text-left border-collapse min-w-[2500px]">
+                        <table className="w-full text-left border-collapse min-w-[2000px]">
                             <thead>
                                 <tr className="bg-royal-900 text-white text-[13px] font-black uppercase tracking-[0.4em] sticky top-0 z-30 shadow-xl border-b-4 border-gold-500">
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[400px]">ABOUT COURSE</th>
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[150px] text-center">MODULE ORDER</th>
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[400px]">ABOUT MODULE</th>
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[150px] text-center">LESSON ORDER</th>
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[400px]">ABOUT LESSON</th>
-                                    <th className="py-5 px-4 border-2 border-white/20 min-w-[600px] text-center">LESSON MANAGEMENT</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[450px]">COURSE IDENTITY</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[550px]">MODULE STRUCTURE</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[200px] text-center">ORDER</th>
+                                    <th className="py-5 px-6 border-2 border-white/20 min-w-[650px] text-center">CURRICULUM CONTROLS</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y-0">
                                 {courses.map(course => {
                                     const courseModules = modulesByCourse[course.id] || [];
+                                    const courseStatus = getCourseStatusLabel(course.id);
+
                                     return courseModules.map((mod, modIndex) => {
                                         const modLessons = lessonsByModule[mod.id] || [];
-                                        return modLessons.map((les, lesIndex) => (
-                                            <tr key={les.id} className="group hover:bg-royal-50/10 transition-all align-top">
-                                                <td className="p-3 border-2 border-gray-300 bg-white">
-                                                    <div className="h-[140px] flex flex-col justify-between">
-                                                        <div className="shrink-0">
-                                                            <h3 className="text-xl font-serif font-black text-royal-950 uppercase leading-tight truncate">{course.title}</h3>
-                                                            <span className="text-[11px] font-black text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-100 uppercase mt-2 inline-block">{course.level}</span>
-                                                        </div>
-                                                        <button onClick={() => setAboutModal({ isOpen: true, title: course.title, segments: course.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-[14px] uppercase tracking-widest transition-all mt-4 border border-royal-200">READ MORE</button>
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
-                                                    <div className="h-[140px] flex flex-col justify-center items-center gap-3">
-                                                        {editingModuleId === mod.id && lesIndex === 0 ? (
-                                                            <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
-                                                                <input 
-                                                                    autoFocus
-                                                                    type="number"
-                                                                    className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none"
-                                                                    value={newOrderValue}
-                                                                    onChange={(e) => setNewOrderValue(e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue));
-                                                                        if (e.key === 'Escape') setEditingModuleId(null);
-                                                                    }}
-                                                                />
-                                                                <div className="flex gap-1">
-                                                                    <button onClick={() => handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button>
-                                                                    <button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button>
+                                        const isExpanded = expandedModules.has(mod.id);
+                                        const moduleStatus = getModuleStatusLabel(mod.id);
+                                        const moduleProgress = getModuleProgress(mod.id);
+
+                                        return (
+                                            <React.Fragment key={mod.id}>
+                                                {/* MODULE ROW */}
+                                                <tr className={`group transition-all align-top ${isExpanded ? 'bg-indigo-50/20' : 'hover:bg-royal-50/10'}`}>
+                                                    {/* COURSE COLUMN (Merged-style) */}
+                                                    {modIndex === 0 ? (
+                                                        <td rowSpan={courseModules.length} className="p-6 border-2 border-gray-300 bg-white">
+                                                            <div className="flex flex-col gap-4">
+                                                                <div>
+                                                                    <h3 className="text-2xl font-serif font-black text-royal-950 uppercase leading-tight mb-2">{course.title}</h3>
+                                                                    <div className="flex flex-wrap gap-2 items-center">
+                                                                        <StatusBadge label={courseStatus} />
+                                                                        <span className="text-[10px] font-black text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-100 uppercase">{course.level}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <button onClick={() => setAboutModal({ isOpen: true, title: course.title, segments: course.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-xs uppercase tracking-widest transition-all border border-royal-200">View Course Details</button>
+                                                            </div>
+                                                        </td>
+                                                    ) : null}
+
+                                                    {/* MODULE COLUMN */}
+                                                    <td className={`p-6 border-2 border-gray-300 bg-white cursor-pointer group/mod`} onClick={() => toggleModule(mod.id)}>
+                                                        <div className="flex flex-col justify-between h-full">
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={`p-3 rounded-2xl transition-all ${isExpanded ? 'bg-indigo-600 text-white shadow-lg rotate-12' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'}`}>
+                                                                        <Layers size={24} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">M-{modIndex + 1}</p>
+                                                                        <h4 className="text-lg font-serif font-black text-gray-900 uppercase">{mod.title}</h4>
+                                                                    </div>
+                                                                </div>
+                                                                <StatusBadge label={moduleStatus} />
+                                                            </div>
+                                                            
+                                                            <ProgressBar percent={moduleProgress} />
+
+                                                            <div className="flex gap-3 mt-6">
+                                                                <button onClick={(e) => { e.stopPropagation(); setAboutModal({ isOpen: true, title: mod.title, segments: mod.about }); }} className="flex-1 py-2.5 bg-gray-50 hover:bg-indigo-50 text-gray-400 hover:text-indigo-600 font-black rounded-xl text-[10px] uppercase tracking-widest border-2 border-gray-100 hover:border-indigo-100 transition-all">Details</button>
+                                                                <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-widest group-hover/mod:translate-x-1 transition-transform">
+                                                                    {isExpanded ? 'Collapse Units' : 'Expand Units'} {isExpanded ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
                                                                 </div>
                                                             </div>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-3xl font-serif font-black text-royal-900 leading-none">Module {modIndex + 1}</span>
-                                                                <p className="text-[7px] font-black text-gray-300 uppercase mt-2">Sequential Unit</p>
-                                                                {isManagementMode && lesIndex === 0 && (
+                                                        </div>
+                                                    </td>
+
+                                                    {/* MODULE ORDER COLUMN */}
+                                                    <td className="p-6 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
+                                                        <div className="flex flex-col justify-center items-center gap-3">
+                                                            {editingModuleId === mod.id ? (
+                                                                <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
+                                                                    <input autoFocus type="number" className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none" value={newOrderValue} onChange={(e) => setNewOrderValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue)); if (e.key === 'Escape') setEditingModuleId(null); }} />
+                                                                    <div className="flex gap-1"><button onClick={() => handleUpdateOrder(course.id, mod.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button><button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button></div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="text-4xl font-serif font-black text-royal-900 leading-none">{modIndex + 1}</span>
+                                                                    <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest">Sequential Unit</p>
+                                                                    {isManagementMode && (
+                                                                        <button onClick={(e) => { e.stopPropagation(); setEditingModuleId(mod.id); setNewOrderValue((modIndex + 1).toString()); }} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"><Edit3 size={12} /> Edit Order</button>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+
+                                                    {/* CURRICULUM CONTROLS COLUMN (Summary view for module) */}
+                                                    <td className="p-6 border-2 border-gray-300 align-middle bg-gray-50/50">
+                                                        <div className="flex flex-col items-center gap-4 max-w-[400px] mx-auto text-center">
+                                                            <div className="bg-white p-6 rounded-[2rem] border-2 border-gray-200 shadow-inner w-full flex items-center justify-around">
+                                                                <div className="text-center">
+                                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Total Lessons</p>
+                                                                    <p className="text-xl font-black text-royal-900 leading-none">{modLessons.length}</p>
+                                                                </div>
+                                                                <div className="h-8 w-px bg-gray-100"></div>
+                                                                <div className="text-center">
+                                                                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Attempted</p>
+                                                                    <p className="text-xl font-black text-indigo-600 leading-none">{modLessons.filter(l => lessonStatuses[l.id]?.status !== 'UNATTEMPTED').length}</p>
+                                                                </div>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => toggleModule(mod.id)}
+                                                                className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-[0.2em] transition-all shadow-lg transform active:scale-95 flex items-center justify-center gap-4 border-b-8 ${moduleStatus === 'Completed' ? 'bg-emerald-600 text-white border-emerald-900' : moduleStatus === 'In progress' ? 'bg-indigo-600 text-white border-indigo-900' : 'bg-royal-900 text-white border-black'}`}
+                                                            >
+                                                                {isExpanded ? <Zap size={20} className="text-gold-400 fill-current" /> : <Play size={20} className="fill-current" />}
+                                                                {isExpanded ? 'MANAGE LESSON REGISTRY' : moduleStatus === 'Not started' ? 'START MODULE PATHWAY' : 'RESUME MODULE PERSISTENCE'}
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                {/* LESSON ROWS (Conditional rendering) */}
+                                                {isExpanded && modLessons.map((les, lesIndex) => {
+                                                    const stat = lessonStatuses[les.id];
+                                                    const isComplete = stat?.status === 'COMPLETED';
+                                                    const isStarted = stat?.status === 'STARTED';
+
+                                                    return (
+                                                        <tr key={les.id} className="bg-gray-50/30 animate-in slide-in-from-top-2 duration-300">
+                                                            <td className="border-x-2 border-gray-300"></td> {/* Course Spacer */}
+                                                            <td className="p-4 border-2 border-gray-300 pl-16">
+                                                                <div className="flex items-center gap-5">
+                                                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black shrink-0 shadow-sm border-2 ${isComplete ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : isStarted ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-gray-300 border-gray-200'}`}>
+                                                                        {lesIndex + 1}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <h4 className="text-base font-black text-gray-800 leading-tight truncate">{les.title}</h4>
+                                                                        <div className="flex items-center gap-3 mt-1.5">
+                                                                            <StatusBadge label={stat?.label || 'Not started'} />
+                                                                            {stat?.percent > 0 && <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest">{stat.percent}% Persistance</span>}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-4 border-2 border-gray-300 text-center bg-white/50">
+                                                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">L-{lesIndex + 1}</span>
+                                                            </td>
+                                                            <td className="p-4 border-2 border-gray-300 bg-white">
+                                                                <div className="grid grid-cols-3 gap-3">
                                                                     <button 
-                                                                        onClick={() => {
-                                                                            setEditingModuleId(mod.id);
-                                                                            setNewOrderValue((modIndex + 1).toString());
-                                                                        }}
-                                                                        className="p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"
+                                                                        onClick={() => onTakeLesson?.(les.id)}
+                                                                        className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 border-b-4 active:scale-95 group/lbtn ${isComplete ? 'bg-white text-emerald-600 border-emerald-200 hover:bg-emerald-50' : isStarted ? 'bg-indigo-600 text-white border-indigo-900 hover:bg-indigo-700' : 'bg-royal-800 text-white border-black hover:bg-black'}`}
                                                                     >
-                                                                        <Edit3 size={12} /> Edit Order
+                                                                        <Play size={12} className="fill-current" />
+                                                                        {isComplete ? 'REVIEW LESSON' : isStarted ? 'RESUME LESSON' : 'START LESSON'}
                                                                     </button>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 border-2 border-gray-300 bg-white">
-                                                    <div className="h-[140px] flex flex-col justify-between">
-                                                        <div className="shrink-0">
-                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">M-{modIndex + 1}</p>
-                                                            <h4 className="text-lg font-serif font-black text-gray-900 uppercase truncate">{mod.title}</h4>
-                                                        </div>
-                                                        <button onClick={() => setAboutModal({ isOpen: true, title: mod.title, segments: mod.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-[14px] uppercase tracking-widest transition-all mt-4 border border-royal-200">READ MORE</button>
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 border-2 border-gray-300 text-center align-middle bg-gray-50/50">
-                                                    <div className="h-[140px] flex flex-col justify-center items-center">
-                                                        <span className="text-3xl font-serif font-black text-royal-900 leading-none">Lesson {lesIndex + 1}</span>
-                                                        <p className="text-[7px] font-black text-gray-300 uppercase mt-2">Current Position</p>
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 border-2 border-gray-300 bg-white">
-                                                    <div className="h-[140px] flex flex-col justify-between">
-                                                        <div className="shrink-0">
-                                                            <p className="text-[12px] font-black text-indigo-400 uppercase leading-none mb-2">L-{lesIndex + 1}</p>
-                                                            <h4 className="text-lg font-serif font-black text-gray-900 uppercase truncate">{les.title}</h4>
-                                                        </div>
-                                                        <button onClick={() => setAboutModal({ isOpen: true, title: les.title, segments: les.about })} className="w-full py-3 bg-royal-100 hover:bg-royal-200 text-royal-800 font-black rounded-xl text-[14px] uppercase tracking-widest transition-all mt-4 border border-royal-200">READ MORE</button>
-                                                    </div>
-                                                </td>
-                                                <td className="p-3 border-2 border-gray-300 align-middle bg-gray-50/50 text-center">
-                                                    <div className="h-[140px] flex flex-col justify-center gap-3 max-w-[500px] mx-auto">
-                                                        <div className="grid grid-cols-3 gap-3">
-                                                            <button onClick={() => onTakeLesson?.(les.id)} className="py-3.5 bg-royal-800 text-white font-black rounded-xl shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 uppercase text-[10px] md:text-xs tracking-widest border-b-[4px] border-royal-950 active:scale-95 group/btn">
-                                                                <Play size={14} fill="currentColor" /> take/resume lesson.
-                                                            </button>
-                                                            <div className={`py-3.5 px-1 rounded-xl text-[10px] md:text-xs font-black uppercase text-center border-[3px] tracking-tighter shadow-md truncate flex items-center justify-center ${lessonStatuses[les.id]?.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : lessonStatuses[les.id]?.status === 'STARTED' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-                                                                {lessonStatuses[les.id]?.status}
-                                                            </div>
-                                                            <button onClick={() => handleOpenInsights(les)} className="py-3.5 bg-indigo-600 text-white font-black rounded-xl shadow-lg hover:bg-indigo-800 transition-all flex items-center justify-center gap-2 uppercase text-[10px] md:text-xs tracking-widest border-b-[4px] border-indigo-950 active:scale-95">
-                                                                <PenTool size={14} /> MY INSIGHTS
-                                                            </button>
-                                                            <button className="py-3.5 bg-white text-royal-800 border-[3px] border-royal-200 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest hover:bg-royal-50 transition-all flex items-center justify-center gap-2 shadow-sm">
-                                                                <Download size={14} /> OFFLINE STUDY
-                                                            </button>
-                                                            <div className="bg-white rounded-xl border-[3px] border-gray-200 px-2 py-1 flex items-center justify-between shadow-inner col-span-2">
-                                                                <div className="text-left"><p className="text-[7px] font-black text-gray-400 uppercase leading-none">SCORE</p><p className="text-sm font-black text-royal-900 leading-none">{lessonStatuses[les.id]?.score}</p></div>
-                                                                <div className="text-right"><p className="text-[7px] font-black text-gray-400 uppercase leading-none">TIME</p><p className="text-sm font-black text-indigo-600 leading-none">{formatDigitalTime(lessonStatuses[les.id]?.timeSpent || 0)}</p></div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ));
+                                                                    <button onClick={() => setAboutModal({ isOpen: true, title: les.title, segments: les.about })} className="py-3 bg-white text-royal-800 border-2 border-royal-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-royal-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                                                        <InfoIcon size={14} /> ABOUT
+                                                                    </button>
+                                                                    <button onClick={() => handleOpenInsights(les)} className="py-3 bg-white text-indigo-600 border-2 border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                                                        <PenTool size={14} /> INSIGHTS
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </React.Fragment>
+                                        );
                                     });
                                 })}
                             </tbody>
@@ -438,7 +540,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                             placeholder="Your spiritual reflections for this lesson..."
                         />
                         <button onClick={handleSaveInsight} disabled={isSavingInsight} className="mt-8 py-6 bg-indigo-600 text-white font-black rounded-3xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase tracking-[0.3em] shadow-2xl border-b-8 border-indigo-950 active:scale-95">
-                            {isSavingInsight ? <Loader2 className="animate-spin" size={24}/> : <Save size={24}/>} {isSavingInsight ? 'Archiving...' : 'Update Insight Registry'}
+                            {isSavingInsight ? <Loader2 className="animate-spin" size={24}/> : <Save size={24}/>} {isSavingInsight ? 'ARCHIVING...' : 'Update Insight Registry'}
                         </button>
                     </div>
                 </div>

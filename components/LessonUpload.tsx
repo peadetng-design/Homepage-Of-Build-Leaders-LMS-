@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, LessonDraft, Lesson, Module, Course, AboutSegment, ImportError, SectionType, LessonType, TargetAudience, UserRole, Resource, NewsItem, QuizQuestion, QuizOption, LeadershipNote, ProficiencyLevel, HomepageContent } from '../types';
 import { lessonService } from '../services/lessonService';
-// Fix: Added CloudUpload to lucide-react imports
-import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, CheckCircle, HelpCircle, ArrowRight, AlertTriangle, Layers, BadgeCheck, PenTool, Check, Info, Library, Layout, ListChecks, Download, AlertCircle, ArrowLeft, Sparkles, FileText, Fingerprint, UserCircle, AlignLeft, ChevronDown, ListPlus, Send, Target, FileQuestion, GraduationCap, Trophy, Book, Trash, Edit, Globe, Monitor, Newspaper, Youtube, Link as LinkIcon, Calendar, CloudUpload } from 'lucide-react';
+import { Upload, X, Loader2, Save, Plus, Trash2, Edit3, BookOpen, File as FileIcon, CheckCircle, HelpCircle, ArrowRight, AlertTriangle, Layers, BadgeCheck, PenTool, Check, Info, Library, Layout, ListChecks, Download, AlertCircle, ArrowLeft, Sparkles, FileText, Fingerprint, UserCircle, AlignLeft, ChevronDown, ListPlus, Send, Target, FileQuestion, GraduationCap, Trophy, Book, Trash, Edit, Globe, Monitor, Newspaper, Youtube, Link as LinkIcon, Calendar, CloudUpload, FileWarning } from 'lucide-react';
 
 interface BulkGridRow {
     id: string;
@@ -195,6 +194,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     }
 
     setIsParsing(true);
+    setError(null);
     try {
         const res = await lessonService.parseExcelUpload(validRows[0].file!);
         if (res.courseMetadata) {
@@ -207,12 +207,24 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
             l.author = currentUser.name;
         });
         setDraft(res);
-        if (res.errors.length > 0) setError(`Mapping conflicts detected in workbook segments.`);
+        if (res.errors.length > 0) setError(`Mapping conflicts detected in workbook segments. Review the Error Analysis Report.`);
     } catch (e: any) {
         setError(e.message);
     } finally {
         setIsParsing(false);
     }
+  };
+
+  const downloadErrorReport = () => {
+    if (!draft || draft.errors.length === 0) return;
+    const header = "Sheet,Row,Column,Violation,Severity\n";
+    const body = draft.errors.map(e => `"${e.sheet}","${e.row}","${e.column}","${e.message}","${e.severity}"`).join("\n");
+    const blob = new Blob([header + body], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BBL_Registry_Error_Analysis_${Date.now()}.csv`;
+    a.click();
   };
 
   const validateCourseAndProceed = (isFinal: boolean) => {
@@ -370,6 +382,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
     return isStarted ? 'STARTED' : 'EMPTY';
   };
 
+  // Border thickness increased to 4px as per previous instruction
   const inputClass = "w-full p-4 bg-white border-4 border-gray-300 rounded-2xl focus:border-indigo-600 focus:bg-white outline-none transition-all font-bold text-gray-900 placeholder:text-gray-300 shadow-sm";
   const darkInputClass = "w-full p-4 bg-white/10 border-4 border-white/40 rounded-2xl text-white font-bold outline-none focus:border-gold-500 transition-all placeholder:text-white/30 shadow-lg";
   const labelClass = "text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2 block ml-1";
@@ -404,14 +417,229 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                 </div>
             </div>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-12 bg-[#fdfdfd]">
-                {error && (
+                
+                {/* Error Report Panel */}
+                {draft && draft.errors.length > 0 && (
+                    <div className="bg-red-50 border-4 border-red-100 p-8 rounded-[2.5rem] mb-12 animate-in slide-in-from-top-4 flex flex-col gap-6">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-4">
+                                <FileWarning className="text-red-600" size={48} />
+                                <div>
+                                    <h4 className="text-red-900 font-black text-xl uppercase">Registry Violation Analysis</h4>
+                                    <p className="text-red-700 font-bold leading-relaxed">{draft.errors.length} Critical conflicts detected in workbook mapping.</p>
+                                </div>
+                            </div>
+                            <button onClick={downloadErrorReport} className="px-6 py-2.5 bg-red-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all flex items-center gap-2 border-b-4 border-red-900">
+                                <Download size={16}/> DOWNLOAD ERROR REPORT
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {draft.errors.slice(0, 6).map((err, i) => (
+                                <div key={i} className="p-4 bg-white border-2 border-red-200 rounded-2xl shadow-sm text-xs">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-black text-red-700 uppercase tracking-tighter">{err.sheet}</span>
+                                        <span className="text-gray-400 font-mono">Row {err.row}</span>
+                                    </div>
+                                    <p className="text-gray-700 font-bold">{err.message}</p>
+                                </div>
+                            ))}
+                            {draft.errors.length > 6 && <div className="p-4 flex items-center justify-center text-red-400 font-black uppercase text-[10px] tracking-widest">+{draft.errors.length - 6} more violations found</div>}
+                        </div>
+                    </div>
+                )}
+
+                {error && !draft && (
                     <div className="bg-red-50 border-4 border-red-100 p-8 rounded-[2.5rem] mb-12 flex items-start gap-6 shadow-xl animate-in slide-in-from-top-4">
                         <AlertCircle className="shrink-0 text-red-600" size={48} />
                         <div className="flex-1"><h4 className="text-red-900 font-black text-xl uppercase mb-2">Protocol Violation</h4><p className="text-red-700 font-bold leading-relaxed">{error}</p></div>
                     </div>
                 )}
 
-                {/* --- RESOURCES PORTAL --- */}
+                {metricMode === 'bulk' && (
+                    <div className="max-w-full mx-auto space-y-12">
+                        {!draft ? (
+                            <div className="space-y-8 animate-in fade-in">
+                                <div className="flex justify-between items-center px-4">
+                                    <h3 className="text-4xl font-serif font-black text-gray-900 uppercase tracking-tighter">Workbook Registry Matrix</h3>
+                                    <button 
+                                        onClick={addNewBulkRow}
+                                        className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-xl border-b-4 border-indigo-900 hover:bg-indigo-700 transition-all flex items-center gap-3 uppercase text-xs tracking-widest active:scale-95"
+                                    >
+                                        <Plus size={18}/> Add New Course
+                                    </button>
+                                </div>
+                                
+                                <div className="bg-white border-8 border-gray-50 rounded-[3rem] shadow-2xl overflow-hidden">
+                                    <div className="overflow-x-auto custom-scrollbar">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-royal-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-gold-500">
+                                                    <th className="p-6 min-w-[250px]">Course Title</th>
+                                                    <th className="p-6 min-w-[120px]">Module #</th>
+                                                    <th className="p-6 min-w-[250px]">Module Title</th>
+                                                    <th className="p-6 min-w-[120px]">Lesson #</th>
+                                                    <th className="p-6 min-w-[250px]">Lesson Title</th>
+                                                    <th className="p-6 min-w-[350px]">Lesson Management</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-100">
+                                                {bulkGridRows.map((row) => (
+                                                    <tr key={row.id} className="group hover:bg-royal-50/30 transition-all">
+                                                        <td className="p-4">
+                                                            <div className="relative">
+                                                                <input 
+                                                                    className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                    value={row.course}
+                                                                    onChange={(e) => updateBulkRow(row.id, { course: e.target.value })}
+                                                                    placeholder="e.g. Genesis Mastery"
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-4 border-gray-200 focus-within:bg-white focus-within:border-indigo-400 transition-all">
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                    value={row.moduleNum}
+                                                                    onChange={(e) => updateBulkRow(row.id, { moduleNum: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <div className="flex flex-col text-gray-300">
+                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: row.moduleNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
+                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: Math.max(1, row.moduleNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <input 
+                                                                className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                value={row.moduleTitle}
+                                                                onChange={(e) => updateBulkRow(row.id, { moduleTitle: e.target.value })}
+                                                                placeholder="e.g. Creation & Early Life"
+                                                            />
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-4 border-gray-200 focus-within:bg-white focus-within:border-indigo-400 transition-all">
+                                                                <input 
+                                                                    type="number" 
+                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
+                                                                    value={row.lessonNum}
+                                                                    onChange={(e) => updateBulkRow(row.id, { lessonNum: parseInt(e.target.value) || 0 })}
+                                                                />
+                                                                <div className="flex flex-col text-gray-300">
+                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: row.lessonNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
+                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: Math.max(1, row.lessonNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <input 
+                                                                className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
+                                                                value={row.lessonTitle}
+                                                                onChange={(e) => updateBulkRow(row.id, { lessonTitle: e.target.value })}
+                                                                placeholder="e.g. Genesis 1: The First Act"
+                                                            />
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="relative group/upload">
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept=".xlsx" 
+                                                                        className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full" 
+                                                                        onChange={(e) => {
+                                                                            const f = e.target.files?.[0];
+                                                                            if (f) handleBulkFileUpload(row.id, f);
+                                                                        }}
+                                                                    />
+                                                                    <button className="px-5 py-3 bg-white text-royal-900 border-2 border-royal-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-royal-900 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover/upload:border-indigo-600">
+                                                                        <Upload size={14}/> DEPOSIT 8-SHEET WORKBOOK
+                                                                    </button>
+                                                                </div>
+                                                                <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 ${row.status === 'UPLOADED' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+                                                                    {row.status}
+                                                                </div>
+                                                                <div className="flex gap-1">
+                                                                    <button onClick={() => deleteBulkRow(row.id)} className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash size={18}/></button>
+                                                                    <button className="p-3 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit size={18}/></button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Registry Matrix Protocol Enabled</p>
+                                    </div>
+                                </div>
+                                <button onClick={processBulkGrid} disabled={isParsing || bulkGridRows.every(r => !r.file)} className="w-full py-8 bg-royal-800 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center justify-center gap-8 text-xl group transform active:scale-95 disabled:opacity-50">
+                                    {isParsing ? <Loader2 className="animate-spin" size={32}/> : <CheckCircle size={32} className="text-gold-400" />} 
+                                    {isParsing ? "Synchronizing Matrix..." : "EXECUTE SYSTEM ANALYSIS"}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-12 animate-in fade-in duration-700">
+                                <div className="flex justify-between items-end border-b-8 border-gray-50 pb-10">
+                                    <div><h3 className="text-5xl font-serif font-black text-gray-950 uppercase tracking-tighter leading-none">Mapping Preview</h3><p className="text-gray-400 font-black uppercase tracking-[0.3em] text-xs mt-4">Verified registry mapping. Fix errors inline before commit.</p></div>
+                                    <div className="flex gap-4 bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+                                        <button onClick={() => setPreviewTab('course')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'course' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Course</button>
+                                        <button onClick={() => setPreviewTab('modules')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'modules' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Modules</button>
+                                        <button onClick={() => setPreviewTab('lessons')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'lessons' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Lessons</button>
+                                    </div>
+                                </div>
+                                <div className="bg-white border-8 border-gray-50 p-12 rounded-[4rem] shadow-2xl space-y-10">
+                                    {previewTab === 'course' && draft.courseMetadata && (
+                                        <div className="grid grid-cols-2 gap-8 animate-in slide-in-from-right-4">
+                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Course ID</label><input className={inputClass} value={draft.courseMetadata.id} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, id: e.target.value}})} /></div>
+                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Author</label><input className={inputClass} value={draft.courseMetadata.author} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, author: e.target.value}})} /></div>
+                                            <div className="col-span-2"><label className={labelClass}>Title</label><input className={inputClass} value={draft.courseMetadata.title} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, title: e.target.value}})} /></div>
+                                            <div className="col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} min-h-[100px]`} value={draft.courseMetadata.description} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, description: e.target.value}})} /></div>
+                                        </div>
+                                    )}
+                                    {previewTab === 'modules' && (
+                                        <div className="space-y-6 animate-in slide-in-from-right-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
+                                            {draft.modules.map((m, idx) => (
+                                                <div key={idx} className="p-8 bg-gray-50 rounded-[3rem] border-4 border-gray-100 flex flex-col gap-6 shadow-sm">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black shadow-lg">{idx + 1}</span>
+                                                        <h4 className="font-black text-gray-900 uppercase">Module Identity</h4>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-6">
+                                                        <div className="col-span-1"><label className={labelClass}>Module ID</label><input className={inputClass} value={m.id} onChange={e => { const modules = [...draft.modules]; modules[idx].id = e.target.value; setDraft({...draft, modules}); }} /></div>
+                                                        <div className="col-span-1"><label className={labelClass}>Title</label><input className={inputClass} value={m.title} onChange={e => { const modules = [...draft.modules]; modules[idx].title = e.target.value; setDraft({...draft, modules}); }} /></div>
+                                                        <div className="col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} min-h-[80px]`} value={m.description} onChange={e => { const modules = [...draft.modules]; modules[idx].description = e.target.value; setDraft({...draft, modules}); }} /></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {previewTab === 'lessons' && (
+                                        <div className="space-y-6 animate-in slide-in-from-right-4 max-h-[600px] overflow-y-auto custom-scrollbar pr-4">
+                                            {draft.lessons.map((l, idx) => (
+                                                <div key={idx} className="p-8 bg-gray-50 rounded-[3rem] border-4 border-gray-100 flex flex-col gap-6 shadow-sm">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="w-12 h-12 bg-royal-900 text-white rounded-2xl flex items-center justify-center font-black shadow-lg">{idx + 1}</span>
+                                                        <h4 className="font-black text-gray-900 uppercase">Lesson Intelligence</h4>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-6">
+                                                        <div className="col-span-2 md:col-span-1"><label className={labelClass}>Lesson Title</label><input className={inputClass} value={l.title} onChange={e => { const lessons = [...draft.lessons]; lessons[idx].title = e.target.value; setDraft({...draft, lessons}); }} /></div>
+                                                        <div className="col-span-2 md:col-span-1"><label className={labelClass}>Parent Module ID</label><input className={inputClass} value={l.moduleId} onChange={e => { const lessons = [...draft.lessons]; lessons[idx].moduleId = e.target.value; setDraft({...draft, lessons}); }} /></div>
+                                                        <div className="col-span-2"><label className={labelClass}>Leadership Note Title</label><input className={inputClass} value={l.leadershipNotes[0]?.title} onChange={e => { const lessons = [...draft.lessons]; if(lessons[idx].leadershipNotes[0]) lessons[idx].leadershipNotes[0].title = e.target.value; setDraft({...draft, lessons}); }} /></div>
+                                                        <div className="col-span-2"><label className={labelClass}>Leadership Note Body (Deep Context)</label><textarea className={`${inputClass} min-h-[200px]`} value={l.leadershipNotes[0]?.body} onChange={e => { const lessons = [...draft.lessons]; if(lessons[idx].leadershipNotes[0]) lessons[idx].leadershipNotes[0].body = e.target.value; setDraft({...draft, lessons}); }} /></div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <button onClick={() => lessonService.commitDraft(draft, currentUser).then(onSuccess)} disabled={!draft.isValid} className="w-full py-8 bg-indigo-600 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-indigo-950 hover:bg-indigo-700 transition-all uppercase tracking-[0.5em] text-xl disabled:opacity-50">VERIFIED COMMIT TO REGISTRY</button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* --- MANUAL BUILDER & PORTALS REMAIN UNCHANGED BELOW --- */}
                 {metricMode === 'resources' && (
                     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in">
                         <div className="bg-blue-50 p-8 rounded-[2.5rem] border-4 border-blue-100 shadow-sm flex items-center justify-between">
@@ -485,7 +713,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     </div>
                 )}
 
-                {/* --- NEWS PORTAL --- */}
                 {metricMode === 'news' && (
                     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in">
                         <div className="bg-orange-50 p-8 rounded-[2.5rem] border-4 border-orange-100 shadow-sm flex items-center justify-between">
@@ -676,181 +903,6 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     </div>
                 )}
 
-                {metricMode === 'bulk' && (
-                    <div className="max-w-full mx-auto space-y-12">
-                        {!draft ? (
-                            <div className="space-y-8 animate-in fade-in">
-                                <div className="flex justify-between items-center px-4">
-                                    <h3 className="text-4xl font-serif font-black text-gray-900 uppercase tracking-tighter">Workbook Registry Matrix</h3>
-                                    <button 
-                                        onClick={addNewBulkRow}
-                                        className="px-8 py-3 bg-indigo-600 text-white font-black rounded-2xl shadow-xl border-b-4 border-indigo-900 hover:bg-indigo-700 transition-all flex items-center gap-3 uppercase text-xs tracking-widest active:scale-95"
-                                    >
-                                        <Plus size={18}/> Add New Course
-                                    </button>
-                                </div>
-                                
-                                <div className="bg-white border-8 border-gray-50 rounded-[3rem] shadow-2xl overflow-hidden">
-                                    <div className="overflow-x-auto custom-scrollbar">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-royal-900 text-white text-[10px] font-black uppercase tracking-widest border-b-4 border-gold-500">
-                                                    <th className="p-6 min-w-[250px]">Course Title</th>
-                                                    <th className="p-6 min-w-[120px]">Module #</th>
-                                                    <th className="p-6 min-w-[250px]">Module Title</th>
-                                                    <th className="p-6 min-w-[120px]">Lesson #</th>
-                                                    <th className="p-6 min-w-[250px]">Lesson Title</th>
-                                                    <th className="p-6 min-w-[350px]">Lesson Management</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {bulkGridRows.map((row) => (
-                                                    <tr key={row.id} className="group hover:bg-royal-50/30 transition-all">
-                                                        <td className="p-4">
-                                                            <div className="relative">
-                                                                <input 
-                                                                    className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
-                                                                    value={row.course}
-                                                                    onChange={(e) => updateBulkRow(row.id, { course: e.target.value })}
-                                                                    placeholder="e.g. Genesis Mastery"
-                                                                />
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-4 border-gray-200 focus-within:bg-white focus-within:border-indigo-400 transition-all">
-                                                                <input 
-                                                                    type="number" 
-                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
-                                                                    value={row.moduleNum}
-                                                                    onChange={(e) => updateBulkRow(row.id, { moduleNum: parseInt(e.target.value) || 0 })}
-                                                                />
-                                                                <div className="flex flex-col text-gray-300">
-                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: row.moduleNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
-                                                                    <button onClick={() => updateBulkRow(row.id, { moduleNum: Math.max(1, row.moduleNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <input 
-                                                                className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
-                                                                value={row.moduleTitle}
-                                                                onChange={(e) => updateBulkRow(row.id, { moduleTitle: e.target.value })}
-                                                                placeholder="e.g. Creation & Early Life"
-                                                            />
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="flex items-center gap-2 bg-gray-50 rounded-2xl p-2 border-4 border-gray-200 focus-within:bg-white focus-within:border-indigo-400 transition-all">
-                                                                <input 
-                                                                    type="number" 
-                                                                    className="w-12 bg-transparent text-center font-black text-gray-700 outline-none"
-                                                                    value={row.lessonNum}
-                                                                    onChange={(e) => updateBulkRow(row.id, { lessonNum: parseInt(e.target.value) || 0 })}
-                                                                />
-                                                                <div className="flex flex-col text-gray-300">
-                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: row.lessonNum + 1 })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14} className="rotate-180"/></button>
-                                                                    <button onClick={() => updateBulkRow(row.id, { lessonNum: Math.max(1, row.lessonNum - 1) })} className="hover:text-indigo-600 transition-colors"><ChevronDown size={14}/></button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <input 
-                                                                className="w-full p-4 bg-gray-50 border-4 border-gray-200 rounded-2xl focus:bg-white focus:border-indigo-400 outline-none font-bold text-gray-800 transition-all text-sm"
-                                                                value={row.lessonTitle}
-                                                                onChange={(e) => updateBulkRow(row.id, { lessonTitle: e.target.value })}
-                                                                placeholder="e.g. Genesis 1: The First Act"
-                                                            />
-                                                        </td>
-                                                        <td className="p-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="relative group/upload">
-                                                                    <input 
-                                                                        type="file" 
-                                                                        accept=".xlsx" 
-                                                                        className="absolute inset-0 opacity-0 cursor-pointer z-10 w-full" 
-                                                                        onChange={(e) => {
-                                                                            const f = e.target.files?.[0];
-                                                                            if (f) handleBulkFileUpload(row.id, f);
-                                                                        }}
-                                                                    />
-                                                                    <button className="px-5 py-3 bg-white text-royal-900 border-2 border-royal-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-royal-900 hover:text-white transition-all shadow-sm flex items-center gap-2 group-hover/upload:border-indigo-600">
-                                                                        <Upload size={14}/> DEPOSIT 8-SHEET WORKBOOK
-                                                                    </button>
-                                                                </div>
-                                                                <div className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 ${row.status === 'UPLOADED' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-                                                                    {row.status}
-                                                                </div>
-                                                                <div className="flex gap-1">
-                                                                    <button onClick={() => deleteBulkRow(row.id)} className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"><Trash size={18}/></button>
-                                                                    <button className="p-3 text-gray-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"><Edit size={18}/></button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div className="p-4 bg-gray-50 border-t border-gray-100 text-center">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.4em]">Registry Matrix Protocol Enabled</p>
-                                    </div>
-                                </div>
-                                <button onClick={processBulkGrid} disabled={isParsing || bulkGridRows.every(r => !r.file)} className="w-full py-8 bg-royal-800 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center justify-center gap-8 text-xl group transform active:scale-95 disabled:opacity-50">
-                                    {isParsing ? <Loader2 className="animate-spin" size={32}/> : <CheckCircle size={32} className="text-gold-400" />} 
-                                    {isParsing ? "Synchronizing Matrix..." : "EXECUTE SYSTEM ANALYSIS"}
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-12 animate-in fade-in duration-700">
-                                <div className="flex justify-between items-end border-b-8 border-gray-50 pb-10">
-                                    <div><h3 className="text-5xl font-serif font-black text-gray-950 uppercase tracking-tighter leading-none">Mapping Preview</h3><p className="text-gray-400 font-black uppercase tracking-[0.3em] text-xs mt-4">Verified registry mapping. Fix errors inline before commit.</p></div>
-                                    <div className="flex gap-4 bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
-                                        <button onClick={() => setPreviewTab('course')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'course' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Course</button>
-                                        <button onClick={() => setPreviewTab('modules')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'modules' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Modules</button>
-                                        <button onClick={() => setPreviewTab('lessons')} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${previewTab === 'lessons' ? 'bg-white text-royal-900 shadow-md' : 'text-gray-400'}`}>Lessons</button>
-                                    </div>
-                                </div>
-                                <div className="bg-white border-8 border-gray-50 p-12 rounded-[4rem] shadow-2xl space-y-10">
-                                    {previewTab === 'course' && (
-                                        <div className="grid grid-cols-2 gap-8 animate-in slide-in-from-right-4">
-                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Course ID</label><input className={inputClass} value={draft.courseMetadata?.id} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, id: e.target.value}})} /></div>
-                                            <div className="col-span-2 md:col-span-1"><label className={labelClass}>Author</label><input className={inputClass} value={draft.courseMetadata?.author} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, author: e.target.value}})} /></div>
-                                            <div className="col-span-2"><label className={labelClass}>Title</label><input className={inputClass} value={draft.courseMetadata?.title} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, title: e.target.value}})} /></div>
-                                            <div className="col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} min-h-[100px]`} value={draft.courseMetadata?.description} onChange={e => setDraft({...draft, courseMetadata: {...draft.courseMetadata!, description: e.target.value}})} /></div>
-                                        </div>
-                                    )}
-                                    {previewTab === 'modules' && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                                            {draft.modules.map((m, idx) => (
-                                                <div key={idx} className="p-6 bg-gray-50 rounded-3xl border-2 border-gray-100 flex gap-6 items-center">
-                                                    <span className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black">{idx + 1}</span>
-                                                    <div className="grid grid-cols-2 gap-4 flex-1">
-                                                        <div className="col-span-1"><label className={labelClass}>Module ID</label><input className={inputClass} value={m.id} onChange={e => { const modules = [...draft.modules]; modules[idx].id = e.target.value; setDraft({...draft, modules}); }} /></div>
-                                                        <div className="col-span-1"><label className={labelClass}>Title</label><input className={inputClass} value={m.title} onChange={e => { const modules = [...draft.modules]; modules[idx].title = e.target.value; setDraft({...draft, modules}); }} /></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {previewTab === 'lessons' && (
-                                        <div className="space-y-6 animate-in slide-in-from-right-4">
-                                            {draft.lessons.map((l, idx) => (
-                                                <div key={idx} className="p-6 bg-gray-50 rounded-3xl border-2 border-gray-100 flex gap-6 items-center">
-                                                    <span className="w-12 h-12 bg-royal-900 text-white rounded-2xl flex items-center justify-center font-black">{idx + 1}</span>
-                                                    <div className="grid grid-cols-2 gap-4 flex-1">
-                                                        <div className="col-span-1"><label className={labelClass}>Lesson Title</label><input className={inputClass} value={l.title} onChange={e => { const lessons = [...draft.lessons]; lessons[idx].title = e.target.value; setDraft({...draft, lessons}); }} /></div>
-                                                        <div className="col-span-1"><label className={labelClass}>Parent Module ID</label><input className={inputClass} value={l.moduleId} onChange={e => { const lessons = [...draft.lessons]; lessons[idx].moduleId = e.target.value; setDraft({...draft, lessons}); }} /></div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                                <button onClick={() => lessonService.commitDraft(draft, currentUser).then(onSuccess)} disabled={!draft.isValid} className="w-full py-8 bg-indigo-600 text-white font-black rounded-[2.5rem] shadow-2xl border-b-8 border-indigo-950 hover:bg-indigo-700 transition-all uppercase tracking-[0.5em] text-xl disabled:opacity-50">VERIFIED COMMIT TO REGISTRY</button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 {metricMode === 'manual' && (
                     <div className="max-w-5xl mx-auto space-y-12 animate-in fade-in">
                         <div className="flex justify-center mb-16"><div className="flex items-center gap-8 bg-gray-50 p-3 rounded-[2.5rem] border-4 border-gray-100 shadow-inner">{[1,2].map(step => (<button key={step} onClick={() => setActiveManualStep(step as any)} className={`flex items-center gap-4 px-10 py-3.5 rounded-[1.8rem] transition-all duration-500 ${activeManualStep === step ? 'bg-indigo-600 text-white shadow-2xl scale-110' : 'text-gray-400 hover:bg-gray-100'}`}><span className="font-black text-2xl">{step}</span><span className="text-xs font-black uppercase tracking-widest">{step === 1 ? 'Course Creation' : 'Module Creation'}</span></button>))}</div></div>
@@ -1011,7 +1063,7 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-8">
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Lesson ID (Registry Key)</label><input className={darkInputClass} value={currentLesson.id} onChange={e => setCurrentLesson({...currentLesson, id: e.target.value.toUpperCase()})} placeholder="e.g. GEN-CH1-L1" /></div>
-                                                        <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Lesson Title</label><input className={darkInputClass} value={currentLesson.title} onChange={e => { const val = e.target.value; setCurrentLesson({...currentLesson, title: val}); updateManualRow(activeManualRowId, { lessonTitle: val }); }} placeholder="e.g. Creation: Order from Chaos" /></div>
+                                                        <div className="col-span-2 md:col-span-1"><label className={labelClass}>Lesson Title</label><input className={darkInputClass} value={currentLesson.title} onChange={e => { const val = e.target.value; setCurrentLesson({...currentLesson, title: val}); updateManualRow(activeManualRowId, { lessonTitle: val }); }} placeholder="e.g. Creation: Order from Chaos" /></div>
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Bible Book</label><input className={darkInputClass} value={currentLesson.book} onChange={e => setCurrentLesson({...currentLesson, book: e.target.value})} placeholder="e.g. Genesis" /></div>
                                                         <div className="col-span-2 md:col-span-1"><label className={darkLabelClass}>Chapter</label><input type="number" className={darkInputClass} value={currentLesson.chapter} onChange={e => setCurrentLesson({...currentLesson, chapter: parseInt(e.target.value)})} /></div>
                                                     </div>
@@ -1057,9 +1109,9 @@ const LessonUpload: React.FC<LessonUploadProps> = ({ currentUser, onSuccess, onC
                     </div>
                     <div className="flex-1 overflow-y-scroll custom-scrollbar p-10 space-y-10 bg-indigo-900/20 pr-4">
                         {activeSubEditor === 'NOTE' ? (
-                            <div className="space-y-10">{localNotes.map((note, nIdx) => (<div key={note.id} className="p-8 bg-white/5 border-2 border-white/5 rounded-[3rem] space-y-6 relative animate-in slide-in-from-right-4"><div className="flex justify-between items-center border-b border-white/5 pb-4"><span className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black">{nIdx + 1}</span><HeaderActions onDelete={() => deleteLocalNote(nIdx)} /></div><div><label className={darkLabelClass}>Note Title</label><input className={darkInputClass} value={note.title} onChange={e => { const next = [...localNotes]; next[nIdx].title = e.target.value; setLocalNotes(next); }} placeholder="Master Instructional Essay Title" /></div><div><label className={darkLabelClass}>Note Body (HTML/Rich Text Enabled)</label><textarea className={`${darkInputClass} min-h-[300px]`} value={note.body} onChange={e => { const next = [...localNotes]; next[nIdx].body = e.target.value; setLocalNotes(next); }} placeholder="Enter detailed theological perspectives here..." /></div></div>))}</div>
+                            <div className="space-y-10">{localNotes.map((note, nIdx) => (<div key={note.id} className="p-8 bg-white/5 border-2 border-white/5 rounded-[3rem] space-y-6 relative animate-in slide-in-from-right-4"><div className="flex justify-between items-center border-b border-white/5 pb-4"><span className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center font-black">{nIdx + 1}</span><HeaderActions onDelete={() => deleteLocalNote(nIdx)} /></div><div><label className={labelClass}>Note Title</label><input className={darkInputClass} value={note.title} onChange={e => { const next = [...localNotes]; next[nIdx].title = e.target.value; setLocalNotes(next); }} placeholder="Master Instructional Essay Title" /></div><div><label className={labelClass}>Note Body (HTML/Rich Text Enabled)</label><textarea className={`${darkInputClass} min-h-[300px]`} value={note.body} onChange={e => { const next = [...localNotes]; next[nIdx].body = e.target.value; setLocalNotes(next); }} placeholder="Enter detailed theological perspectives here..." /></div></div>))}</div>
                         ) : (
-                            <div className="space-y-10">{localQuizzes.map((quiz, qIdx) => (<div key={quiz.id} className="p-8 bg-white/5 border-2 border-white/5 rounded-[3rem] space-y-8 relative animate-in slide-in-from-right-4"><div className="flex justify-between items-center border-b border-white/5 pb-4"><span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${activeSubEditor === 'BIBLE_QUIZ' ? 'bg-royal-600' : 'bg-amber-600'} text-white`}>{qIdx + 1}</span><HeaderActions onDelete={() => deleteLocalQuiz(qIdx)} /></div>{activeSubEditor === 'BIBLE_QUIZ' && (<div><label className={darkLabelClass}>Reference Text (Scripture Focus)</label><input className={darkInputClass} value={quiz.referenceText} onChange={e => { const next = [...localQuizzes]; next[qIdx].referenceText = e.target.value; setLocalQuizzes(next); }} placeholder="e.g. Genesis 1:1" /></div>)}<div><label className={darkLabelClass}>Question Intelligence</label><input className={darkInputClass} value={quiz.text} onChange={e => { const next = [...localQuizzes]; next[qIdx].text = e.target.value; setLocalQuizzes(next); }} placeholder="Inquiry Text..." /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-8">{quiz.options?.map((opt, oIdx) => (<div key={opt.id} className="p-6 bg-white/5 rounded-2xl border-4 border-white/20 space-y-4"><div className="flex justify-between items-center"><span className="font-black text-indigo-400">OPTION {opt.label}</span><button onClick={() => { const next = [...localQuizzes]; next[qIdx].options?.forEach(o => o.isCorrect = false); next[qIdx].options![oIdx].isCorrect = true; setLocalQuizzes(next); }} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase transition-all ${opt.isCorrect ? 'bg-green-50 text-white shadow-lg' : 'bg-white/10 text-white/40'}`}>Correct Choice</button></div><input className={darkInputClass} value={opt.text} onChange={e => { const next = [...localQuizzes]; next[qIdx].options![oIdx].text = e.target.value; setLocalQuizzes(next); }} placeholder="Option Text" /><textarea className={`${darkInputClass} min-h-[80px] text-xs`} value={opt.explanation} onChange={e => { const next = [...localQuizzes]; next[qIdx].options![oIdx].explanation = e.target.value; setLocalQuizzes(next); }} placeholder="System Audit Feedback/Explanation..." /></div>))}</div></div>))}</div>
+                            <div className="space-y-10">{localQuizzes.map((quiz, qIdx) => (<div key={quiz.id} className="p-8 bg-white/5 border-2 border-white/5 rounded-[3rem] space-y-8 relative animate-in slide-in-from-right-4"><div className="flex justify-between items-center border-b border-white/5 pb-4"><span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black ${activeSubEditor === 'BIBLE_QUIZ' ? 'bg-royal-600' : 'bg-amber-600'} text-white`}>{qIdx + 1}</span><HeaderActions onDelete={() => deleteLocalQuiz(qIdx)} /></div>{activeSubEditor === 'BIBLE_QUIZ' && (<div><label className={labelClass}>Reference Text (Scripture Focus)</label><input className={darkInputClass} value={quiz.referenceText} onChange={e => { const next = [...localQuizzes]; next[qIdx].referenceText = e.target.value; setLocalQuizzes(next); }} placeholder="e.g. Genesis 1:1" /></div>)}<div><label className={labelClass}>Question Intelligence</label><input className={darkInputClass} value={quiz.text} onChange={e => { const next = [...localQuizzes]; next[qIdx].text = e.target.value; setLocalQuizzes(next); }} placeholder="Inquiry Text..." /></div><div className="grid grid-cols-1 md:grid-cols-2 gap-8">{quiz.options?.map((opt, oIdx) => (<div key={opt.id} className="p-6 bg-white/5 rounded-2xl border-4 border-white/20 space-y-4"><div className="flex justify-between items-center"><span className="font-black text-indigo-400">OPTION {opt.label}</span><button onClick={() => { const next = [...localQuizzes]; next[qIdx].options?.forEach(o => o.isCorrect = false); next[qIdx].options![oIdx].isCorrect = true; setLocalQuizzes(next); }} className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase transition-all ${opt.isCorrect ? 'bg-green-50 text-white shadow-lg' : 'bg-white/10 text-white/40'}`}>Correct Choice</button></div><input className={darkInputClass} value={opt.text} onChange={e => { const next = [...localQuizzes]; next[qIdx].options![oIdx].text = e.target.value; setLocalQuizzes(next); }} placeholder="Option Text" /><textarea className={`${darkInputClass} min-h-[80px] text-xs`} value={opt.explanation} onChange={e => { const next = [...localQuizzes]; next[qIdx].options![oIdx].explanation = e.target.value; setLocalQuizzes(next); }} placeholder="System Audit Feedback/Explanation..." /></div>))}</div></div>))}</div>
                         )}
                     </div>
                     <div className="p-3 border-t border-white/10 bg-royal-950/50 flex flex-row items-center justify-center gap-6 shrink-0 shadow-2xl">

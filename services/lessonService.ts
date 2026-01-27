@@ -1,5 +1,6 @@
 import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError, LeadershipNote, ProficiencyLevel } from '../types';
 import { authService } from './authService';
+import * as XLSX from 'xlsx';
 
 const DB_COURSES_KEY = 'bbl_db_courses';
 const DB_MODULES_KEY = 'bbl_db_modules';
@@ -146,7 +147,6 @@ class LessonService {
   private saveHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
   private saveNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
 
-  // Helper to purge stale data associated with a lesson
   private purgeStaleLessonData(lessonId: string) {
     this.attempts = this.attempts.filter(a => a.lessonId !== lessonId);
     Object.keys(this.timers).forEach(key => {
@@ -196,9 +196,7 @@ class LessonService {
   async getModulesByCourseId(courseId: string, customOrder?: string[]): Promise<Module[]> { 
     this.forceSync();
     const filtered = this.modules.filter(m => m.courseId === courseId);
-    
     if (customOrder && customOrder.length > 0) {
-        // Create a map for quick lookup
         const orderMap = new Map(customOrder.map((id, idx) => [id, idx]));
         return [...filtered].sort((a, b) => {
             const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
@@ -206,7 +204,6 @@ class LessonService {
             return idxA - idxB;
         });
     }
-    
     return filtered.sort((a, b) => a.order - b.order);
   }
 
@@ -225,53 +222,82 @@ class LessonService {
     return this.lessons.filter(l => l.moduleId === moduleId).sort((a, b) => a.orderInModule - b.orderInModule); 
   }
 
-  async getLessonsByIds(ids: string[]): Promise<Lesson[]> {
-    this.forceSync();
-    return this.lessons.filter(l => ids.includes(l.id));
+  async getAdjacentLessons(lessonId: string): Promise<{ prev?: string; next?: string }> {
+      this.forceSync();
+      const currentLesson = this.lessons.find(l => l.id === lessonId);
+      if (!currentLesson) return {};
+
+      const currentModule = this.modules.find(m => m.id === currentLesson.moduleId);
+      if (!currentModule) return {};
+
+      const currentCourse = this.courses.find(c => c.id === currentModule.courseId);
+      if (!currentCourse) return {};
+
+      // Identify entire course module registry in order
+      const courseModules = this.modules
+        .filter(m => m.courseId === currentCourse.id)
+        .sort((a, b) => a.order - b.order);
+
+      // Identify entire module lesson registry in order
+      const moduleLessons = this.lessons
+        .filter(l => l.moduleId === currentModule.id)
+        .sort((a, b) => a.orderInModule - b.orderInModule);
+
+      const currentIdx = moduleLessons.findIndex(l => l.id === lessonId);
+      const modIdx = courseModules.findIndex(m => m.id === currentModule.id);
+
+      let prevId: string | undefined;
+      let nextId: string | undefined;
+
+      // PREVIOUS LESSON CALCULATION
+      if (currentIdx > 0) {
+          prevId = moduleLessons[currentIdx - 1].id;
+      } else if (modIdx > 0) {
+          const prevMod = courseModules[modIdx - 1];
+          const prevModLessons = this.lessons
+            .filter(l => l.moduleId === prevMod.id)
+            .sort((a, b) => a.orderInModule - b.orderInModule);
+          if (prevModLessons.length > 0) prevId = prevModLessons[prevModLessons.length - 1].id;
+      }
+
+      // NEXT LESSON CALCULATION
+      if (currentIdx < moduleLessons.length - 1) {
+          nextId = moduleLessons[currentIdx + 1].id;
+      } else if (modIdx < courseModules.length - 1) {
+          const nextMod = courseModules[modIdx + 1];
+          const nextModLessons = this.lessons
+            .filter(l => l.moduleId === nextMod.id)
+            .sort((a, b) => a.orderInModule - b.orderInModule);
+          if (nextModLessons.length > 0) nextId = nextModLessons[0].id;
+      }
+
+      return { prev: prevId, next: nextId };
   }
 
   async publishCourse(course: Course): Promise<void> {
     this.forceSync();
     const idx = this.courses.findIndex(c => c.id === course.id);
-    if (idx >= 0) {
-      this.courses[idx] = { ...course };
-    } else {
-      this.courses.unshift({ ...course });
-    }
+    if (idx >= 0) { this.courses[idx] = { ...course }; } else { this.courses.unshift({ ...course }); }
     this.saveCourses();
   }
 
   async publishModule(module: Module): Promise<void> {
     this.forceSync();
     const idx = this.modules.findIndex(m => m.id === module.id);
-    if (idx >= 0) {
-      this.modules[idx] = { ...module };
-    } else {
-      this.modules.unshift({ ...module });
-    }
+    if (idx >= 0) { this.modules[idx] = { ...module }; } else { this.modules.unshift({ ...module }); }
     this.saveModules();
   }
 
   async publishLesson(lesson: Lesson): Promise<void> {
     this.forceSync();
     const index = this.lessons.findIndex(l => l.id === lesson.id);
-    if (index >= 0) {
-      // Overwriting existing lesson (deep-rooted fix: clear stale progress for the updated curriculum)
-      this.purgeStaleLessonData(lesson.id);
-      this.lessons[index] = { ...lesson };
-    } else {
-      this.lessons.unshift({ ...lesson });
-    }
+    if (index >= 0) { this.purgeStaleLessonData(lesson.id); this.lessons[index] = { ...lesson }; } else { this.lessons.unshift({ ...lesson }); }
     this.saveLessons();
-    
     if (lesson.moduleId) {
         const mod = this.modules.find(m => m.id === lesson.moduleId);
         if (mod) {
             if (!mod.lessonIds) mod.lessonIds = [];
-            if (!mod.lessonIds.includes(lesson.id)) {
-                mod.lessonIds.push(lesson.id);
-                this.saveModules();
-            }
+            if (!mod.lessonIds.includes(lesson.id)) { mod.lessonIds.push(lesson.id); this.saveModules(); }
         }
     }
   }
@@ -279,14 +305,9 @@ class LessonService {
   async deleteLesson(id: string): Promise<void> {
     this.forceSync();
     this.lessons = this.lessons.filter(l => l.id !== id);
-    // CRITICAL FIX: Purge all associated attempts, timers and notes when a lesson is removed
     this.purgeStaleLessonData(id);
     this.saveLessons();
-    this.modules.forEach(m => {
-      if (m.lessonIds) {
-        m.lessonIds = m.lessonIds.filter(lId => lId !== id);
-      }
-    });
+    this.modules.forEach(m => { if (m.lessonIds) m.lessonIds = m.lessonIds.filter(lId => lId !== id); });
     this.saveModules();
   }
 
@@ -297,95 +318,59 @@ class LessonService {
       this.forceSync();
       const userAttempts = this.attempts.filter(a => a.studentId === studentId).sort((a,b) => new Date(b.attempted_at).getTime() - new Date(a.attempted_at).getTime());
       const uniqueLessonIds = Array.from(new Set(this.attempts.filter(a => a.studentId === studentId).map(a => a.lessonId)));
-      
-      let totalScorePercentage = 0;
-      let lessonsEvaluated = 0;
-      let totalSeconds = 0;
-
+      let totalScorePercentage = 0, lessonsEvaluated = 0, totalSeconds = 0;
       for (const lId of uniqueLessonIds) {
-          const lesson = this.lessons.find(l => l.id === lId);
-          if (!lesson) continue;
+          const lesson = this.lessons.find(l => l.id === lId); if (!lesson) continue;
           const lessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lId);
-          
           const bibleCount = lesson.bibleQuizzes?.length || 0;
           const noteCount = lesson.noteQuizzes?.length || 0;
           const uniqueQuizzesInLesson = bibleCount + noteCount;
-
           const latestAttemptsPerQuiz = new Map<string, boolean>();
           lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
           const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
-          if (uniqueQuizzesInLesson > 0) {
-              totalScorePercentage += (correct / uniqueQuizzesInLesson) * 100;
-              lessonsEvaluated++;
-          }
+          if (uniqueQuizzesInLesson > 0) { totalScorePercentage += (correct / uniqueQuizzesInLesson) * 100; lessonsEvaluated++; }
           totalSeconds += this.timers[`${studentId}_${lId}`] || 0;
       }
-
       const eligibleModules = await this.getEligibleModulesForUser(studentId);
-      
-      let lastLessonScoreStr = "0/0";
-      let lastLessonTimeVal = 0;
+      let lastLessonScoreStr = "0/0", lastLessonTimeVal = 0;
       if (userAttempts.length > 0) {
           const lastLessonId = userAttempts[0].lessonId;
           const lesson = this.lessons.find(l => l.id === lastLessonId);
           if (lesson) {
               const lastLessonAttempts = this.attempts.filter(a => a.studentId === studentId && a.lessonId === lastLessonId);
-              const bibleCount = lesson.bibleQuizzes?.length || 0;
-              const noteCount = lesson.noteQuizzes?.length || 0;
-              const uniqueQuizzesInLesson = bibleCount + noteCount;
-
+              const bibleCount = lesson.bibleQuizzes?.length || 0, noteCount = lesson.noteQuizzes?.length || 0, uniqueQuizzesInLesson = bibleCount + noteCount;
               const latestAttemptsPerQuiz = new Map<string, boolean>();
               lastLessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
-              const correct = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
-              lastLessonScoreStr = `${correct}/${uniqueQuizzesInLesson}`;
+              lastLessonScoreStr = `${Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length}/${uniqueQuizzesInLesson}`;
               lastLessonTimeVal = this.timers[`${studentId}_${lastLessonId}`] || 0;
           }
       }
-
-      return {
-          avgScore: lessonsEvaluated > 0 ? Math.round(totalScorePercentage / lessonsEvaluated) : 0,
-          totalLessons: uniqueLessonIds.length,
-          totalTime: totalSeconds,
-          modulesCompleted: eligibleModules.length,
-          totalModules: this.modules.length,
-          lastLessonScore: lastLessonScoreStr,
-          lastLessonTime: lastLessonTimeVal
-      };
+      return { avgScore: lessonsEvaluated > 0 ? Math.round(totalScorePercentage / lessonsEvaluated) : 0, totalLessons: uniqueLessonIds.length, totalTime: totalSeconds, modulesCompleted: eligibleModules.length, totalModules: this.modules.length, lastLessonScore: lastLessonScoreStr, lastLessonTime: lastLessonTimeVal };
   }
 
   async getEligibleModulesForUser(userId: string): Promise<Module[]> {
       this.forceSync();
       const eligible: Module[] = [];
       for (const mod of this.modules) {
-          let lessonsProcessed = 0;
-          let totalScore = 0;
-          let lessonsDone = 0;
+          let lessonsProcessed = 0, totalScore = 0, lessonsDone = 0;
           const lessonIds = mod.lessonIds || [];
           const requiredCount = Math.max(mod.totalLessonsRequired, lessonIds.length);
           if (requiredCount === 0) continue;
           for (const lId of lessonIds) {
-              const lesson = this.lessons.find(l => l.id === lId);
-              if (!lesson) continue;
+              const lesson = this.lessons.find(l => l.id === lId); if (!lesson) continue;
               const lessonAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lId);
-              const bibleCount = lesson.bibleQuizzes?.length || 0;
-              const noteCount = lesson.noteQuizzes?.length || 0;
-              const uniqueQuizzesInLesson = bibleCount + noteCount;
-
+              const bibleCount = lesson.bibleQuizzes?.length || 0, noteCount = lesson.noteQuizzes?.length || 0, totalQ = bibleCount + noteCount;
               const uniqueQuizzesAttempted = new Set(lessonAttempts.map(a => a.quizId)).size;
-              if (uniqueQuizzesAttempted >= uniqueQuizzesInLesson && uniqueQuizzesInLesson > 0) {
+              if (uniqueQuizzesAttempted >= totalQ && totalQ > 0) {
                   lessonsDone++;
                   const latestAttemptsPerQuiz = new Map<string, boolean>();
                   lessonAttempts.forEach(at => latestAttemptsPerQuiz.set(at.quizId, at.isCorrect));
-                  const numCorrect = Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length;
-                  totalScore += (numCorrect / uniqueQuizzesInLesson) * 100;
+                  totalScore += (Array.from(latestAttemptsPerQuiz.values()).filter(v => v).length / totalQ) * 100;
                   lessonsProcessed++;
               }
           }
           if (lessonsDone >= requiredCount && lessonsProcessed > 0) {
-              const avgScore = totalScore / lessonsProcessed;
-              if (avgScore >= (mod.completionRule?.minimumCompletionPercentage || 100)) {
-                  eligible.push(mod);
-              }
+              if ((totalScore / lessonsProcessed) >= (mod.completionRule?.minimumCompletionPercentage || 100)) { eligible.push(mod); }
           }
       }
       return eligible;
@@ -394,196 +379,253 @@ class LessonService {
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
       this.forceSync();
       const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
-      const lesson = this.lessons.find(l => l.id === lessonId);
-      if (!lesson) return false;
-      const bibleCount = lesson.bibleQuizzes?.length || 0;
-      const noteCount = lesson.noteQuizzes?.length || 0;
-      const totalQ = bibleCount + noteCount;
-      if (totalQ === 0) return true;
-      const answeredQ = new Set(userAttempts.map(a => a.quizId)).size;
-      return answeredQ >= totalQ;
+      const lesson = this.lessons.find(l => l.id === lessonId); if (!lesson) return false;
+      const totalQ = (lesson.bibleQuizzes?.length || 0) + (lesson.noteQuizzes?.length || 0);
+      return totalQ === 0 ? true : new Set(userAttempts.map(a => a.quizId)).size >= totalQ;
   }
 
   async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
     this.forceSync();
-    const attempt: StudentAttempt = { id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() };
-    this.attempts.push(attempt);
+    this.attempts.push({ id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() });
     this.saveAttempts();
   }
 
-  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { 
-    this.forceSync();
-    return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); 
-  }
-  
+  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { this.forceSync(); return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
   async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
   async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
-
-  async getResources(): Promise<Resource[]> { 
-    this.forceSync();
-    return this.resources; 
-  }
-  async addResource(resource: Resource, actor: User): Promise<void> { 
-      this.forceSync();
-      this.resources.unshift(resource);
-      this.saveResources(); 
-  }
-  async deleteResource(id: string, actor: User): Promise<void> {
-      this.forceSync();
-      this.resources = this.resources.filter(r => r.id !== id);
-      this.saveResources();
-  }
-
-  async getNews(): Promise<NewsItem[]> { 
-    this.forceSync();
-    return this.news; 
-  }
-  async addNews(news: NewsItem, actor: User): Promise<void> { 
-      this.forceSync();
-      this.news.unshift(news);
-      this.saveNews(); 
-  }
-  async deleteNews(id: string, actor: User): Promise<void> {
-      this.forceSync();
-      this.news = this.news.filter(n => n.id !== id);
-      this.saveNews();
-  }
-
-  async getUserCertificates(userId: string): Promise<Certificate[]> { 
-    this.forceSync();
-    return this.certificates.filter(c => c.userId === userId); 
-  }
-  async getAllCertificates(): Promise<Certificate[]> { 
-    this.forceSync();
-    return this.certificates; 
-  }
-  async verifyCertificate(code: string): Promise<Certificate | undefined> {
-    this.forceSync();
-    return this.certificates.find(c => c.uniqueCode === code.toUpperCase());
-  }
+  async getResources(): Promise<Resource[]> { this.forceSync(); return this.resources; }
+  async addResource(resource: Resource, actor: User): Promise<void> { this.forceSync(); this.resources.unshift(resource); this.saveResources(); }
+  async deleteResource(id: string, actor: User): Promise<void> { this.forceSync(); this.resources = this.resources.filter(r => r.id !== id); this.saveResources(); }
+  async getNews(): Promise<NewsItem[]> { this.forceSync(); return this.news; }
+  async addNews(news: NewsItem, actor: User): Promise<void> { this.forceSync(); this.news.unshift(news); this.saveNews(); }
+  async deleteNews(id: string, actor: User): Promise<void> { this.forceSync(); this.news = this.news.filter(n => n.id !== id); this.saveNews(); }
+  async getUserCertificates(userId: string): Promise<Certificate[]> { this.forceSync(); return this.certificates.filter(c => c.userId === userId); }
+  async getAllCertificates(): Promise<Certificate[]> { this.forceSync(); return this.certificates; }
+  async verifyCertificate(code: string): Promise<Certificate | undefined> { this.forceSync(); return this.certificates.find(c => c.uniqueCode === code.toUpperCase()); }
 
   async issueCertificate(userId: string, userName: string, moduleId: string, design?: CertificateDesign): Promise<Certificate> {
       this.forceSync();
-      const mod = this.modules.find(m => m.id === moduleId);
-      if (!mod) throw new Error("Module not found");
-      const cert: Certificate = {
-          id: crypto.randomUUID(),
-          userId, userName, moduleId, moduleTitle: mod.title,
-          issueDate: new Date().toISOString(),
-          issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders',
-          uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-          design: design || {
-              templateId: mod.certificateConfig.templateId as any || 'classic',
-              primaryColor: '#1e1b4b', secondaryColor: '#d97706',
-              titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description
-          }
-      };
-      this.certificates.unshift(cert);
-      this.saveCertificates();
-      return cert;
+      const mod = this.modules.find(m => m.id === moduleId); if (!mod) throw new Error("Module not found");
+      const cert: Certificate = { id: crypto.randomUUID(), userId, userName, moduleId, moduleTitle: mod.title, issueDate: new Date().toISOString(), issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders', uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(), design: design || { templateId: mod.certificateConfig.templateId as any || 'classic', primaryColor: '#1e1b4b', secondaryColor: '#d97706', titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description } };
+      this.certificates.unshift(cert); this.saveCertificates(); return cert;
+  }
+
+  async commitDraft(draft: LessonDraft, actor: User): Promise<void> {
+    this.forceSync();
+    if (draft.courseMetadata) {
+      await this.publishCourse(draft.courseMetadata);
+    }
+    for (const mod of draft.modules) {
+      await this.publishModule(mod);
+    }
+    for (const les of draft.lessons) {
+      await this.publishLesson(les);
+    }
   }
 
   async parseExcelUpload(file: File): Promise<LessonDraft> {
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
     const errors: ImportError[] = [];
-    
-    if (!file.name.endsWith('.xlsx')) {
-        errors.push({ sheet: 'System', row: 0, column: 'File', message: 'Protocol requires .xlsx format', severity: 'error' });
-        return { courseMetadata: null, modules: [], lessons: [], isValid: false, errors };
-    }
 
-    const mockModule: Module = {
-        id: 'GENESIS-MOD-1',
-        courseId: 'BIBLE-LEAD-101',
-        title: 'Leadership from Creation',
-        description: 'Principles from Genesis 1-3',
-        order: 1,
-        lessonIds: ['GEN-CH1'],
-        totalLessonsRequired: 1,
-        about: [],
-        completionRule: { minimumCompletionPercentage: 100 },
-        certificateConfig: { title: 'Mastery of Creation', description: 'Certified biblical leadership', templateId: 'classic', issuedBy: 'Academy' }
+    const getSheet = (name: string) => {
+        const actualName = workbook.SheetNames.find(n => 
+          n.trim().toLowerCase() === name.trim().toLowerCase()
+        );
+
+        if (!actualName) {
+            errors.push({ sheet: 'Registry', row: 0, column: 'Sheets', message: `Protocol Violation: Missing Sheet "${name}"`, severity: 'error' });
+            return [];
+        }
+        const s = workbook.Sheets[actualName];
+        return XLSX.utils.sheet_to_json(s);
     };
 
-    const mockLesson: Lesson = {
-        id: 'GEN-CH1',
-        moduleId: 'GENESIS-MOD-1',
-        orderInModule: 1,
-        title: 'Order from Chaos',
-        description: 'Creation account leadership',
-        lesson_type: 'Bible',
-        targetAudience: 'All',
-        book: 'Genesis',
-        chapter: 1,
-        leadershipNotes: [], 
-        author: 'Academy',
-        authorId: 'sys',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        status: 'published',
-        views: 0,
-        bibleQuizzes: [
-            {
-                id: 'q1', type: 'Bible Quiz', sequence: 1, referenceText: 'Genesis 1:1', text: 'Who created the heavens and the earth?',
-                options: [
-                    { id: 'opt1', label: 'A', text: 'God', isCorrect: true, explanation: 'Scripture states: In the beginning God...' },
-                    { id: 'opt2', label: 'B', text: 'Humans', isCorrect: false, explanation: 'Humans were created later.' },
-                    { id: 'opt3', label: 'C', text: 'Angels', isCorrect: false, explanation: 'Incorrect.' },
-                    { id: 'opt4', label: 'D', text: 'Nature', isCorrect: false, explanation: 'Incorrect.' }
-                ]
+    const getRowValue = (row: any, searchKeys: string[]) => {
+        if (!row) return undefined;
+        const key = Object.keys(row).find(k => 
+            searchKeys.some(sk => k.toLowerCase().replace(/\s|_/g, '') === sk.toLowerCase().replace(/\s|_/g, ''))
+        );
+        return key ? row[key] : undefined;
+    };
+
+    const mapToProficiencyLevel = (val: any): ProficiencyLevel => {
+        const s = (val || '').toString().toLowerCase();
+        if (s.includes('advanced')) return 'Mentor, Organization & Parent (Advanced)';
+        if (s.includes('intermediate') || s.includes('mentor') || s.includes('parent') || s.includes('organization')) {
+            return 'Mentor, Organization & Parent (Intermediate)';
+        }
+        return 'student (Beginner)';
+    };
+
+    // Mandatory Sheet Names mapped case-insensitively
+    const courseData = getSheet('Course_Metadata') as any[];
+    const aboutCourseData = getSheet('About_Course (NEW)') as any[];
+    const moduleData = getSheet('Module_Metadata (UPDATED)') as any[];
+    const aboutModuleData = getSheet('About_Module (NEW)') as any[];
+    const lessonData = getSheet('Lesson_Metadata (UPDATED)') as any[];
+    const aboutLessonData = getSheet('About_Lesson (NEW)') as any[];
+    const bibleQuizData = getSheet('Bible_Quiz') as any[];
+    const noteQuizData = getSheet('Note_Quiz') as any[];
+
+    if (courseData.length === 0 && errors.filter(e => e.sheet === 'Course_Metadata').length === 0) {
+        errors.push({ sheet: 'Course_Metadata', row: 1, column: 'All', message: 'Registry Error: Course record required.', severity: 'error' });
+    }
+
+    // Step 1: Course
+    const rawCourse = courseData[0];
+    const course: Course = {
+        id: (getRowValue(rawCourse, ['course_id', 'id']) || 'ID-MISSING').toString(),
+        title: (getRowValue(rawCourse, ['course_title', 'title']) || 'Untitled Course').toString(),
+        subtitle: (getRowValue(rawCourse, ['course_subtitle', 'subtitle']) || '').toString(),
+        description: (getRowValue(rawCourse, ['course_description', 'description']) || '').toString(),
+        level: mapToProficiencyLevel(getRowValue(rawCourse, ['course_level', 'level', 'category'])),
+        language: (getRowValue(rawCourse, ['course_language', 'language']) || 'English').toString(),
+        author: (getRowValue(rawCourse, ['course_author', 'author']) || 'BBL Institute').toString(),
+        totalModulesRequired: 0,
+        about: aboutCourseData
+            .filter(a => (getRowValue(a, ['course_id', 'id']) || '') === (getRowValue(rawCourse, ['course_id', 'id']) || ''))
+            .map(a => ({ 
+                order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
+                title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
+                body: (getRowValue(a, ['segment_body', 'body']) || '').toString() 
+            }))
+            .sort((a, b) => a.order - b.order)
+    };
+
+    if (course.about.length === 0 && courseData.length > 0) errors.push({ sheet: 'About_Course (NEW)', row: 1, column: 'Segments', message: 'Registry Requirement: At least 1 segment required.', severity: 'error' });
+
+    // Step 2: Modules
+    const modules: Module[] = moduleData.map((m, idx) => {
+        return {
+            id: (getRowValue(m, ['module_id', 'id']) || '').toString(), 
+            courseId: course.id, 
+            title: (getRowValue(m, ['module_title', 'title']) || '').toString(), 
+            description: (getRowValue(m, ['module_description', 'description']) || '').toString(),
+            order: parseInt(getRowValue(m, ['module_order', 'order'])) || 1, 
+            lessonIds: [], 
+            totalLessonsRequired: 0,
+            about: aboutModuleData
+                .filter(a => (getRowValue(a, ['module_id', 'id']) || '') === (getRowValue(m, ['module_id', 'id']) || ''))
+                .map(a => ({ 
+                    order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
+                    title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
+                    body: (getRowValue(a, ['segment_body', 'body']) || '').toString() 
+                })).sort((a, b) => a.order - b.order),
+            completionRule: { minimumCompletionPercentage: parseInt(getRowValue(m, ['minimum_completion_percentage', 'completion'])) || 100 },
+            certificateConfig: { 
+                title: (getRowValue(m, ['certificate_title']) || '').toString(), 
+                description: (getRowValue(m, ['module_description']) || '').toString(), 
+                templateId: (getRowValue(m, ['certificate_template_id']) || 'classic').toString(), 
+                issuedBy: (getRowValue(m, ['issued_by']) || '').toString() 
             }
-        ],
-        noteQuizzes: [],
-        sections: [],
-        about: [{ order: 1, title: 'Context', body: 'The historical backdrop' }]
+        };
+    });
+    course.totalModulesRequired = modules.length;
+
+    // Step 3: Lessons
+    const lessons: Lesson[] = lessonData.map((l, idx) => {
+        const moduleId = (getRowValue(l, ['module_id', 'id']) || '').toString();
+        const lessonId = (getRowValue(l, ['lesson_id', 'id']) || '').toString();
+        
+        const currentLesson: Lesson = {
+            id: lessonId, 
+            moduleId: moduleId, 
+            orderInModule: parseInt(getRowValue(l, ['lesson_order', 'order'])) || 1, 
+            title: (getRowValue(l, ['lesson_title', 'title']) || '').toString(),
+            description: (getRowValue(l, ['lesson_description', 'description']) || '').toString(), 
+            lesson_type: 'Mixed', 
+            targetAudience: 'All', 
+            book: (getRowValue(l, ['bible_book', 'book']) || '').toString(), 
+            chapter: parseInt(getRowValue(l, ['bible_chapter', 'chapter'])) || 1,
+            leadershipNotes: [{ 
+                id: crypto.randomUUID(), 
+                title: (getRowValue(l, ['leadership_note_title']) || 'Leadership Insights').toString(), 
+                body: (getRowValue(l, ['leadership_note_body']) || '').toString() 
+            }],
+            author: course.author, 
+            authorId: 'sys', 
+            created_at: new Date().toISOString(), 
+            updated_at: new Date().toISOString(), 
+            status: 'published', 
+            views: 0,
+            about: aboutLessonData
+                .filter(a => (getRowValue(a, ['lesson_id', 'id']) || '') === lessonId)
+                .map(a => ({ 
+                    order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
+                    title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
+                    body: (getRowValue(a, ['segment_body', 'body']) || '').toString() 
+                })).sort((a, b) => a.order - b.order),
+            bibleQuizzes: [], noteQuizzes: [], sections: []
+        };
+
+        if (currentLesson.about.length === 0) errors.push({ sheet: 'About_Lesson (NEW)', row: idx + 2, column: 'Segments', message: `Protocol Violation: Lesson ${lessonId} requires 1+ 'About' segments.`, severity: 'error' });
+        
+        return currentLesson;
+    });
+
+    // Step 4: Quizzes - Forced unique question IDs for independent scoring
+    bibleQuizData.forEach((q, idx) => {
+        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || '').toString();
+        const les = lessons.find(l => l.id === lessonId);
+        if (les) {
+            const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
+            // Use a globally unique seed to ensure questions across different lessons never conflict
+            const uniqueId = questionId ? `${lessonId}_${questionId}_b${idx}` : `bq_${lessonId}_${idx}_${crypto.randomUUID().substring(0, 4)}`;
+            les.bibleQuizzes.push({
+                id: uniqueId, 
+                type: 'Bible Quiz', 
+                referenceText: (getRowValue(q, ['bible_reference', 'reference']) || '').toString(), 
+                text: (getRowValue(q, ['question_text', 'question']) || '').toString(), 
+                sequence: idx + 1,
+                options: ['A', 'B', 'C', 'D'].map(lbl => ({ 
+                    id: lbl.toLowerCase(), 
+                    label: lbl, 
+                    text: (getRowValue(q, [`option_${lbl}`]) || '').toString(), 
+                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}` || (getRowValue(q, ['correct_option']) || '').toString() === lbl, 
+                    explanation: (getRowValue(q, [`explanation_${lbl}`]) || '').toString() 
+                }))
+            });
+        }
+    });
+
+    noteQuizData.forEach((q, idx) => {
+        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || '').toString();
+        const les = lessons.find(l => l.id === lessonId);
+        if (les) {
+            const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
+            // Use a globally unique seed to ensure questions across different lessons never conflict
+            const uniqueId = questionId ? `${lessonId}_${questionId}_n${idx}` : `nq_${lessonId}_${idx}_${crypto.randomUUID().substring(0, 4)}`;
+            les.noteQuizzes.push({
+                id: uniqueId, 
+                type: 'Note Quiz', 
+                sourceNoteTitle: (getRowValue(q, ['source_note_title', 'source']) || '').toString(), 
+                text: (getRowValue(q, ['question_text', 'question']) || '').toString(), 
+                sequence: idx + 1,
+                options: ['A', 'B', 'C', 'D'].map(lbl => ({ 
+                    id: lbl.toLowerCase(), 
+                    label: lbl, 
+                    text: (getRowValue(q, [`option_${lbl}`]) || '').toString(), 
+                    isCorrect: (getRowValue(q, ['correct_option']) || '').toString().toLowerCase() === `option_${lbl.toLowerCase()}` || (getRowValue(q, ['correct_option']) || '').toString() === lbl, 
+                    explanation: (getRowValue(q, [`explanation_${lbl}`]) || '').toString() 
+                }))
+            });
+        }
+    });
+
+    // Final Mapping Check
+    modules.forEach(m => { 
+        m.lessonIds = lessons.filter(l => l.moduleId === m.id).map(l => l.id); 
+        m.totalLessonsRequired = m.lessonIds.length; 
+    });
+
+    return { 
+        courseMetadata: course, 
+        modules, 
+        lessons, 
+        isValid: errors.filter(e => e.severity === 'error').length === 0, 
+        errors 
     };
-
-    const draft: LessonDraft = {
-        courseMetadata: {
-            id: 'BIBLE-LEAD-101',
-            title: 'Foundations',
-            description: 'Core course',
-            level: 'student (Beginner)',
-            language: 'English',
-            author: 'Academy',
-            authorId: 'usr_main_admin',
-            totalModulesRequired: 1,
-            about: []
-        },
-        modules: [mockModule],
-        lessons: [mockLesson],
-        isValid: errors.length === 0,
-        errors: errors
-    };
-
-    return draft;
-  }
-
-  async commitDraft(draft: LessonDraft, author: User): Promise<void> {
-    this.forceSync();
-    if (!draft.isValid) return;
-    
-    if (draft.courseMetadata) {
-        draft.courseMetadata.authorId = author.id;
-        draft.courseMetadata.organizationId = author.organizationId;
-        draft.courseMetadata.author = author.name;
-        // Purge data for overwritten course to ensure fresh attempts
-        const existingLessons = await this.getLessonsByModuleId(draft.courseMetadata.id);
-        existingLessons.forEach(l => this.purgeStaleLessonData(l.id));
-        await this.publishCourse(draft.courseMetadata);
-    }
-    
-    for (const mod of draft.modules) {
-        mod.courseId = draft.courseMetadata?.id || mod.courseId;
-        if (!mod.level && draft.courseMetadata) mod.level = draft.courseMetadata.level;
-        await this.publishModule(mod);
-    }
-    
-    for (const les of draft.lessons) {
-        les.authorId = author.id;
-        les.author = author.name;
-        await this.publishLesson(les);
-    }
   }
 }
 

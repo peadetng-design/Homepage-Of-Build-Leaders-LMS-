@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Lesson, QuizQuestion, QuizOption, User, Module, Course, AboutSegment, LeadershipNote } from '../types';
 import { lessonService } from '../services/lessonService';
-import { ArrowLeft, BookOpen, X, CheckCircle, Target, Sparkles, Globe, Layers, PenTool, Save, Activity, Loader2, CloudUpload } from 'lucide-react';
+import { ArrowLeft, BookOpen, X, CheckCircle, Target, Sparkles, Globe, Layers, PenTool, Save, Activity, Loader2, CloudUpload, ChevronLeft, ChevronRight, Home, BadgeCheck } from 'lucide-react';
 
 interface LessonViewProps {
   lesson: Lesson;
@@ -17,6 +17,8 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [currentScore, setCurrentScore] = useState({ correct: 0, total: 0 });
+  const [isLessonCompleted, setIsLessonCompleted] = useState(false);
+  const [adjacentLessons, setAdjacentLessons] = useState<{ prev?: string; next?: string }>({});
   
   const [isInsightOpen, setIsInsightOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -26,13 +28,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   const [burstingQuizId, setBurstingQuizId] = useState<string | null>(null);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const contentBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Reset local state to ensure fresh lesson attempt rendering
     setAttempts({});
     setCurrentScore({ correct: 0, total: 0 });
+    setIsLessonCompleted(false);
     loadData();
     startTelemetry();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return () => stopTelemetry();
   }, [lesson.id]);
 
@@ -71,8 +76,21 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     });
     setAttempts(attemptMap);
 
-    const totalQ = (lesson.bibleQuizzes?.length || 0) + (lesson.noteQuizzes?.length || 0);
+    const bibleCount = lesson.bibleQuizzes?.length || 0;
+    const noteCount = lesson.noteQuizzes?.length || 0;
+    const totalQ = bibleCount + noteCount;
+
     setCurrentScore({ correct: scoreCount, total: totalQ });
+    
+    // Check completion strictly - must have an entry for EVERY question in the lesson
+    if (totalQ > 0 && Object.keys(attemptMap).length >= totalQ) {
+        setIsLessonCompleted(true);
+    } else if (totalQ === 0) {
+        setIsLessonCompleted(true);
+    }
+
+    const adj = await lessonService.getAdjacentLessons(lesson.id);
+    setAdjacentLessons(adj);
 
     const savedNote = await lessonService.getUserLessonNote(currentUser.id, lesson.id);
     setNoteText(savedNote);
@@ -85,10 +103,26 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
     setBurstingQuizId(quiz.id);
     setTimeout(() => setBurstingQuizId(null), 600);
 
-    setAttempts(prev => ({ ...prev, [quiz.id]: option.id }));
+    const nextAttempts = { ...attempts, [quiz.id]: option.id };
+    setAttempts(nextAttempts);
+    
     if (option.isCorrect) {
         setCurrentScore(prev => ({ ...prev, correct: prev.correct + 1 }));
     }
+
+    // Check for strict completion immediately
+    const bibleCount = lesson.bibleQuizzes?.length || 0;
+    const noteCount = lesson.noteQuizzes?.length || 0;
+    const totalQ = bibleCount + noteCount;
+
+    if (Object.keys(nextAttempts).length >= totalQ) {
+        setIsLessonCompleted(true);
+        // Automatically scroll to navigation footer on completion
+        setTimeout(() => {
+            contentBottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }, 800);
+    }
+
     await lessonService.submitAttempt(currentUser.id, lesson.id, quiz.id, option.id, option.isCorrect);
   };
 
@@ -96,6 +130,14 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
       setIsSavingNote(true);
       await lessonService.saveUserLessonNote(currentUser.id, lesson.id, noteText);
       setTimeout(() => setIsSavingNote(false), 800);
+  };
+
+  const navigateAdjacent = async (targetId: string) => {
+      const nextLesson = await lessonService.getLessonById(targetId);
+      if (nextLesson) {
+          // Dispatch a custom event to tell the parent (Dashboard) to update the selected lesson ID
+          window.dispatchEvent(new CustomEvent('bbl_lesson_navigate', { detail: { lessonId: targetId } }));
+      }
   };
 
   const formatTime = (seconds: number) => {
@@ -124,7 +166,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
     return (
       <div key={quiz.id} className={`bg-white rounded-[3rem] shadow-2xl border border-gray-200 overflow-hidden mb-12 relative group/card ${isAnswered ? 'animate-flash-zoom' : 'animate-in fade-in slide-in-from-bottom-6'}`}>
-        {/* Parchment Unroll Overlay Background (Shown when answered) */}
         {isAnswered && (
           <div className="absolute inset-0 bg-[#fdf5e6] opacity-30 animate-parchment-unroll z-0 pointer-events-none"></div>
         )}
@@ -133,7 +174,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           {quiz.referenceText && (
             <div className="flex items-center gap-2 mb-1 px-4">
               <BookOpen size={14} className="text-indigo-500 shrink-0" />
-              {/* (a) REDUCE THE FONT SIZE OF THE REFERENCE TEXT BY 10% (from 16px to 14.5px) */}
               <span className="text-[14.5px] font-bold text-indigo-600 leading-none w-full capitalize">
                 {quiz.referenceText}
               </span>
@@ -150,30 +190,22 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
               const isCorrect = opt.isCorrect;
               
               let containerClass = "bg-white border-gray-100 hover:border-indigo-300";
-              let animationClass = "";
               let separatorColor = "text-gray-200";
               let explanationContainerClass = "bg-gray-300/90"; 
               let explanationTextClass = "text-gray-900";
-              let borderAnimation = "";
               
               if (isAnswered) {
-                // (b) STOP THEM FROM CONSTANTLY MOVING. 
-                // Removed continuous vibration animations (animate-electric-glow, animate-green-pulse, animate-red-pulse) 
-                // from the persistent revealed state to ensure stable text.
                 if (userIsCorrect) {
                   if (isCorrect) {
                     containerClass = "bg-white border-emerald-500 scale-[1.01] z-30 ring-4 ring-emerald-100 shadow-[0_0_50px_rgba(16,185,129,0.4)]";
                     separatorColor = "text-emerald-500";
                     explanationContainerClass = "bg-emerald-300/95 shadow-lg border-2 border-emerald-500/20"; 
                     explanationTextClass = "text-emerald-950";
-                    borderAnimation = ""; 
-                    animationClass = "";
                   } else {
                     containerClass = "bg-white border-red-500 opacity-90";
                     separatorColor = "text-red-500";
                     explanationContainerClass = "bg-red-300/90 shadow-inner";
                     explanationTextClass = "text-red-950 font-bold";
-                    borderAnimation = "";
                   }
                 } else {
                   if (isSelected) {
@@ -181,20 +213,16 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                     separatorColor = "text-red-500";
                     explanationContainerClass = "bg-red-300/95 shadow-xl border-2 border-red-600/20";
                     explanationTextClass = "text-red-950 font-black";
-                    borderAnimation = ""; 
-                    animationClass = "";
                   } else if (isCorrect) {
                     containerClass = "bg-white border-emerald-500 scale-[1.02] z-20 shadow-[0_0_40px_rgba(16,185,129,0.3)]";
                     separatorColor = "text-emerald-500";
                     explanationContainerClass = "bg-emerald-300/90 shadow-md border border-emerald-400/20";
                     explanationTextClass = "text-emerald-950 font-bold";
-                    borderAnimation = "";
                   } else {
                     containerClass = "bg-white border-orange-400 opacity-80 shadow-inner";
                     separatorColor = "text-orange-400";
                     explanationContainerClass = "bg-orange-300/90"; 
                     explanationTextClass = "text-orange-950";
-                    borderAnimation = "";
                   }
                 }
               }
@@ -204,7 +232,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                   key={opt.id}
                   disabled={isAnswered}
                   onClick={() => handleOptionSelect(quiz, opt)}
-                  className={`relative p-5 md:p-8 rounded-[2rem] border-4 transition-all duration-700 text-left group/opt overflow-visible w-full ${containerClass} ${animationClass} ${borderAnimation}`}
+                  className={`relative p-5 md:p-8 rounded-[2rem] border-4 transition-all duration-700 text-left group/opt overflow-visible w-full ${containerClass}`}
                 >
                   {burstingQuizId === quiz.id && isSelected && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -259,7 +287,32 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-32 animate-in fade-in duration-700 relative">
+    <div className="max-w-6xl mx-auto pb-64 animate-in fade-in duration-700 relative">
+      
+      {/* BREADCRUMB NAVIGATION - REFINED TYPOGRAPHY (30% REDUCTION) */}
+      <nav className="flex items-center flex-wrap gap-3 mb-8 px-6 py-4 bg-white border-4 border-gray-100 shadow-lg rounded-[2rem] animate-in slide-in-from-top-4">
+          <button 
+            onClick={onBack} 
+            className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-black text-gray-400 hover:text-royal-900 transition-all uppercase tracking-[0.2em] group"
+          >
+              <Home size={16} className="group-hover:scale-110 transition-transform" /> HOME
+          </button>
+          <ChevronRight size={14} className="text-royal-200" strokeWidth={5} />
+          <div className="flex items-center gap-1.5">
+             <Layers size={16} className="text-indigo-400" />
+             <span className="text-[10px] md:text-[13px] font-serif font-black text-royal-700 uppercase tracking-tight truncate max-w-[150px] md:max-w-sm">
+                {parentModule?.title || 'CURRICULUM'}
+             </span>
+          </div>
+          <ChevronRight size={14} className="text-royal-200" strokeWidth={5} />
+          <div className="flex items-center gap-1.5">
+             <Sparkles size={16} className="text-gold-500" />
+             <span className="text-[10px] md:text-[13px] font-serif font-black text-royal-900 uppercase tracking-tight truncate max-w-[150px] md:max-w-sm">
+                {lesson.title}
+             </span>
+          </div>
+      </nav>
+
       <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden mb-12">
         <div className="bg-royal-900 p-8 text-white relative overflow-hidden">
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
@@ -291,7 +344,7 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-20">
         <div className="lg:col-span-2 space-y-12">
           <div className="grid grid-cols-3 gap-4 mb-8">
             <button onClick={() => setActiveAboutType('course')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group">
@@ -334,11 +387,10 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
           </div>
         </div>
 
-        {/* Floating Side Action - INSIGHT BOX (Enhanced Layout & Mandatory Save Button) */}
+        {/* Floating Side Action - INSIGHT BOX */}
         <div className="fixed bottom-24 right-10 z-[100] flex flex-col items-end gap-4 pointer-events-none">
             {isInsightOpen && (
                 <div className="w-[300px] md:w-[420px] max-h-[85vh] bg-white/95 backdrop-blur-2xl border-4 border-indigo-600 rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] flex flex-col pointer-events-auto animate-in slide-in-from-bottom-12 duration-500 overflow-hidden">
-                    {/* Header Portal - Guaranteed Visibility */}
                     <div className="bg-indigo-600 p-5 text-white flex justify-between items-center shrink-0 border-b-4 border-indigo-700 shadow-md relative z-10">
                         <div className="flex items-center gap-3">
                             <PenTool size={24} className="text-white animate-pulse" />
@@ -369,7 +421,6 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                             />
                         </div>
                         
-                        {/* MANDATORY REGISTRY COMMIT ACTION - BOLD & PROMINENT */}
                         <button 
                             onClick={handleSaveNote} 
                             disabled={isSavingNote}
@@ -395,10 +446,74 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
                 className="w-16 h-16 md:w-20 md:h-20 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all pointer-events-auto group border-4 border-white relative"
             >
                 {isInsightOpen ? <X size={28} /> : <PenTool size={32} className="group-hover:rotate-12 transition-transform" />}
-                {/* (c) MAKE THE TEXT LABEL “INSIGHT” ON THE “INSIGHT BUTTON MORE BOLD AND VISIBLE. CHANGE COLOUR TO GOLD. */}
                 <span className="absolute -top-4 -left-4 bg-royal-950 text-gold-400 text-[14px] font-black px-5 py-2.5 rounded-full uppercase tracking-[0.25em] shadow-2xl border-2 border-gold-500 ring-4 ring-royal-900/50">Insight</span>
             </button>
         </div>
+      </div>
+
+      {/* SEQUENTIAL NAVIGATION CONTROLS - GLOBAL FOOTER SECTION */}
+      <div ref={contentBottomRef} className="mt-20 pt-20 border-t-8 border-gray-50 flex flex-col items-center gap-16 animate-in slide-in-from-bottom-8 duration-1000">
+          <div className="flex flex-col sm:flex-row items-stretch gap-10 w-full max-w-6xl">
+              {/* PREVIOUS BUTTON - ALWAYS ACCESSIBLE */}
+              <div className="flex-1">
+                {adjacentLessons.prev ? (
+                    <button 
+                        onClick={() => navigateAdjacent(adjacentLessons.prev!)}
+                        className="w-full h-full flex items-center justify-between p-12 bg-white border-4 border-royal-100 rounded-[3rem] hover:border-gold-500 hover:shadow-[0_40px_80px_-20px_rgba(245,158,11,0.25)] transition-all transform hover:-translate-y-2 group active:scale-95 border-b-[12px] border-royal-200"
+                    >
+                        <div className="p-5 bg-royal-50 text-royal-400 group-hover:bg-gold-500 group-hover:text-white rounded-[1.8rem] transition-all">
+                            <ChevronLeft size={48} strokeWidth={4} />
+                        </div>
+                        <div className="text-right flex-1 pr-8">
+                            <p className="text-[14px] font-black text-gray-300 uppercase tracking-[0.4em] mb-3 group-hover:text-gold-600 transition-colors">Sequential History</p>
+                            <h4 className="font-serif font-black text-royal-900 uppercase text-2xl md:text-3xl leading-tight">Return Previous</h4>
+                        </div>
+                    </button>
+                ) : (
+                    <div className="w-full h-full p-12 border-4 border-dashed border-gray-100 rounded-[3rem] flex flex-col items-center justify-center opacity-30">
+                        <Layers size={64} className="text-gray-200 mb-4" />
+                        <span className="text-[14px] font-black text-gray-400 uppercase tracking-[0.4em]">Registry Origin</span>
+                    </div>
+                )}
+              </div>
+
+              {/* NEXT BUTTON - STRICTLY GUARDED PROTOCOL */}
+              <div className="flex-1">
+                {adjacentLessons.next ? (
+                    <div className="relative h-full">
+                        {!isLessonCompleted ? (
+                            <div className="h-full w-full p-12 bg-gray-50 border-4 border-gray-200 rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 opacity-80 border-b-[12px]">
+                                <div className="p-4 bg-white rounded-full shadow-inner"><Target size={48} className="text-gray-300" /></div>
+                                <p className="text-[14px] font-black text-gray-400 uppercase tracking-[0.3em] leading-relaxed">
+                                    Evaluation Completion <br/> Required to Advance
+                                </p>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={() => navigateAdjacent(adjacentLessons.next!)}
+                                className="w-full h-full flex items-center justify-between p-12 bg-royal-900 text-white border-4 border-black rounded-[3rem] shadow-[0_50px_100px_-30px_rgba(30,27,75,0.7)] hover:bg-black hover:shadow-[0_60px_120px_-40px_rgba(0,0,0,1)] transition-all transform hover:-translate-y-2 group active:scale-95 border-b-[12px] border-black animate-pop-in overflow-hidden relative"
+                            >
+                                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Sparkles size={120} />
+                                </div>
+                                <div className="text-left flex-1 pl-8 z-10">
+                                    <p className="text-[14px] font-black text-gold-400 uppercase tracking-[0.4em] mb-3 group-hover:animate-pulse">Registry Path Open</p>
+                                    <h4 className="font-serif font-black uppercase text-2xl md:text-3xl leading-tight">Proceed Next</h4>
+                                </div>
+                                <div className="p-5 bg-white/10 text-white group-hover:bg-gold-500 rounded-[1.8rem] transition-all z-10 ring-8 ring-white/5">
+                                    <ChevronRight size={48} strokeWidth={4} className="group-hover:translate-x-2 transition-transform" />
+                                </div>
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="w-full h-full p-12 bg-gold-50 border-4 border-gold-200 rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 border-b-[12px] border-gold-300">
+                        <BadgeCheck size={64} className="text-gold-500 animate-checkmark-bounce" />
+                        <p className="text-[14px] font-black text-gold-700 uppercase tracking-[0.5em]">Curriculum Mastered</p>
+                    </div>
+                )}
+              </div>
+          </div>
       </div>
 
       {activeAboutType && (

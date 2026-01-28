@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, Lesson, Module, Course, AboutSegment } from '../types';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
-import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap, Search } from 'lucide-react';
+import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap, Search, ArrowLeft } from 'lucide-react';
 
 interface StudentPanelProps {
   currentUser: User;
@@ -10,6 +10,7 @@ interface StudentPanelProps {
   onTakeLesson?: (lessonId: string) => void;
   isManagementMode?: boolean;
   onUpdateUser?: (user: User) => void;
+  onBack?: () => void;
 }
 
 interface LessonStatusData {
@@ -20,7 +21,7 @@ interface LessonStatusData {
     percent: number;
 }
 
-const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson, isManagementMode = false, onUpdateUser }) => {
+const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onTakeLesson, isManagementMode = false, onUpdateUser, onBack }) => {
   const [coursesByLevel, setCoursesByLevel] = useState<Record<string, Course[]>>({
     'student (Beginner)': [],
     'Mentor, Organization & Parent (Intermediate)': [],
@@ -35,11 +36,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [newOrderValue, setNewOrderValue] = useState<string>("");
 
-  // New Selection State for "Single Row" mode
   const [tierSelections, setTierSelections] = useState<Record<string, { courseId: string; moduleId: string; lessonId: string }>>({});
   const [openDropdown, setOpenDropdown] = useState<{ tier: string; type: 'course' | 'module' | 'lesson' } | null>(null);
 
-  // Modal States
   const [aboutModal, setAboutModal] = useState<{ isOpen: boolean; title: string; segments: AboutSegment[] }>({
       isOpen: false,
       title: '',
@@ -91,13 +90,11 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           if (c.authorId === currentUser.id) return true;
           const isFromMyMentor = currentUser.mentorId === c.authorId;
           const isFromMyOrg = currentUser.organizationId === c.authorId || currentUser.organizationId === c.organizationId;
-          
           const courseModules = allModules.filter(m => m.courseId === c.id);
           const hasGlobalContent = courseModules.some(m => {
               const moduleLessons = allLessons.filter(l => l.moduleId === m.id);
               return moduleLessons.some(l => l.targetAudience === 'All');
           });
-
           return isFromMyMentor || isFromMyOrg || hasGlobalContent;
       });
 
@@ -145,50 +142,37 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       for (const les of allLessons) {
           const attempts = await lessonService.getAttempts(currentUser.id, les.id);
           const time = await lessonService.getQuizTimer(currentUser.id, les.id);
-          const totalQ = (les.bibleQuizzes?.length || 0) + (les.noteQuizzes?.length || 0);
+          const bibleCount = (les.bibleQuizzes?.length || 0);
+          const noteCount = (les.noteQuizzes?.length || 0);
+          const totalQ = bibleCount + noteCount;
           const uniqueAnswered = new Set(attempts.map(a => a.quizId)).size;
           const correct = attempts.filter(a => a.isCorrect).length;
           let status: 'COMPLETED' | 'STARTED' | 'UNATTEMPTED' = 'UNATTEMPTED';
           let label: 'Not started' | 'In progress' | 'Completed' = 'Not started';
           let percent = 0;
-          
           if (uniqueAnswered >= totalQ && totalQ > 0) {
-              status = 'COMPLETED';
-              label = 'Completed';
-              percent = 100;
-          }
-          else if (uniqueAnswered > 0 || time > 0) {
-              status = 'STARTED';
-              label = 'In progress';
-              percent = totalQ > 0 ? Math.round((uniqueAnswered / totalQ) * 100) : 50;
+              status = 'COMPLETED'; label = 'Completed'; percent = 100;
+          } else if (uniqueAnswered > 0 || time > 0) {
+              status = 'STARTED'; label = 'In progress'; percent = totalQ > 0 ? Math.round((uniqueAnswered / totalQ) * 100) : 50;
           }
           statusMap[les.id] = { status, label, score: `${correct}/${totalQ}`, timeSpent: time, percent };
       }
       setLessonStatuses(statusMap);
 
-      // Initialize tier selections with first available data
       const initialSelections: Record<string, any> = {};
       Object.keys(levels).forEach(tier => {
           const firstCourse = levels[tier][0];
           if (firstCourse) {
               const firstMod = modMap[firstCourse.id]?.[0];
               const firstLesson = firstMod ? lesMap[firstMod.id]?.[0] : null;
-              initialSelections[tier] = {
-                  courseId: firstCourse.id,
-                  moduleId: firstMod?.id || '',
-                  lessonId: firstLesson?.id || ''
-              };
+              initialSelections[tier] = { courseId: firstCourse.id, moduleId: firstMod?.id || '', lessonId: firstLesson?.id || '' };
           }
       });
       setTierSelections(initialSelections);
 
       const stats = await lessonService.getStudentSummary(currentUser.id);
       setSummary(stats);
-    } catch (e) {
-       console.error("Hierarchy Sync Failure:", e);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch (e) { console.error("Hierarchy Sync Failure:", e); } finally { setIsLoading(false); }
   };
 
   const handleTierSelection = (tier: string, type: 'course' | 'module' | 'lesson', id: string) => {
@@ -274,16 +258,13 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   };
 
   const ProgressBar = ({ percent }: { percent: number }) => (
-      <div className="w-full mt-4">
-          <div className="flex justify-between items-end mb-1.5">
+      <div className="w-full mt-2">
+          <div className="flex justify-between items-end mb-1">
               <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Mastery Velocity</span>
-              <span className="text-sm font-black text-indigo-600">{percent}%</span>
+              <span className="text-[12px] font-black text-indigo-600">{percent}%</span>
           </div>
-          <div className="h-3 w-full bg-gray-100 rounded-full border-2 border-gray-200 overflow-hidden p-0.5">
-              <div 
-                  className="h-full bg-indigo-600 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(79,70,229,0.4)]" 
-                  style={{ width: `${percent}%` }}
-              />
+          <div className="h-2 w-full bg-gray-100 rounded-full border-2 border-gray-200 overflow-hidden p-0.5">
+              <div className="h-full bg-indigo-600 rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(79,70,229,0.4)]" style={{ width: `${percent}%` }} />
           </div>
       </div>
   );
@@ -296,7 +277,6 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       const activeModule = activeModules.find(m => m.id === selection?.moduleId) || activeModules[0];
       const activeLessons = lessonsByModule[activeModule?.id] || [];
       const activeLesson = activeLessons.find(l => l.id === selection?.lessonId) || activeLessons[0];
-      
       const moduleStatus = activeModule ? getModuleStatusLabel(activeModule.id) : 'Not started';
       const moduleProgress = activeModule ? getModuleProgress(activeModule.id) : 0;
       const courseStatus = activeCourse ? getCourseStatusLabel(activeCourse.id) : 'Not started';
@@ -307,32 +287,14 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
               <div className={`flex items-center gap-4 p-5 rounded-[2rem] border-[4px] ${tierColor} bg-white shadow-xl relative overflow-hidden group`}>
                   <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity transform rotate-12">{tierIcon}</div>
                   <div className={`p-4 rounded-2xl text-white shadow-xl relative z-10 flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-6 duration-500`} style={{ backgroundColor: tierColor.includes('indigo') ? '#4f46e5' : tierColor.includes('blue') ? '#2563eb' : '#f59e0b' }}>{tierIcon}</div>
-                  <div className="relative z-10">
-                      <h3 className="text-2xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">{levelLabel}</h3>
-                      <p className="text-gray-400 font-black uppercase tracking-[0.4em] text-[8px] mt-2">Verified Matrix Navigation</p>
-                  </div>
+                  <div className="relative z-10"><h3 className="text-2xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">{levelLabel}</h3><p className="text-gray-400 font-black uppercase tracking-[0.4em] text-[8px] mt-2">Verified Matrix Navigation</p></div>
               </div>
-
-              {!isEmpty && isManagementMode && (
-                <div className="bg-amber-50 border-2 border-amber-200 p-4 rounded-3xl shadow-sm animate-in fade-in slide-in-from-right-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-amber-200 text-amber-800 rounded-xl"><InfoIcon size={20} /></div>
-                    <p className="text-royal-900 font-black uppercase text-[10px] md:text-xs tracking-wider leading-tight">
-                      Registry Management: Select courses and modules to configure sequences.
-                    </p>
-                  </div>
-                </div>
-              )}
               
-              {/* Reduced height by 25%: min-h-[500px] -> min-h-[375px] */}
-              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-hidden flex flex-col min-h-[375px]">
+              <div className="bg-white border-4 border-gray-300 rounded-[2.5rem] shadow-xl overflow-visible flex flex-col min-h-[375px]">
                   {isEmpty ? (
-                      <div className="py-24 text-center flex flex-col items-center gap-4">
-                         <Database size={60} className="text-gray-100 animate-pulse" />
-                         <p className="text-xs font-black text-gray-300 uppercase tracking-[0.5em] animate-pulse">Waiting for Deposit...</p>
-                      </div>
+                      <div className="py-24 text-center flex flex-col items-center gap-4"><Database size={60} className="text-gray-100 animate-pulse" /><p className="text-xs font-black text-gray-300 uppercase tracking-[0.5em] animate-pulse">Waiting for Deposit...</p></div>
                   ) : (
-                      <div className="overflow-x-auto custom-scrollbar flex-1 border-collapse relative">
+                      <div className="overflow-x-auto custom-scrollbar flex-1 border-collapse relative overflow-y-visible">
                         <table className="w-full text-left border-collapse min-w-[1800px]">
                             <thead>
                                 <tr className="bg-royal-900 text-white text-[13px] font-black uppercase tracking-[0.4em] sticky top-0 z-50 shadow-xl border-b-4 border-gold-500">
@@ -343,124 +305,95 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                 </tr>
                             </thead>
                             <tbody className="divide-y-0">
-                                <tr className="group transition-all align-top bg-white">
-                                    {/* COURSE COLUMN */}
-                                    <td className="p-6 border-2 border-gray-300 bg-white relative">
-                                        <div className="flex flex-col gap-4">
+                                <tr className="group transition-all align-top bg-white h-[375px]">
+                                    <td className="p-6 border-2 border-gray-300 bg-white relative overflow-visible">
+                                        <div className="flex flex-col gap-6">
                                             {activeCourse ? (
                                                 <>
-                                                    <div>
-                                                        <h3 className="text-2xl font-serif font-black text-royal-950 uppercase leading-tight mb-2">{activeCourse.title}</h3>
-                                                        <div className="flex flex-wrap gap-2 items-center">
-                                                            <StatusBadge label={courseStatus} />
-                                                            <span className="text-[10px] font-black text-gold-600 bg-gold-50 px-3 py-1 rounded-full border border-gold-100 uppercase">{activeCourse.level}</span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="relative">
+                                                    <div className="relative z-[60]">
                                                         <button 
                                                             onClick={() => setOpenDropdown(openDropdown?.type === 'course' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'course' })}
-                                                            className="w-full py-3 bg-royal-800 hover:bg-black text-white font-black rounded-xl text-[10px] uppercase tracking-[0.2em] transition-all border-b-4 border-black flex items-center justify-center gap-2"
+                                                            className="w-full py-4 bg-royal-800 hover:bg-black text-white font-black rounded-2xl text-[11px] uppercase tracking-[0.3em] transition-all border-b-8 border-black flex items-center justify-center gap-3 shadow-lg"
                                                         >
-                                                            <Globe size={14} /> BROWSE COURSES <ChevronDown size={14} className={openDropdown?.type === 'course' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                                                            <Globe size={18} /> BROWSE COURSES <ChevronDown size={16} className={openDropdown?.type === 'course' ? 'rotate-180 transition-transform' : 'transition-transform'} />
                                                         </button>
-                                                        
                                                         {openDropdown?.tier === levelLabel && openDropdown?.type === 'course' && (
-                                                            <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-royal-900 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
+                                                            <div className="absolute top-full left-0 w-full mt-3 bg-white rounded-[2rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border-4 border-royal-900 z-[70] p-4 animate-in slide-in-from-top-3 overflow-y-auto max-h-[450px] custom-scrollbar">
                                                                 {courses.map(c => (
-                                                                    <button 
-                                                                        key={c.id} 
-                                                                        onClick={() => handleTierSelection(levelLabel, 'course', c.id)}
-                                                                        className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.courseId === c.id ? 'bg-royal-900 text-white shadow-lg' : 'hover:bg-royal-50 text-gray-700'}`}
-                                                                    >
-                                                                        {c.title}
-                                                                    </button>
+                                                                    <button key={c.id} onClick={() => handleTierSelection(levelLabel, 'course', c.id)} className={`w-full text-left p-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-2 ${selection?.courseId === c.id ? 'bg-royal-900 text-white shadow-xl scale-[1.02]' : 'hover:bg-royal-50 text-gray-700'}`}>{c.title}</button>
                                                                 ))}
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <button onClick={() => setAboutModal({ isOpen: true, title: activeCourse.title, segments: activeCourse.about })} className="w-full py-2.5 bg-gray-50 hover:bg-royal-100 text-royal-800 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all border border-royal-200">View Course Identity</button>
+                                                    <div className="animate-in fade-in slide-in-from-bottom-2">
+                                                        <h3 className="text-2xl font-serif font-black text-royal-950 uppercase leading-tight mb-3">{activeCourse.title}</h3>
+                                                        <div className="flex flex-wrap gap-2 items-center">
+                                                            <StatusBadge label={courseStatus} />
+                                                            <span className="text-[10px] font-black text-gold-600 bg-gold-50 px-3 py-1.5 rounded-full border-2 border-gold-100 uppercase">{activeCourse.level}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button onClick={() => setAboutModal({ isOpen: true, title: activeCourse.title, segments: activeCourse.about })} className="w-full py-3 bg-gray-50 hover:bg-royal-100 text-royal-800 font-black rounded-xl text-[10px] uppercase tracking-widest transition-all border-2 border-royal-200">Review Course Details</button>
                                                 </>
                                             ) : <div className="p-10 text-center opacity-20"><Database size={40}/></div>}
                                         </div>
                                     </td>
 
-                                    {/* MODULE COLUMN */}
-                                    <td className="p-6 border-2 border-gray-300 bg-white relative">
-                                        <div className="flex flex-col h-full">
+                                    <td className="p-6 border-2 border-gray-300 bg-white relative overflow-visible">
+                                        <div className="flex flex-col h-full gap-6">
                                             {activeModule ? (
                                                 <>
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">
-                                                                <Layers size={24} />
+                                                    <div className="relative z-[60]">
+                                                        <button 
+                                                            onClick={() => setOpenDropdown(openDropdown?.type === 'module' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'module' })}
+                                                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-[11px] uppercase tracking-[0.3em] transition-all border-b-8 border-indigo-950 flex items-center justify-center gap-3 shadow-lg"
+                                                        >
+                                                            <Layers size={18} /> BROWSE MODULES <ChevronDown size={16} />
+                                                        </button>
+                                                        {openDropdown?.tier === levelLabel && openDropdown?.type === 'module' && (
+                                                            <div className="absolute top-full left-0 w-full mt-3 bg-white rounded-[2rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.5)] border-4 border-indigo-600 z-[70] p-4 animate-in slide-in-from-top-3 overflow-y-auto max-h-[450px] custom-scrollbar">
+                                                                {activeModules.map(m => (
+                                                                    <button key={m.id} onClick={() => handleTierSelection(levelLabel, 'module', m.id)} className={`w-full text-left p-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-2 ${selection?.moduleId === m.id ? 'bg-indigo-600 text-white shadow-xl scale-[1.02]' : 'hover:bg-indigo-50 text-gray-700'}`}>{m.title}</button>
+                                                                ))}
                                                             </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">MODULE STRUCTURE</p>
-                                                                <h4 className="text-lg font-serif font-black text-gray-900 uppercase">{activeModule.title}</h4>
-                                                            </div>
-                                                        </div>
-                                                        <StatusBadge label={moduleStatus} />
+                                                        )}
                                                     </div>
-                                                    
-                                                    <ProgressBar percent={moduleProgress} />
-
-                                                    <div className="grid grid-cols-2 gap-3 mt-6">
-                                                        <div className="relative">
-                                                            <button 
-                                                                onClick={() => setOpenDropdown(openDropdown?.type === 'module' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'module' })}
-                                                                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-[10px] uppercase tracking-[0.15em] transition-all border-b-4 border-indigo-900 flex items-center justify-center gap-2"
-                                                            >
-                                                                <Layers size={14} /> BROWSE MODULES <ChevronDown size={14} />
-                                                            </button>
-                                                            {openDropdown?.tier === levelLabel && openDropdown?.type === 'module' && (
-                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-indigo-600 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
-                                                                    {activeModules.map(m => (
-                                                                        <button 
-                                                                            key={m.id} 
-                                                                            onClick={() => handleTierSelection(levelLabel, 'module', m.id)}
-                                                                            className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.moduleId === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-indigo-50 text-gray-700'}`}
-                                                                        >
-                                                                            {m.title}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            )}
+                                                    <div className="animate-in fade-in slide-in-from-bottom-2">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border-2 border-indigo-100 shadow-sm"><Layers size={24} /></div>
+                                                                <div><p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">MODULE STRUCTURE</p><h4 className="text-xl font-serif font-black text-gray-900 uppercase">{activeModule.title}</h4></div>
+                                                            </div>
+                                                            <StatusBadge label={moduleStatus} />
                                                         </div>
-                                                        <div className="relative">
-                                                            <button 
-                                                                onClick={() => setOpenDropdown(openDropdown?.type === 'lesson' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'lesson' })}
-                                                                className="w-full py-3 bg-white text-indigo-600 border-4 border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] hover:bg-indigo-50 transition-all flex items-center justify-center gap-2"
-                                                            >
-                                                                <BookOpen size={14} /> EXPAND UNITS <ChevronDown size={14} />
-                                                            </button>
-                                                            {openDropdown?.tier === levelLabel && openDropdown?.type === 'lesson' && (
-                                                                <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border-4 border-indigo-200 z-[60] p-2 animate-in slide-in-from-top-2 overflow-y-auto max-h-[300px] custom-scrollbar">
-                                                                    {activeLessons.map(l => (
-                                                                        <button 
-                                                                            key={l.id} 
-                                                                            onClick={() => handleTierSelection(levelLabel, 'lesson', l.id)}
-                                                                            className={`w-full text-left p-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-1 ${selection?.lessonId === l.id ? 'bg-indigo-50 text-indigo-800 font-black' : 'hover:bg-gray-50 text-gray-600'}`}
-                                                                        >
-                                                                            {l.title}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                                        <ProgressBar percent={moduleProgress} />
+                                                    </div>
+                                                    <div className="relative mt-auto z-[55]">
+                                                        <button 
+                                                            onClick={() => setOpenDropdown(openDropdown?.type === 'lesson' && openDropdown.tier === levelLabel ? null : { tier: levelLabel, type: 'lesson' })}
+                                                            className="w-full py-3.5 bg-white text-indigo-600 border-4 border-indigo-100 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 shadow-sm"
+                                                        >
+                                                            <BookOpen size={18} /> EXPAND UNITS <ChevronDown size={16} />
+                                                        </button>
+                                                        {openDropdown?.tier === levelLabel && openDropdown?.type === 'lesson' && (
+                                                            <div className="absolute top-full left-0 w-full mt-3 bg-white rounded-[2rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.6)] border-4 border-indigo-200 z-[70] p-4 animate-in slide-in-from-top-3 overflow-y-auto max-h-[500px] custom-scrollbar">
+                                                                {activeLessons.map(l => (
+                                                                    <button key={l.id} onClick={() => handleTierSelection(levelLabel, 'lesson', l.id)} className={`w-full text-left p-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all mb-2 ${selection?.lessonId === l.id ? 'bg-indigo-50 text-indigo-800 font-black' : 'hover:bg-gray-50 text-gray-600'}`}>{l.title}</button>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </>
                                             ) : <div className="p-10 text-center opacity-10"><Layers size={40}/></div>}
                                         </div>
                                     </td>
 
-                                    {/* MODULE ORDER COLUMN */}
                                     <td className="p-6 border-2 border-gray-300 text-center align-middle bg-gray-50/30">
                                         <div className="flex flex-col justify-center items-center gap-3">
                                             {activeModule && (
                                                 editingModuleId === activeModule.id ? (
                                                     <div className="flex flex-col items-center gap-2 animate-in zoom-in-95">
                                                         <input autoFocus type="number" className="w-20 p-2 text-center font-black text-2xl border-4 border-indigo-500 rounded-xl outline-none" value={newOrderValue} onChange={(e) => setNewOrderValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateOrder(activeCourse.id, activeModule.id, parseInt(newOrderValue)); if (e.key === 'Escape') setEditingModuleId(null); }} />
-                                                        <div className="flex gap-1"><button onClick={() => handleUpdateOrder(activeCourse.id, activeModule.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button><button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-500 text-white rounded shadow hover:bg-red-600"><X size={16}/></button></div>
+                                                        <div className="flex gap-1"><button onClick={() => handleUpdateOrder(activeCourse.id, activeModule.id, parseInt(newOrderValue))} className="p-1 bg-green-500 text-white rounded shadow hover:bg-green-600"><CheckCircle size={16}/></button><button onClick={() => setEditingModuleId(null)} className="p-1 bg-red-50 text-white rounded shadow hover:bg-red-600"><X size={16}/></button></div>
                                                     </div>
                                                 ) : (
                                                     <>
@@ -475,13 +408,12 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                         </div>
                                     </td>
 
-                                    {/* CURRICULUM CONTROLS COLUMN */}
                                     <td className="p-6 border-2 border-gray-300 align-middle bg-gray-50/50">
                                         {activeLesson ? (
                                             <div className="flex flex-col gap-6 animate-in fade-in">
-                                                <div className="bg-white p-6 rounded-[2.5rem] border-2 border-indigo-100 shadow-inner flex flex-col md:flex-row items-center justify-between gap-6">
+                                                <div className="bg-white p-6 rounded-[2.5rem] border-4 border-indigo-100 shadow-inner flex flex-col md:flex-row items-center justify-between gap-6">
                                                     <div className="flex items-center gap-5">
-                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-lg border-2 ${lessonStat?.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : lessonStat?.status === 'STARTED' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-gray-300 border-gray-200'}`}>
+                                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black shrink-0 shadow-lg border-4 ${lessonStat?.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : lessonStat?.status === 'STARTED' ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'bg-white text-gray-300 border-gray-200'}`}>
                                                             {activeLessons.indexOf(activeLesson) + 1}
                                                         </div>
                                                         <div className="min-w-0">
@@ -498,9 +430,9 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <button 
                                                         onClick={() => onTakeLesson?.(activeLesson.id)}
-                                                        className="py-5 bg-royal-900 text-white font-black rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase text-xs tracking-[0.3em] border-b-8 border-black active:scale-95"
+                                                        className="py-5 bg-royal-900 text-white font-black rounded-3xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase text-xs tracking-[0.3em] border-b-8 border-black active:scale-95 transform hover:-translate-y-1"
                                                     >
-                                                        <Play size={20} className="fill-gold-400 text-gold-400" /> START COMPONENT
+                                                        <Play size={22} className="fill-gold-400 text-gold-400" /> START/RESUME LESSON
                                                     </button>
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <button onClick={() => setAboutModal({ isOpen: true, title: activeLesson.title, segments: activeLesson.about })} className="py-4 bg-white text-indigo-700 border-4 border-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
@@ -513,9 +445,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-center py-10 opacity-30 italic font-black text-xs uppercase tracking-widest">
-                                                Select a Lesson to Access Controls
-                                            </div>
+                                            <div className="text-center py-10 opacity-30 italic font-black text-xs uppercase tracking-widest">Select a Lesson to Access Controls</div>
                                         )}
                                     </td>
                                 </tr>
@@ -529,12 +459,17 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
   };
 
   return (
-    <div className="bg-white rounded-[4rem] shadow-[0_80px_150px_-50px_rgba(0,0,0,0.3)] border-[12px] border-gray-50 p-6 md:p-14 min-h-[850px] animate-in fade-in duration-1000">
+    <div className="bg-white rounded-[4rem] shadow-[0_80px_150px_-50px_rgba(0,0,0,0.3)] border-[12px] border-gray-50 p-6 md:p-14 min-h-[850px] animate-in fade-in duration-1000 overflow-visible">
          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 border-b-[8px] border-indigo-50 pb-12 mb-20">
-            <div>
+            <div className="flex items-center gap-6">
+              {onBack && (
+                <button onClick={onBack} className="p-5 bg-gray-100 hover:bg-white rounded-[1.8rem] text-gray-400 hover:text-indigo-600 transition-all shadow-xl border-4 border-gray-200 active:scale-90 group">
+                    <ArrowLeft size={32} className="group-hover:-translate-x-1 transition-transform" />
+                </button>
+              )}
               <div className="flex items-center gap-8">
                 <div className="p-5 bg-indigo-600 rounded-[2rem] text-white shadow-2xl animate-float border-b-8 border-indigo-900"><Layers size={48} /></div>
-                <div><h2 className="text-6xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">Curriculum Browser</h2><div className="flex items-center gap-3 mt-4 ml-1"><span className="w-4 h-4 bg-indigo-100 rounded-full flex items-center justify-center"><CheckCircle size={10} className="text-indigo-600" /></span><p className="text-indigo-600 font-black uppercase tracking-[0.5em] text-[11px]">{isManagementMode ? "Registry Management Protocol" : "Independent Matrix Navigation"} (TABLE 3 Protocol)</p></div></div>
+                <div><h2 className="text-4xl font-serif font-black text-gray-900 uppercase tracking-tighter leading-none">Curriculum Browser</h2><div className="flex items-center gap-3 mt-4 ml-1"><span className="w-4 h-4 bg-indigo-100 rounded-full flex items-center justify-center"><CheckCircle size={10} className="text-indigo-600" /></span><p className="text-indigo-600 font-black uppercase tracking-[0.5em] text-[11px]">{isManagementMode ? "Registry Management Protocol" : "Independent Matrix Navigation"} (TABLE 3 Protocol)</p></div></div>
               </div>
             </div>
             <div className="flex items-center gap-5">
@@ -601,12 +536,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                         <button onClick={() => setInsightModal({ ...insightModal, isOpen: false })} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={24}/></button>
                     </div>
                     <div className="flex-1 p-10 bg-gray-50/30 flex flex-col">
-                        <textarea 
-                            value={insightModal.text}
-                            onChange={(e) => setInsightModal({ ...insightModal, text: e.target.value })}
-                            className="flex-1 w-full bg-white border-4 border-indigo-50 rounded-[2.5rem] p-10 outline-none font-bold text-gray-800 text-xl resize-none shadow-inner custom-scrollbar"
-                            placeholder="Your spiritual reflections for this lesson..."
-                        />
+                        <textarea value={insightModal.text} onChange={(e) => setInsightModal({ ...insightModal, text: e.target.value })} className="flex-1 w-full bg-white border-4 border-indigo-50 rounded-[2.5rem] p-10 outline-none font-bold text-gray-800 text-xl resize-none shadow-inner custom-scrollbar" placeholder="Your spiritual reflections for this lesson..."/>
                         <button onClick={handleSaveInsight} disabled={isSavingInsight} className="mt-8 py-6 bg-indigo-600 text-white font-black rounded-3xl hover:bg-black transition-all flex items-center justify-center gap-4 uppercase tracking-[0.3em] shadow-2xl border-b-8 border-indigo-950 active:scale-95">
                             {isSavingInsight ? <Loader2 className="animate-spin" size={24}/> : <Save size={24}/>} {isSavingInsight ? 'ARCHIVING...' : 'Update Insight Registry'}
                         </button>

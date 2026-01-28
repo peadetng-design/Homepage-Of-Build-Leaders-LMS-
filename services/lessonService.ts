@@ -247,18 +247,6 @@ class LessonService {
       let prevId: string | undefined;
       let nextId: string | undefined;
 
-      // Adjacency Rule: Previous
-      if (currentIdx > 0) {
-          prevId = moduleLessons[currentIdx - 1].id;
-      } else if (modIdx > 0) {
-          const prevMod = courseModules[modIdx - 1];
-          const prevModLessons = this.lessons
-            .filter(l => l.moduleId === prevMod.id)
-            .sort((a, b) => a.orderInModule - b.orderInModule);
-          if (prevModLessons.length > 0) prevId = prevModLessons[prevModLessons.length - 1].id;
-      }
-
-      // Adjacency Rule: Next
       if (currentIdx < moduleLessons.length - 1) {
           nextId = moduleLessons[currentIdx + 1].id;
       } else if (modIdx < courseModules.length - 1) {
@@ -267,6 +255,16 @@ class LessonService {
             .filter(l => l.moduleId === nextMod.id)
             .sort((a, b) => a.orderInModule - b.orderInModule);
           if (nextModLessons.length > 0) nextId = nextModLessons[0].id;
+      }
+
+      if (currentIdx > 0) {
+          prevId = moduleLessons[currentIdx - 1].id;
+      } else if (modIdx > 0) {
+          const prevMod = courseModules[modIdx - 1];
+          const prevModLessons = this.lessons
+            .filter(l => l.moduleId === prevMod.id)
+            .sort((a, b) => a.orderInModule - b.orderInModule);
+          if (prevModLessons.length > 0) prevId = prevModLessons[prevModLessons.length - 1].id;
       }
 
       return { prev: prevId, next: nextId };
@@ -428,7 +426,8 @@ class LessonService {
 
     const getSheet = (name: string) => {
         const actualName = workbook.SheetNames.find(n => 
-          n.trim().toLowerCase() === name.trim().toLowerCase()
+          n.trim().toLowerCase() === name.trim().toLowerCase() ||
+          n.trim().toLowerCase().replace(/\s|_/g, '') === name.trim().toLowerCase().replace(/\s|_/g, '')
         );
 
         if (!actualName) {
@@ -469,9 +468,15 @@ class LessonService {
         errors.push({ sheet: 'Course_Metadata', row: 1, column: 'All', message: 'Registry Error: Course record required.', severity: 'error' });
     }
 
+    let lastCourseId = '';
+    let lastModuleId = '';
+    let lastLessonId = '';
+
+    // SUPPORT FOR MULTIPLE COURSES IN ONE SHEET
     const rawCourse = courseData[0];
+    const extractedCourseId = (getRowValue(rawCourse, ['course_id', 'id']) || 'ID-MISSING').toString();
     const course: Course = {
-        id: (getRowValue(rawCourse, ['course_id', 'id']) || 'ID-MISSING').toString(),
+        id: extractedCourseId,
         title: (getRowValue(rawCourse, ['course_title', 'title']) || 'Untitled Course').toString(),
         subtitle: (getRowValue(rawCourse, ['course_subtitle', 'subtitle']) || '').toString(),
         description: (getRowValue(rawCourse, ['course_description', 'description']) || '').toString(),
@@ -480,7 +485,7 @@ class LessonService {
         author: (getRowValue(rawCourse, ['course_author', 'author']) || 'BBL Institute').toString(),
         totalModulesRequired: 0,
         about: aboutCourseData
-            .filter(a => (getRowValue(a, ['course_id', 'id']) || '') === (getRowValue(rawCourse, ['course_id', 'id']) || ''))
+            .filter(a => (getRowValue(a, ['course_id', 'id']) || extractedCourseId) === extractedCourseId)
             .map(a => ({ 
                 order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
                 title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
@@ -488,10 +493,16 @@ class LessonService {
             }))
             .sort((a, b) => a.order - b.order)
     };
+    lastCourseId = course.id;
 
+    // Reset local tracker for module loop
+    let currentSheetModuleId = '';
     const modules: Module[] = moduleData.map((m, idx) => {
+        const mid = (getRowValue(m, ['module_id', 'id']) || '').toString();
+        if (mid) currentSheetModuleId = mid;
+        const targetMid = currentSheetModuleId;
         return {
-            id: (getRowValue(m, ['module_id', 'id']) || '').toString(), 
+            id: targetMid, 
             courseId: course.id, 
             title: (getRowValue(m, ['module_title', 'title']) || '').toString(), 
             description: (getRowValue(m, ['module_description', 'description']) || '').toString(),
@@ -499,7 +510,7 @@ class LessonService {
             lessonIds: [], 
             totalLessonsRequired: 0,
             about: aboutModuleData
-                .filter(a => (getRowValue(a, ['module_id', 'id']) || '') === (getRowValue(m, ['module_id', 'id']) || ''))
+                .filter(a => (getRowValue(a, ['module_id', 'id']) || targetMid) === targetMid)
                 .map(a => ({ 
                     order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
                     title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
@@ -516,49 +527,71 @@ class LessonService {
     });
     course.totalModulesRequired = modules.length;
 
-    const lessons: Lesson[] = lessonData.map((l, idx) => {
-        const moduleId = (getRowValue(l, ['module_id', 'id']) || '').toString();
-        const lessonId = (getRowValue(l, ['lesson_id', 'id']) || '').toString();
+    // Reset local trackers for lesson loop to prevent worksheet identity contamination
+    let currentSheetLessonId = '';
+    let currentSheetTargetModuleId = '';
+    const lessonsMap: Map<string, Lesson> = new Map();
+    
+    lessonData.forEach((l, idx) => {
+        const mid = (getRowValue(l, ['module_id', 'id']) || '').toString();
+        if (mid) currentSheetTargetModuleId = mid;
         
-        const currentLesson: Lesson = {
-            id: lessonId, 
-            moduleId: moduleId, 
-            orderInModule: parseInt(getRowValue(l, ['lesson_order', 'order'])) || 1, 
-            title: (getRowValue(l, ['lesson_title', 'title']) || '').toString(),
-            description: (getRowValue(l, ['lesson_description', 'description']) || '').toString(), 
-            lesson_type: 'Mixed', 
-            targetAudience: 'All', 
-            book: (getRowValue(l, ['bible_book', 'book']) || '').toString(), 
-            chapter: parseInt(getRowValue(l, ['bible_chapter', 'chapter'])) || 1,
-            leadershipNotes: [{ 
+        const lid = (getRowValue(l, ['lesson_id', 'id']) || '').toString();
+        if (lid) currentSheetLessonId = lid;
+        
+        const targetLid = currentSheetLessonId;
+        const targetMid = currentSheetTargetModuleId || currentSheetModuleId; // Fallback to last known module
+        
+        if (!lessonsMap.has(targetLid)) {
+            lessonsMap.set(targetLid, {
+                id: targetLid, 
+                moduleId: targetMid, 
+                orderInModule: parseInt(getRowValue(l, ['lesson_order', 'order'])) || 1, 
+                title: (getRowValue(l, ['lesson_title', 'title']) || '').toString(),
+                description: (getRowValue(l, ['lesson_description', 'description']) || '').toString(), 
+                lesson_type: 'Mixed', 
+                targetAudience: 'All', 
+                book: (getRowValue(l, ['bible_book', 'book']) || '').toString(), 
+                chapter: parseInt(getRowValue(l, ['bible_chapter', 'chapter'])) || 1,
+                leadershipNotes: [],
+                author: course.author, 
+                authorId: 'sys', 
+                created_at: new Date().toISOString(), 
+                updated_at: new Date().toISOString(), 
+                status: 'published', 
+                views: 0,
+                about: aboutLessonData
+                    .filter(a => (getRowValue(a, ['lesson_id', 'id']) || targetLid) === targetLid)
+                    .map(a => ({ 
+                        order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
+                        title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
+                        body: (getRowValue(a, ['segment_body', 'body']) || '').toString() 
+                    })).sort((a, b) => a.order - b.order),
+                bibleQuizzes: [], noteQuizzes: [], sections: []
+            });
+        }
+
+        const currentLes = lessonsMap.get(targetLid)!;
+        const noteTitle = (getRowValue(l, ['leadership_note_title']) || '').toString();
+        if (noteTitle) {
+            currentLes.leadershipNotes.push({ 
                 id: crypto.randomUUID(), 
-                title: (getRowValue(l, ['leadership_note_title']) || 'Leadership Insights').toString(), 
+                title: noteTitle, 
                 body: (getRowValue(l, ['leadership_note_body']) || '').toString() 
-            }],
-            author: course.author, 
-            authorId: 'sys', 
-            created_at: new Date().toISOString(), 
-            updated_at: new Date().toISOString(), 
-            status: 'published', 
-            views: 0,
-            about: aboutLessonData
-                .filter(a => (getRowValue(a, ['lesson_id', 'id']) || '') === lessonId)
-                .map(a => ({ 
-                    order: parseInt(getRowValue(a, ['segment_order', 'order'])) || 0, 
-                    title: (getRowValue(a, ['segment_title', 'title']) || '').toString(), 
-                    body: (getRowValue(a, ['segment_body', 'body']) || '').toString() 
-                })).sort((a, b) => a.order - b.order),
-            bibleQuizzes: [], noteQuizzes: [], sections: []
-        };
-        return currentLesson;
+            });
+        }
     });
 
+    const lessons = Array.from(lessonsMap.values());
+
+    let currentBibleLessonId = '';
     bibleQuizData.forEach((q, idx) => {
-        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || '').toString();
-        const les = lessons.find(l => l.id === lessonId);
+        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || currentBibleLessonId).toString();
+        if (lessonId) currentBibleLessonId = lessonId;
+        const les = lessons.find(l => l.id === currentBibleLessonId);
         if (les) {
             const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
-            const uniqueId = questionId ? `${lessonId}_${questionId}_b${idx}` : `bq_${lessonId}_${idx}`;
+            const uniqueId = questionId ? `${currentBibleLessonId}_${questionId}_b${idx}` : `bq_${currentBibleLessonId}_${idx}`;
             les.bibleQuizzes.push({
                 id: uniqueId, 
                 type: 'Bible Quiz', 
@@ -576,12 +609,14 @@ class LessonService {
         }
     });
 
+    let currentNoteLessonId = '';
     noteQuizData.forEach((q, idx) => {
-        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || '').toString();
-        const les = lessons.find(l => l.id === lessonId);
+        const lessonId = (getRowValue(q, ['lesson_id', 'id']) || currentNoteLessonId).toString();
+        if (lessonId) currentNoteLessonId = lessonId;
+        const les = lessons.find(l => l.id === currentNoteLessonId);
         if (les) {
             const questionId = (getRowValue(q, ['question_id', 'id']) || '').toString();
-            const uniqueId = questionId ? `${lessonId}_${questionId}_n${idx}` : `nq_${lessonId}_${idx}`;
+            const uniqueId = questionId ? `${currentNoteLessonId}_${questionId}_n${idx}` : `nq_${currentNoteLessonId}_${idx}`;
             les.noteQuizzes.push({
                 id: uniqueId, 
                 type: 'Note Quiz', 

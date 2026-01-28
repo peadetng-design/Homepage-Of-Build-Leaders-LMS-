@@ -55,7 +55,8 @@
               'dazzle-line': 'dazzle-line 1.5s ease-in-out infinite',
               'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
               'flash-zoom': 'flash-zoom 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards',
-              'checkmark-bounce': 'checkmark-bounce 1.5s infinite ease-in-out'
+              'checkmark-bounce': 'checkmark-bounce 1.5s infinite ease-in-out',
+              'trophy-celebrate': 'trophy-celebrate 2s ease-in-out infinite'
             },
             keyframes: {
               float: {
@@ -145,6 +146,13 @@
               'checkmark-bounce': {
                 '0%, 100%': { transform: 'translateY(0) scale(1)' },
                 '50%': { transform: 'translateY(-12px) scale(1.1)' }
+              },
+              'trophy-celebrate': {
+                '0%, 100%': { transform: 'scale(1) rotate(0deg)' },
+                '20%': { transform: 'scale(1.3) rotate(-15deg)' },
+                '40%': { transform: 'scale(1.3) rotate(15deg)' },
+                '60%': { transform: 'scale(1.3) rotate(-15deg)' },
+                '80%': { transform: 'scale(1.3) rotate(15deg)' },
               }
             }
           }

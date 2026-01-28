@@ -273,6 +273,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                 activeTab="lessons" 
                 isManagementMode={true}
                 onUpdateUser={onUpdateUser}
+                onBack={onBack}
               />
            </div>
         )}
@@ -330,7 +331,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                             </td>
                             <td className="p-6">
                                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 border border-gray-200 rounded-lg w-fit">
-                                    {/* Fix: History component is now valid after adding to lucide-react imports */}
                                     <History size={12} className="text-gray-400" />
                                     <span className="text-xs font-black text-gray-600">{userLogsCount[u.id] || 0} Records</span>
                                 </div>
@@ -369,7 +369,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           </div>
         )}
 
-        {/* --- PERFORMANCE INSIGHTS MODAL (REFINE LABELS) --- */}
+        {/* Performance Insights Modal */}
         {insightUser && insightData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">
@@ -401,7 +401,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                <div className="flex-1 overflow-y-auto p-12 space-y-12 bg-[#fdfdfd] custom-scrollbar">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-10">
                       
-                      {/* STAT: NUMBER OF MODULES */}
                       <div className="lg:col-span-8 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl space-y-8 animate-glow-pulse">
                           <div className="flex justify-between items-end">
                              <div>
@@ -418,7 +417,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: TOTAL TIME SPENT */}
                       <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col justify-center animate-glow-pulse delay-75">
                           <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-6 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">TOTAL TIME SPENT</h4>
                           <span className="text-5xl font-mono font-black text-royal-900 leading-none tracking-tighter">
@@ -430,7 +428,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: AVERAGE TOTAL SCORE */}
                       <div className="lg:col-span-4 bg-royal-950 p-10 rounded-[3.5rem] shadow-[0_20px_60px_-15px_rgba(30,27,75,0.7)] text-white relative overflow-hidden border-8 border-gold-500 animate-glow-pulse delay-100">
                           <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Target size={200} /></div>
                           <h4 className="font-black text-gold-400 uppercase text-[10px] tracking-[0.3em] mb-12 relative z-10 leading-tight">AVERAGE TOTAL SCORE</h4>
@@ -441,7 +438,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: MOST RECENT LESSON SCORE */}
                       <div className="lg:col-span-4 bg-white p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-2xl flex flex-col animate-glow-pulse delay-200">
                           <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.35em] mb-10 bg-royal-50 inline-block px-3 py-1 rounded-lg w-fit">MOST RECENT LESSON SCORE</h4>
                           <div className="flex items-baseline gap-4 mb-10">
@@ -454,14 +450,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                           </div>
                       </div>
 
-                      {/* STAT: MOST RECENT LESSON DURATION */}
                       <div className="lg:col-span-4 bg-gray-50 p-10 rounded-[3.5rem] border-8 border-royal-900 shadow-inner flex flex-col animate-glow-pulse delay-300">
                           <h4 className="font-black text-royal-900 uppercase text-xs tracking-[0.4em] mb-10 bg-white inline-block px-3 py-1 rounded-lg w-fit shadow-sm">MOST RECENT LESSON DURATION</h4>
                           <span className="text-5xl font-mono font-black text-royal-700 leading-none tracking-tighter">
                              {formatDigitalTime(insightData.lastLessonTime)}
                           </span>
                           <div className="mt-auto flex items-center gap-4 text-royal-900 border-t pt-6 border-royal-100">
-                             {/* Fix: Replaced Activity with History for consistency and fixed component type error */}
                              <div className="p-3 bg-white rounded-2xl shadow-sm"><History size={24} /></div>
                              <span className="text-xs font-black uppercase tracking-[0.2em]">Latest Interaction Tempo</span>
                           </div>
@@ -479,7 +473,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
           </div>
         )}
 
-        {/* --- MODAL: Recipient Credentials (Existing logic preserved) --- */}
+        {/* Credentials Modal */}
         {credentialUser && (
             <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
                 <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">

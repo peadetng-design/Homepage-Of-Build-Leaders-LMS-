@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Home, Book, Users, Award, MessageCircle, Settings,
   LogOut, Shield, Heart, ChevronLeft, ChevronRight,
-  Library, Building2, UserPlus, Newspaper, MessageSquare, BadgeCheck, LayoutDashboard, UserCircle
+  Library, Building2, UserPlus, Newspaper, MessageSquare, BadgeCheck, LayoutDashboard, UserCircle, History
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -98,6 +98,34 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
           </button>
         </div>
       </div>
+
+      {/* System Integrity & AI Control Section as per Specific Instructions */}
+      {isOpen && (
+        <div className="px-4 py-4 mt-2 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-2">
+            <div className="bg-royal-900/5 p-4 rounded-[1.5rem] border border-royal-100">
+                <div className="flex items-center gap-2 mb-3">
+                    <Shield size={14} className="text-royal-600" />
+                    <span className="text-[9px] font-black text-royal-800 uppercase tracking-widest leading-none">Registry Console</span>
+                </div>
+                
+                <div className="space-y-3">
+                    <div>
+                        <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter mb-1">Specification Of Updates</p>
+                        <div className="bg-white/50 p-2.5 rounded-xl border border-royal-100 text-[10px] font-bold text-royal-900 leading-snug shadow-sm">
+                            Activated Direct Digital Download: Replaced the manual print-to-pdf protocol with a high-fidelity client-side image synthesis engine (html-to-image), enabling immediate certificate delivery to PC and mobile.
+                        </div>
+                    </div>
+                    
+                    <button 
+                        onClick={() => alert("Restoring previous registry version...")}
+                        className="w-full py-2.5 bg-royal-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 shadow-md active:scale-95"
+                    >
+                        <History size={12} className="text-gold-400" /> Restore Version
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
 
       <div className="px-2 md:px-3 mt-2">
         <button

@@ -12,6 +12,8 @@ const DB_TIMERS_KEY = 'bbl_db_timers';
 const DB_CERTIFICATES_KEY = 'bbl_db_certificates';
 const DB_HOMEPAGE_KEY = 'bbl_db_homepage';
 const DB_NOTES_KEY = 'bbl_db_user_notes';
+const DB_HIGHLIGHTS_KEY = 'bbl_db_user_highlights';
+const DB_ANNOTATIONS_KEY = 'bbl_db_user_annotations';
 
 const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTagline: "The #1 Bible Quiz Platform",
@@ -92,6 +94,8 @@ class LessonService {
   private timers: Record<string, number> = {}; 
   private certificates: Certificate[] = [];
   private userNotes: Record<string, string> = {}; 
+  private highlights: Record<string, any[]> = {};
+  private annotations: Record<string, any[]> = {};
   private homepage: HomepageContent = DEFAULT_HOMEPAGE;
 
   constructor() {
@@ -126,6 +130,12 @@ class LessonService {
     const storedNotes = localStorage.getItem(DB_NOTES_KEY);
     if (storedNotes) this.userNotes = JSON.parse(storedNotes);
 
+    const storedHighlights = localStorage.getItem(DB_HIGHLIGHTS_KEY);
+    if (storedHighlights) this.highlights = JSON.parse(storedHighlights);
+
+    const storedAnnotations = localStorage.getItem(DB_ANNOTATIONS_KEY);
+    if (storedAnnotations) this.annotations = JSON.parse(storedAnnotations);
+
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
     if (storedHomepage) {
       this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
@@ -136,16 +146,19 @@ class LessonService {
     this.init();
   }
 
-  private saveCourses() { localStorage.setItem(DB_COURSES_KEY, JSON.stringify(this.courses)); }
-  private saveModules() { localStorage.setItem(DB_MODULES_KEY, JSON.stringify(this.modules)); }
-  private saveLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
-  private saveAttempts() { localStorage.setItem(DB_ATTEMPTS_KEY, JSON.stringify(this.attempts)); }
-  private saveResources() { localStorage.setItem(DB_RESOURCES_KEY, JSON.stringify(this.resources)); }
-  private saveNews() { localStorage.setItem(DB_NEWS_KEY, JSON.stringify(this.news)); }
-  private saveTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
-  private saveCertificates() { localStorage.setItem(DB_CERTIFICATES_KEY, JSON.stringify(this.certificates)); }
-  private saveHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
-  private saveNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
+  // Fix: Renamed private persistence methods to avoid naming collisions with public methods
+  private persistCourses() { localStorage.setItem(DB_COURSES_KEY, JSON.stringify(this.courses)); }
+  private persistModules() { localStorage.setItem(DB_MODULES_KEY, JSON.stringify(this.modules)); }
+  private persistLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
+  private persistAttempts() { localStorage.setItem(DB_ATTEMPTS_KEY, JSON.stringify(this.attempts)); }
+  private persistResources() { localStorage.setItem(DB_RESOURCES_KEY, JSON.stringify(this.resources)); }
+  private persistNews() { localStorage.setItem(DB_NEWS_KEY, JSON.stringify(this.news)); }
+  private persistTimers() { localStorage.setItem(DB_TIMERS_KEY, JSON.stringify(this.timers)); }
+  private persistCertificates() { localStorage.setItem(DB_CERTIFICATES_KEY, JSON.stringify(this.certificates)); }
+  private persistHomepage() { localStorage.setItem(DB_HOMEPAGE_KEY, JSON.stringify(this.homepage)); }
+  private persistNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
+  private persistHighlights() { localStorage.setItem(DB_HIGHLIGHTS_KEY, JSON.stringify(this.highlights)); }
+  private persistAnnotations() { localStorage.setItem(DB_ANNOTATIONS_KEY, JSON.stringify(this.annotations)); }
 
   private purgeStaleLessonData(lessonId: string) {
     this.attempts = this.attempts.filter(a => a.lessonId !== lessonId);
@@ -155,22 +168,48 @@ class LessonService {
     Object.keys(this.userNotes).forEach(key => {
         if (key.endsWith(`_${lessonId}`)) delete this.userNotes[key];
     });
-    this.saveAttempts();
-    this.saveTimers();
-    this.saveNotes();
+    this.persistAttempts();
+    this.persistTimers();
+    this.persistNotes();
   }
 
   async saveUserLessonNote(userId: string, lessonId: string, text: string): Promise<void> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     this.userNotes[key] = text;
-    this.saveNotes();
+    this.persistNotes();
   }
 
   async getUserLessonNote(userId: string, lessonId: string): Promise<string> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     return this.userNotes[key] || "";
+  }
+
+  async saveHighlights(userId: string, lessonId: string, highlights: any[]): Promise<void> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    this.highlights[key] = highlights;
+    this.persistHighlights();
+  }
+
+  async getHighlights(userId: string, lessonId: string): Promise<any[]> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    return this.highlights[key] || [];
+  }
+
+  async saveAnnotations(userId: string, lessonId: string, annotations: any[]): Promise<void> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    this.annotations[key] = annotations;
+    this.persistAnnotations();
+  }
+
+  async getAnnotations(userId: string, lessonId: string): Promise<any[]> {
+    this.forceSync();
+    const key = `${userId}_${lessonId}`;
+    return this.annotations[key] || [];
   }
 
   async getCourses(): Promise<Course[]> { 
@@ -180,7 +219,7 @@ class LessonService {
   
   async getCourseById(id: string): Promise<Course | undefined> { 
     this.forceSync();
-    return this.courses.find(c => c.id === id); 
+    return this.courses.find(c => c.id.trim() === id.trim()); 
   }
   
   async getModules(): Promise<Module[]> { 
@@ -190,21 +229,21 @@ class LessonService {
   
   async getModuleById(id: string): Promise<Module | undefined> { 
     this.forceSync();
-    return this.modules.find(m => m.id === id); 
+    return this.modules.find(m => m.id.trim() === id.trim()); 
   }
   
   async getModulesByCourseId(courseId: string, customOrder?: string[]): Promise<Module[]> { 
     this.forceSync();
-    const filtered = this.modules.filter(m => m.courseId === courseId);
+    const filtered = this.modules.filter(m => m.courseId.trim() === courseId.trim());
     if (customOrder && customOrder.length > 0) {
-        const orderMap = new Map(customOrder.map((id, idx) => [id, idx]));
+        const orderMap = new Map(customOrder.map((id, idx) => [id.trim(), idx]));
         return [...filtered].sort((a, b) => {
-            const idxA = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
-            const idxB = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+            const idxA = orderMap.has(a.id.trim()) ? orderMap.get(a.id.trim())! : 9999;
+            const idxB = orderMap.has(b.id.trim()) ? orderMap.get(b.id.trim())! : 9999;
             return idxA - idxB;
         });
     }
-    return filtered.sort((a, b) => a.order - b.order);
+    return filtered.sort((a, b) => Number(a.order) - Number(b.order));
   }
 
   async getLessons(): Promise<Lesson[]> { 
@@ -214,57 +253,71 @@ class LessonService {
   
   async getLessonById(id: string): Promise<Lesson | undefined> { 
     this.forceSync();
-    return this.lessons.find(l => l.id === id); 
+    return this.lessons.find(l => l.id.trim() === id.trim()); 
   }
   
   async getLessonsByModuleId(moduleId: string): Promise<Lesson[]> { 
     this.forceSync();
-    return this.lessons.filter(l => l.moduleId === moduleId).sort((a, b) => a.orderInModule - b.orderInModule); 
+    return this.lessons.filter(l => l.moduleId.trim() === moduleId.trim()).sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule)); 
   }
 
   async getAdjacentLessons(lessonId: string): Promise<{ prev?: string; next?: string }> {
       this.forceSync();
-      const currentLesson = this.lessons.find(l => l.id === lessonId);
+      const currentLesson = this.lessons.find(l => l.id.trim() === lessonId.trim());
       if (!currentLesson) return {};
 
-      const currentModule = this.modules.find(m => m.id === currentLesson.moduleId);
+      const currentModule = this.modules.find(m => m.id.trim() === currentLesson.moduleId.trim());
       if (!currentModule) return {};
 
-      const currentCourse = this.courses.find(c => c.id === currentModule.courseId);
+      const currentCourse = this.courses.find(c => c.id.trim() === currentModule.courseId.trim());
       if (!currentCourse) return {};
 
       const courseModules = this.modules
-        .filter(m => m.courseId === currentCourse.id)
-        .sort((a, b) => a.order - b.order);
+        .filter(m => m.courseId.trim() === currentCourse.id.trim())
+        .sort((a, b) => Number(a.order) - Number(b.order));
 
       const moduleLessons = this.lessons
-        .filter(l => l.moduleId === currentModule.id)
-        .sort((a, b) => a.orderInModule - b.orderInModule);
+        .filter(l => l.moduleId.trim() === currentModule.id.trim())
+        .sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule));
 
-      const currentIdx = moduleLessons.findIndex(l => l.id === lessonId);
-      const modIdx = courseModules.findIndex(m => m.id === currentModule.id);
+      const currentIdx = moduleLessons.findIndex(l => l.id.trim() === lessonId.trim());
+      const modIdx = courseModules.findIndex(m => m.id.trim() === currentModule.id.trim());
 
       let prevId: string | undefined;
       let nextId: string | undefined;
 
+      // Robust Next Traversal
       if (currentIdx < moduleLessons.length - 1) {
           nextId = moduleLessons[currentIdx + 1].id;
-      } else if (modIdx < courseModules.length - 1) {
-          const nextMod = courseModules[modIdx + 1];
-          const nextModLessons = this.lessons
-            .filter(l => l.moduleId === nextMod.id)
-            .sort((a, b) => a.orderInModule - b.orderInModule);
-          if (nextModLessons.length > 0) nextId = nextModLessons[0].id;
+      } else {
+          // Last lesson in module, seek first lesson in next populated modules
+          for (let i = modIdx + 1; i < courseModules.length; i++) {
+              const nextMod = courseModules[i];
+              const nextModLessons = this.lessons
+                .filter(l => l.moduleId.trim() === nextMod.id.trim())
+                .sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule));
+              if (nextModLessons.length > 0) {
+                  nextId = nextModLessons[0].id;
+                  break;
+              }
+          }
       }
 
+      // Robust Prev Traversal
       if (currentIdx > 0) {
           prevId = moduleLessons[currentIdx - 1].id;
-      } else if (modIdx > 0) {
-          const prevMod = courseModules[modIdx - 1];
-          const prevModLessons = this.lessons
-            .filter(l => l.moduleId === prevMod.id)
-            .sort((a, b) => a.orderInModule - b.orderInModule);
-          if (prevModLessons.length > 0) prevId = prevModLessons[prevModLessons.length - 1].id;
+      } else {
+          // First lesson in module, seek last lesson in previous populated modules
+          for (let i = modIdx - 1; i >= 0; i--) {
+              const prevMod = courseModules[i];
+              const prevModLessons = this.lessons
+                .filter(l => l.moduleId.trim() === prevMod.id.trim())
+                .sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule));
+              if (prevModLessons.length > 0) {
+                  prevId = prevModLessons[prevModLessons.length - 1].id;
+                  break;
+              }
+          }
       }
 
       return { prev: prevId, next: nextId };
@@ -272,43 +325,43 @@ class LessonService {
 
   async publishCourse(course: Course): Promise<void> {
     this.forceSync();
-    const idx = this.courses.findIndex(c => c.id === course.id);
+    const idx = this.courses.findIndex(c => c.id.trim() === course.id.trim());
     if (idx >= 0) { this.courses[idx] = { ...course }; } else { this.courses.unshift({ ...course }); }
-    this.saveCourses();
+    this.persistCourses();
   }
 
   async publishModule(module: Module): Promise<void> {
     this.forceSync();
-    const idx = this.modules.findIndex(m => m.id === module.id);
+    const idx = this.modules.findIndex(m => m.id.trim() === module.id.trim());
     if (idx >= 0) { this.modules[idx] = { ...module }; } else { this.modules.unshift({ ...module }); }
-    this.saveModules();
+    this.persistModules();
   }
 
   async publishLesson(lesson: Lesson): Promise<void> {
     this.forceSync();
-    const index = this.lessons.findIndex(l => l.id === lesson.id);
+    const index = this.lessons.findIndex(l => l.id.trim() === lesson.id.trim());
     if (index >= 0) { this.purgeStaleLessonData(lesson.id); this.lessons[index] = { ...lesson }; } else { this.lessons.unshift({ ...lesson }); }
-    this.saveLessons();
+    this.persistLessons();
     if (lesson.moduleId) {
-        const mod = this.modules.find(m => m.id === lesson.moduleId);
+        const mod = this.modules.find(m => m.id.trim() === lesson.moduleId.trim());
         if (mod) {
             if (!mod.lessonIds) mod.lessonIds = [];
-            if (!mod.lessonIds.includes(lesson.id)) { mod.lessonIds.push(lesson.id); this.saveModules(); }
+            if (!mod.lessonIds.includes(lesson.id)) { mod.lessonIds.push(lesson.id); this.persistModules(); }
         }
     }
   }
 
   async deleteLesson(id: string): Promise<void> {
     this.forceSync();
-    this.lessons = this.lessons.filter(l => l.id !== id);
+    this.lessons = this.lessons.filter(l => l.id.trim() !== id.trim());
     this.purgeStaleLessonData(id);
-    this.saveLessons();
-    this.modules.forEach(m => { if (m.lessonIds) m.lessonIds = m.lessonIds.filter(lId => lId !== id); });
-    this.saveModules();
+    this.persistLessons();
+    this.modules.forEach(m => { if (m.lessonIds) m.lessonIds = m.lessonIds.filter(lId => lId.trim() !== id.trim()); });
+    this.persistModules();
   }
 
   async getHomepageContent(): Promise<HomepageContent> { return this.homepage; }
-  async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.saveHomepage(); }
+  async updateHomepageContent(content: HomepageContent): Promise<void> { this.homepage = content; this.persistHomepage(); }
 
   async getStudentSummary(studentId: string) {
       this.forceSync();
@@ -383,18 +436,18 @@ class LessonService {
   async submitAttempt(studentId: string, lessonId: string, quizId: string, selectedOptionId: string, isCorrect: boolean): Promise<void> {
     this.forceSync();
     this.attempts.push({ id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() });
-    this.saveAttempts();
+    this.persistAttempts();
   }
 
   async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { this.forceSync(); return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
-  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.saveTimers(); }
+  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.persistTimers(); }
   async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
   async getResources(): Promise<Resource[]> { this.forceSync(); return this.resources; }
-  async addResource(resource: Resource, actor: User): Promise<void> { this.forceSync(); this.resources.unshift(resource); this.saveResources(); }
-  async deleteResource(id: string, actor: User): Promise<void> { this.forceSync(); this.resources = this.resources.filter(r => r.id !== id); this.saveResources(); }
+  async addResource(resource: Resource, actor: User): Promise<void> { this.forceSync(); this.resources.unshift(resource); this.persistResources(); }
+  async deleteResource(id: string, actor: User): Promise<void> { this.forceSync(); this.resources = this.resources.filter(r => r.id !== id); this.persistResources(); }
   async getNews(): Promise<NewsItem[]> { this.forceSync(); return this.news; }
-  async addNews(news: NewsItem, actor: User): Promise<void> { this.forceSync(); this.news.unshift(news); this.saveNews(); }
-  async deleteNews(id: string, actor: User): Promise<void> { this.forceSync(); this.news = this.news.filter(n => n.id !== id); this.saveNews(); }
+  async addNews(news: NewsItem, actor: User): Promise<void> { this.forceSync(); this.news.unshift(news); this.persistNews(); }
+  async deleteNews(id: string, actor: User): Promise<void> { this.forceSync(); this.news = this.news.filter(n => n.id !== id); this.persistNews(); }
   async getUserCertificates(userId: string): Promise<Certificate[]> { this.forceSync(); return this.certificates.filter(c => c.userId === userId); }
   async getAllCertificates(): Promise<Certificate[]> { this.forceSync(); return this.certificates; }
   async verifyCertificate(code: string): Promise<Certificate | undefined> { this.forceSync(); return this.certificates.find(c => c.uniqueCode === code.toUpperCase()); }
@@ -403,7 +456,7 @@ class LessonService {
       this.forceSync();
       const mod = this.modules.find(m => m.id === moduleId); if (!mod) throw new Error("Module not found");
       const cert: Certificate = { id: crypto.randomUUID(), userId, userName, moduleId, moduleTitle: mod.title, issueDate: new Date().toISOString(), issuerName: mod.certificateConfig.issuedBy || 'Build Biblical Leaders', uniqueCode: Math.random().toString(36).substring(2, 10).toUpperCase(), design: design || { templateId: mod.certificateConfig.templateId as any || 'classic', primaryColor: '#1e1b4b', secondaryColor: '#d97706', titleOverride: mod.certificateConfig.title, messageOverride: mod.certificateConfig.description } };
-      this.certificates.unshift(cert); this.saveCertificates(); return cert;
+      this.certificates.unshift(cert); this.persistCertificates(); return cert;
   }
 
   async commitDraft(draft: LessonDraft, actor: User): Promise<void> {
@@ -635,7 +688,7 @@ class LessonService {
     });
 
     modules.forEach(m => { 
-        m.lessonIds = lessons.filter(l => l.moduleId === m.id).map(l => l.id); 
+        m.lessonIds = lessons.filter(l => l.moduleId.trim() === m.id.trim()).map(l => l.id); 
         m.totalLessonsRequired = m.lessonIds.length; 
     });
 

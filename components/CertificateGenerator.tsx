@@ -1,7 +1,7 @@
-
 import React, { useRef, useState } from 'react';
 import { Certificate, CertificateDesign } from '../types';
-import { Download, Printer, Share2, Check, ArrowLeft } from 'lucide-react';
+import { Download, Printer, Share2, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 interface CertificateGeneratorProps {
   certificate: Certificate;
@@ -13,6 +13,7 @@ interface CertificateGeneratorProps {
 const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate, onClose, previewDesign }) => {
   const certRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Merge defaults
   const design = previewDesign || certificate.design || {
@@ -236,9 +237,28 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
     }
   };
 
-  const handleDownload = () => {
-      alert("Please select 'Save as PDF' in the print dialog to download.");
-      handlePrint();
+  const handleDownload = async () => {
+      if (!certRef.current) return;
+      setIsDownloading(true);
+      try {
+          // Trigger high-fidelity digital synthesis to PNG
+          const dataUrl = await toPng(certRef.current, { 
+              cacheBust: true,
+              width: 1123,
+              height: 794,
+              pixelRatio: 2 // High resolution for professional output
+          });
+          
+          const link = document.createElement('a');
+          link.download = `BBL_Certificate_${certificate.uniqueCode}.png`;
+          link.href = dataUrl;
+          link.click();
+      } catch (err) {
+          console.error("Direct download failed, falling back to print protocol.", err);
+          handlePrint();
+      } finally {
+          setIsDownloading(false);
+      }
   };
 
   return (
@@ -267,8 +287,13 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
               <button onClick={handlePrint} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors">
                  <Printer size={18} /> Print
               </button>
-              <button onClick={handleDownload} className="px-4 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg">
-                 <Download size={18} /> Download
+              <button 
+                onClick={handleDownload} 
+                disabled={isDownloading}
+                className="px-6 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg disabled:opacity-50 active:scale-95"
+              >
+                 {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} 
+                 {isDownloading ? 'Generating...' : 'Download Image'}
               </button>
            </div>
         </div>
@@ -277,10 +302,12 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
         <div className="flex-1 bg-gray-200 overflow-auto p-4 md:p-8 flex items-center justify-center">
            <div 
              ref={certRef} 
-             className="certificate-wrapper shadow-2xl transform transition-transform origin-center bg-white"
+             className="certificate-wrapper shadow-2xl transform transition-transform origin-center bg-white relative"
              // A4 Landscape Dimensions
              style={{ width: '1123px', height: '794px', minWidth: '1123px', minHeight: '794px' }}
            >
+              {/* Inject critical typography styles for capture engine */}
+              <style dangerouslySetInnerHTML={{ __html: styles }} />
               {getTemplate()}
            </div>
         </div>

@@ -47,6 +47,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const [stats, setStats] = useState({ modulesCompleted: 0, totalModules: 0, totalTime: 0, avgScore: 0, lastLessonScore: "0/0", lastLessonTime: 0 });
   const [theme, setTheme] = useState(localStorage.getItem('bbl_theme') || 'royal');
 
+  // Role-aware initial tab for the embedded Master Console
+  const [adminTab, setAdminTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'resources' | 'group-analytics' | 'news' | 'chat'>(
+    (user.role === UserRole.STUDENT || user.role === UserRole.PARENT) ? 'lessons' : 'users'
+  );
+
   useEffect(() => { setInternalView(initialView); }, [initialView]);
   
   useEffect(() => {
@@ -55,6 +60,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     if (theme !== 'royal') root.classList.add(`theme-${theme}`);
     localStorage.setItem('bbl_theme', theme);
   }, [theme]);
+
+  // FIX: ADJACENCY MATRIX GLOBAL NAVIGATION LISTENER
+  useEffect(() => {
+    const handleNavigate = (e: any) => {
+      if (e.detail?.lessonId) {
+        setSelectedLessonId(e.detail.lessonId);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('bbl_lesson_navigate', handleNavigate);
+    return () => window.removeEventListener('bbl_lesson_navigate', handleNavigate);
+  }, []);
 
   useEffect(() => {
     getDailyVerse().then(setDailyVerse);
@@ -69,22 +86,34 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
 
   const renderHomeDashboard = () => {
     const firstName = user.name.split(' ')[0];
-    const isAdvancedUser = [UserRole.ADMIN, UserRole.MENTOR, UserRole.ORGANIZATION].includes(user.role);
     
+    // Core Actions present for all users - Cleaned as per request
+    const finalActions = [
+      { label: 'TAKE/RESUME COURSE', icon: Play, view: 'lessons', color: 'bg-royal-800', shadow: 'shadow-royal-950/40' },
+      { label: 'CURRICULUM', icon: BookOpen, view: 'lessons', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
+      { label: 'MY LIST', icon: Bookmark, view: 'curated', color: 'bg-purple-600', shadow: 'shadow-purple-900/40' },
+      { label: 'ANALYTICS', icon: BarChart3, view: 'performance-report', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
+      { label: 'CREDENTIALS', icon: BadgeCheck, view: 'certificates', color: 'bg-gold-500', shadow: 'shadow-gold-600/40' },
+    ];
+
     return (
       <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-32">
           
-          {/* WELCOME SECTION - UNIFIED IDENTITY */}
-          <div className="bg-white p-8 md:p-12 rounded-[3.5rem] border-8 border-gray-50 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-10">
-             <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left">
+          {/* WELCOME SECTION */}
+          <div className="relative bg-white pt-5 pb-5 md:pt-7 md:pb-7 px-8 md:px-12 rounded-[3.5rem] border-[12px] border-royal-700 shadow-[0_0_50px_rgba(79,70,229,0.3)] flex flex-col lg:flex-row items-center justify-between gap-10 animate-electric-glow overflow-hidden group">
+             <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[rays_10s_linear_infinite] opacity-40"></div>
+             </div>
+
+             <div className="flex flex-col md:flex-row items-center gap-8 text-center md:text-left relative z-10">
                 <div className="relative group">
-                  <button onClick={() => setInternalView('edit-profile')} className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black shadow-2xl border-b-8 border-black relative overflow-hidden group">
+                  <button onClick={() => setInternalView('edit-profile')} className="w-24 h-24 md:w-32 md:h-32 rounded-[2.5rem] bg-royal-900 flex items-center justify-center text-gold-400 font-serif font-black shadow-2xl border-b-8 border-black relative overflow-hidden group transition-all ring-4 ring-gold-500/30">
                       {user.avatarUrl ? <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" /> : <UserCircle size={64} />}
                   </button>
                 </div>
                 <div>
                    <h1 className="text-3xl md:text-5xl font-serif font-black text-royal-950 uppercase tracking-tighter leading-none">
-                     Greetings, <span className="text-royal-600">{firstName}</span>
+                     WELCOME BACK, <span className="text-royal-600">{firstName.toUpperCase()}</span>
                    </h1>
                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-6">
                       <div className="flex items-center gap-3 px-6 py-2 bg-royal-900 text-white rounded-2xl shadow-xl border border-white/5">
@@ -97,77 +126,35 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                    </div>
                 </div>
              </div>
-             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                <button onClick={() => setInternalView('performance-report')} className="flex-1 flex items-center justify-center gap-4 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-black transition-all transform hover:-translate-y-1 shadow-xl border-b-4 border-indigo-950 uppercase tracking-widest">
-                   <Activity size={20} /> My Stats
-                </button>
-                <div className="flex gap-2">
-                   <button onClick={() => setInternalView('settings')} className="p-4 bg-gray-100 text-gray-400 rounded-2xl hover:bg-white hover:border-royal-500 transition-all border-2 border-transparent">
-                      <Settings size={20} />
-                   </button>
-                </div>
-             </div>
           </div>
 
-          {/* DAILY REVELATION GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-             {/* Daily Verse Card */}
-             <div className="bg-gradient-to-br from-royal-800 to-royal-950 p-12 rounded-[4rem] text-white shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-1000"><BookOpen size={240}/></div>
-                <div className="relative z-10">
-                   <div className="flex items-center gap-3 mb-8">
-                      <div className="p-2.5 bg-white/10 rounded-xl border border-white/20 backdrop-blur-md"><Sunrise size={24} className="text-gold-400" /></div>
-                      <span className="text-[11px] font-black uppercase tracking-[0.4em] text-royal-200">The Daily Revelation</span>
-                   </div>
-                   {dailyVerse ? (
-                      <div className="animate-in fade-in duration-1000">
-                        <p className="text-3xl font-serif italic mb-8 leading-relaxed tracking-tight">"{dailyVerse.verse}"</p>
-                        <div className="flex items-center gap-4">
-                           <div className="h-0.5 w-12 bg-gold-500"></div>
-                           <p className="text-gold-400 font-black uppercase tracking-widest text-sm">{dailyVerse.reference}</p>
-                        </div>
-                      </div>
-                   ) : <div className="animate-pulse space-y-4"><div className="h-6 bg-white/10 rounded w-3/4"></div><div className="h-6 bg-white/10 rounded w-1/2"></div></div>}
-                </div>
-             </div>
-
-             {/* Daily AI Challenge Card */}
-             <div className="bg-white p-12 rounded-[4rem] border-8 border-gray-50 shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><Zap size={200}/></div>
-                <div className="relative z-10">
-                   <div className="flex items-center gap-3 mb-8">
-                      <div className="p-2.5 bg-indigo-50 rounded-xl border border-indigo-100"><Sparkles size={24} className="text-indigo-600" /></div>
-                      <span className="text-[11px] font-black uppercase tracking-[0.4em] text-gray-400">AI Daily Challenge</span>
-                   </div>
-                   {dailyQuiz ? (
-                      <div className="animate-in slide-in-from-right-4 duration-700">
-                        <h3 className="text-2xl font-black text-gray-900 mb-8 leading-tight tracking-tight">{dailyQuiz.question}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                           {dailyQuiz.options.slice(0, 4).map((opt: string, i: number) => (
-                              <button key={i} onClick={() => alert(opt === dailyQuiz.answer ? "Excellence Recognized! Correct Answer." : "Spiritual Insight Required: Try again!")} className="p-5 bg-gray-50 hover:bg-royal-900 hover:text-white hover:border-royal-950 border-4 border-gray-100 rounded-2xl text-left text-sm font-black text-gray-800 transition-all shadow-sm active:scale-95">{opt}</button>
-                           ))}
-                        </div>
-                      </div>
-                   ) : <div className="animate-pulse space-y-4"><div className="h-6 bg-gray-100 rounded w-full"></div><div className="grid grid-cols-2 gap-4"><div className="h-14 bg-gray-100 rounded"></div><div className="h-14 bg-gray-100 rounded"></div></div></div>}
-                </div>
-             </div>
-          </div>
-
-          {/* QUICK ACCESS ACTION CENTER */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-             {[
-               { label: 'TAKE LESSON', icon: Play, view: 'lessons', color: 'bg-royal-800', shadow: 'shadow-royal-900/40' },
-               { label: 'RESOURCES', icon: Library, view: 'resources', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
-               { label: 'MY PROGRESS', icon: BarChart3, view: 'performance-report', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
-               { label: 'CREDENTIALS', icon: BadgeCheck, view: 'certificates', color: 'bg-gold-500', shadow: 'shadow-gold-600/40' }
-             ].map((action, i) => (
+          {/* QUICK ACCESS ACTION CENTER - TRIMMED GRID */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+             {finalActions.map((action, i) => (
                 <button key={i} onClick={() => setInternalView(action.view as any)} className="bg-white p-8 rounded-[3rem] border-8 border-gray-50 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all group text-center relative overflow-hidden">
                    <div className={`p-6 ${action.color} text-white rounded-[2rem] mb-6 shadow-2xl ${action.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform inline-block`}>
                       <action.icon size={36} />
                    </div>
-                   <h3 className="font-black text-gray-900 uppercase tracking-[0.2em] text-sm">{action.label}</h3>
+                   <h3 className="font-black text-gray-900 uppercase tracking-[0.2em] text-xs leading-tight">{action.label}</h3>
                 </button>
              ))}
+          </div>
+
+          {/* MASTER CONSOLE - Authenticated Security Console Panel */}
+          <div className="relative animate-in slide-in-from-bottom-8 duration-1000">
+             <AdminPanel 
+               currentUser={user} 
+               activeTab={adminTab} 
+               onTabChange={(tab) => {
+                 if (tab === 'chat') {
+                   setInternalView('chat');
+                 } else {
+                   setAdminTab(tab);
+                 }
+               }} 
+               isEmbedded={true}
+               onUpdateUser={onUpdateUser}
+             />
           </div>
 
           {/* BROADCASTS & CHAT MATRIX */}
@@ -179,13 +166,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                       <div className="p-4 bg-orange-50 text-orange-600 rounded-2xl border-2 border-orange-100"><Newspaper size={28} /></div>
                       <h3 className="text-3xl font-serif font-black text-royal-950 uppercase tracking-tighter">Broadcasting Center</h3>
                    </div>
-                   <button onClick={() => setInternalView('news')} className="px-8 py-3 bg-gray-100 text-gray-500 font-black text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-royal-900 hover:text-white transition-all shadow-md active:scale-95">Archives</button>
+                   <button onClick={() => { setAdminTab('news'); }} className="px-8 py-3 bg-gray-100 text-gray-500 font-black text-[10px] uppercase tracking-[0.3em] rounded-xl hover:bg-royal-900 hover:text-white transition-all shadow-md active:scale-95">Archives</button>
                 </div>
                 <div className="space-y-8 relative z-10">
                    {recentNews.length === 0 ? (
                       <div className="text-center py-10 text-gray-300 italic font-medium">No active broadcasts.</div>
                    ) : recentNews.map(item => (
-                      <div key={item.id} className="flex gap-8 group/item cursor-pointer" onClick={() => setInternalView('news')}>
+                      <div key={item.id} className="flex gap-8 group/item cursor-pointer" onClick={() => { setAdminTab('news'); }}>
                          <div className="w-20 h-20 rounded-3xl bg-gray-50 flex flex-col items-center justify-center border-4 border-gray-100 shrink-0 group-hover/item:border-royal-200 group-hover/item:bg-white transition-all shadow-inner">
                             <span className="text-3xl font-black text-gray-400 group-hover/item:text-royal-600 transition-colors">{new Date(item.date).getDate()}</span>
                             <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{new Date(item.date).toLocaleDateString(undefined, { month: 'short' })}</span>
@@ -239,11 +226,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   };
 
   const renderView = () => {
-    if (selectedLessonId) return <LessonViewWrapper lessonId={selectedLessonId} user={user} onBack={() => setSelectedLessonId(null)} />;
+    if (selectedLessonId) return <LessonViewWrapper key={selectedLessonId} lessonId={selectedLessonId} user={user} onBack={() => setSelectedLessonId(null)} />;
     switch (internalView) {
       case 'upload': return <LessonUpload currentUser={user} onSuccess={() => setInternalView('dashboard')} onCancel={() => setInternalView('dashboard')} />;
       case 'admin': case 'users': case 'requests': case 'logs': case 'invites': case 'curated': case 'news': case 'resources':
-        return <AdminPanel currentUser={user} activeTab={internalView === 'admin' ? 'users' : internalView as any} onTabChange={(tab: any) => setInternalView(tab)} onBack={() => setInternalView('dashboard')} />;
+        return <AdminPanel currentUser={user} activeTab={internalView === 'admin' ? 'users' : internalView as any} onTabChange={(tab: any) => { if(tab === 'chat') setInternalView('chat'); else setInternalView(tab); }} onBack={() => setInternalView('dashboard')} />;
       case 'org-panel': case 'staff': return <OrganizationPanel currentUser={user} />;
       case 'lessons': case 'progress': return <StudentPanel currentUser={user} activeTab="lessons" onTakeLesson={setSelectedLessonId} onBack={() => setInternalView('dashboard')} />;
       case 'chat': return <ChatPanel currentUser={user} />;
@@ -326,16 +313,16 @@ const SettingsView = ({ user, currentTheme, onThemeChange, onChangePassword }: a
                 <h3 className="font-black text-gray-950 uppercase text-xs tracking-[0.5em] flex items-center gap-4"><Sun size={24} className="text-gold-500" /> Visual Atmosphere</h3>
                 <div className="grid grid-cols-2 gap-4">
                     {['royal', 'midnight', 'parchment', 'emerald', 'ocean', 'rose', 'amber'].map(t => (
-                        <button key={t} onClick={() => onThemeChange(t)} className={`py-5 rounded-2xl border-4 transition-all font-black text-[10px] uppercase tracking-[0.4em] ${currentTheme === t ? 'bg-royal-900 text-white border-black shadow-2xl scale-105' : 'bg-gray-50 text-gray-400 border-gray-100 hover:bg-white hover:border-royal-200'}`}>{t}</button>
+                        <button key={t} onClick={() => onThemeChange(t)} className={`py-5 rounded-2xl border-4 transition-all font-black text-[10px] uppercase tracking-widest ${currentTheme === t ? 'bg-royal-900 text-white border-black shadow-2xl scale-105' : 'bg-gray-50 text-gray-400 border-gray-100 hover:bg-white hover:border-royal-200'}`}>{t}</button>
                     ))}
                 </div>
             </div>
             
             <div className="space-y-10">
-                <h3 className="font-black text-gray-950 uppercase text-xs tracking-[0.5em] flex items-center gap-4"><Shield size={24} className="text-indigo-600" /> Security Protocol</h3>
+                <h3 className="font-black text-gray-900 uppercase text-xs tracking-[0.5em] flex items-center gap-4"><Shield size={24} className="text-indigo-600" /> Security Protocol</h3>
                 <div className="p-10 bg-royal-950 rounded-[3rem] border-b-[12px] border-black text-white space-y-8 shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-6 opacity-5"><Key size={80} /></div>
-                    <p className="text-sm text-indigo-100 font-medium leading-relaxed italic opacity-80">Regularly rotating your cryptographic access key ensures the integrity of your personal session.</p>
+                    <p className="text-sm text-indigo-100 font-medium leading-relaxed italic opacity-80">Regularly rotating your cryptographic access key maintains session integrity.</p>
                     <button onClick={onChangePassword} className="w-full py-6 bg-white text-royal-900 font-black rounded-3xl hover:bg-gold-500 hover:text-white transition-all flex items-center justify-center gap-4 uppercase text-xs tracking-[0.3em] shadow-xl transform active:scale-95">
                         <Key size={20} /> Rotate Access Key
                     </button>

@@ -487,20 +487,28 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                 {renderTierTable("MENTORS, PARENTS & ORGANIZATIONS (Advanced)", coursesByLevel['Mentor, Organization & Parent (Advanced)'], <Trophy size={48} />, "border-gold-100 shadow-gold-900/10")}
                 
                 {summary && (
-                    <div className="bg-royal-900 rounded-[4rem] p-12 md:p-20 shadow-[0_100px_150px_-40px_rgba(0,0,0,0.5)] border-b-[15px] border-black relative overflow-hidden animate-in slide-in-from-bottom-12 duration-1000">
-                        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/5 rounded-full -mr-64 -mt-64 blur-[120px] animate-pulse"></div>
-                        <div className="relative z-10 mb-16 border-b-2 border-white/10 pb-10 flex items-center gap-6"><div className="p-5 bg-gold-500 text-white rounded-[2rem] shadow-2xl border-b-8 border-gold-800"><BarChart3 size={48} /></div><div><h3 className="text-4xl md:text-5xl font-serif font-black text-white uppercase tracking-tighter">Holistic Analytics Dashboard</h3><p className="text-royal-300 text-[12px] font-black uppercase tracking-[0.6em] mt-2">Consolidated Performance Persistance Data</p></div></div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 md:gap-14">
+                    <div className="bg-royal-900 rounded-[2rem] p-6 md:p-10 shadow-[0_50px_75px_-20px_rgba(0,0,0,0.5)] border-b-[8px] border-black relative overflow-hidden animate-in slide-in-from-bottom-12 duration-1000">
+                        <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-white/5 rounded-full -mr-32 -mt-32 blur-[60px] animate-pulse"></div>
+                        <div className="relative z-10 mb-8 border-b-2 border-white/10 pb-5 flex items-center gap-4">
+                            <div className="p-3 bg-gold-500 text-white rounded-[1rem] shadow-2xl border-b-4 border-gold-800">
+                                <BarChart3 size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl md:text-2xl font-serif font-black text-white uppercase tracking-tighter">Holistic Analytics Dashboard</h3>
+                                <p className="text-royal-300 text-[9px] font-black uppercase tracking-[0.3em] mt-1">Consolidated Performance Persistence Data</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5 md:gap-6">
                             {[ 
-                                { label: 'LATEST SESSION ACCURACY', val: summary.lastLessonScore },
-                                { label: 'LATEST SESSION TEMPO', val: formatDigitalTime(summary.lastLessonTime), mono: true },
-                                { label: 'CURRICULUM MASTERY', val: `${summary.modulesCompleted} / ${summary.totalModules}` },
-                                { label: 'TOTAL STUDY COMMITMENT', val: formatDigitalTime(summary.totalTime), mono: true },
-                                { label: 'MEAN PERFORMANCE METRIC', val: `${summary.avgScore}%` }
+                                { label: 'MOST RECENT LESSON SCORE', val: summary.lastLessonScore },
+                                { label: 'MOST RECENT LESSON DURATION', val: formatDigitalTime(summary.lastLessonTime), mono: true },
+                                { label: 'NUMBER OF MODULES Mastered', val: `${summary.modulesCompleted} / ${summary.totalModules}` },
+                                { label: 'TOTAL STUDY TIME', val: formatDigitalTime(summary.totalTime), mono: true },
+                                { label: 'AVERAGE TOTAL SCORE', val: `${summary.avgScore}%` }
                             ].map((s, idx) => (
-                                <div key={idx} className="bg-white/5 backdrop-blur-xl p-10 rounded-[3rem] border border-white/10 hover:bg-white/10 transition-all group shadow-2xl">
-                                    <p className="text-[10px] font-black text-gold-400 uppercase tracking-[0.3em] mb-6 leading-tight min-h-[3rem]">{s.label}</p>
-                                    <p className={`${s.mono ? 'text-5xl font-mono' : 'text-6xl'} font-black text-white group-hover:scale-110 transition-transform origin-left drop-shadow-lg`}>{s.val}</p>
+                                <div key={idx} className="bg-white/5 backdrop-blur-xl p-5 rounded-[1.5rem] border border-white/10 hover:bg-white/10 transition-all group shadow-2xl flex flex-col justify-between overflow-hidden">
+                                    <p className="text-[8px] font-black text-gold-400 uppercase tracking-[0.2em] mb-4 leading-tight min-h-[2rem]">{s.label}</p>
+                                    <p className={`${s.mono ? 'text-2xl font-mono' : 'text-3xl'} font-black text-white group-hover:scale-105 transition-transform origin-left drop-shadow-lg truncate`}>{s.val}</p>
                                 </div>
                             ))}
                         </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Lesson, Module, Course, AboutSegment } from '../types';
+import { User, Lesson, Module, Course, AboutSegment, UserRole } from '../types';
 import { lessonService } from '../services/lessonService';
 import { authService } from '../services/authService';
 import { Play, Download, RefreshCcw, CheckCircle, Database, Star, Layers, Trophy, BarChart3, X, Info as InfoIcon, PenTool, Save, Loader2, Globe, Activity, Edit3, ChevronDown, ChevronRight, BookOpen, Target, Zap, Search, ArrowLeft } from 'lucide-react';
@@ -86,16 +86,31 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       }
 
       const filteredCourses = allCourses.filter(c => {
-          if (c.authorId === 'usr_main_admin' || isSysAdmin(c.author || '')) return true;
+          // PROTOCOL UPGRADE: System Admin created courses are globally visible to ALL users regardless of role
+          if (c.authorId === 'usr_main_admin' || c.authorId === 'sys' || isSysAdmin(c.author || '')) return true;
+          
+          // Users always see their own content
           if (c.authorId === currentUser.id) return true;
+          
+          // Shared content from associated Mentor or Organization
           const isFromMyMentor = currentUser.mentorId === c.authorId;
           const isFromMyOrg = currentUser.organizationId === c.authorId || currentUser.organizationId === c.organizationId;
+          
+          // Role-targeted visibility check for community content
           const courseModules = allModules.filter(m => m.courseId === c.id);
-          const hasGlobalContent = courseModules.some(m => {
+          const hasRoleAppropriateContent = courseModules.some(m => {
               const moduleLessons = allLessons.filter(l => l.moduleId === m.id);
-              return moduleLessons.some(l => l.targetAudience === 'All');
+              return moduleLessons.some(l => {
+                  const target = l.targetAudience;
+                  if (target === 'All') return true;
+                  if (target === 'Student' && currentUser.role === UserRole.STUDENT) return true;
+                  if (['Mentor', 'Parent', 'Organization', 'Mentors_Org_Parents'].includes(target) && 
+                      [UserRole.MENTOR, UserRole.PARENT, UserRole.ORGANIZATION].includes(currentUser.role)) return true;
+                  return false;
+              });
           });
-          return isFromMyMentor || isFromMyOrg || hasGlobalContent;
+          
+          return isFromMyMentor || isFromMyOrg || hasRoleAppropriateContent;
       });
 
       const levels: Record<string, Course[]> = {
@@ -399,9 +414,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                     <>
                                                         <span className="text-5xl font-serif font-black text-royal-900 leading-none">{activeModules.indexOf(activeModule) + 1}</span>
                                                         <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mt-1">Registry Rank</p>
-                                                        {isManagementMode && (
-                                                            <button onClick={() => { setEditingModuleId(activeModule.id); setNewOrderValue((activeModules.indexOf(activeModule) + 1).toString()); }} className="mt-2 p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"><Edit3 size={12} /> Edit Seq</button>
-                                                        )}
+                                                        <button onClick={() => { setEditingModuleId(activeModule.id); setNewOrderValue((activeModules.indexOf(activeModule) + 1).toString()); }} className="mt-2 p-2 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-1 text-[8px] font-black uppercase"><Edit3 size={12} /> Edit Seq</button>
                                                     </>
                                                 )
                                             )}
@@ -435,7 +448,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
                                                         <Play size={22} className="fill-gold-400 text-gold-400" /> START/RESUME LESSON
                                                     </button>
                                                     <div className="grid grid-cols-2 gap-3">
-                                                        <button onClick={() => setAboutModal({ isOpen: true, title: activeLesson.title, segments: activeLesson.about })} className="py-4 bg-white text-indigo-700 border-4 border-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                                                        <button onClick={() => setAboutModal({ isOpen: true, title: activeCourse.title, segments: activeCourse.about })} className="py-4 bg-white text-indigo-700 border-4 border-indigo-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-sm">
                                                             <InfoIcon size={16} /> Details
                                                         </button>
                                                         <button onClick={() => handleOpenInsights(activeLesson)} className="py-4 bg-white text-emerald-700 border-4 border-emerald-50 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 shadow-sm">

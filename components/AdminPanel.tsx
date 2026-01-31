@@ -17,13 +17,14 @@ import {
 interface AdminPanelProps {
   currentUser: User;
   onUpdateUser?: (user: User) => void;
+  onTakeLesson?: (id: string) => void;
   activeTab?: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'resources' | 'group-analytics' | 'news' | 'chat';
   onTabChange?: (tab: 'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'resources' | 'group-analytics' | 'news' | 'chat') => void;
   onBack?: () => void;
   isEmbedded?: boolean;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange, onBack, onUpdateUser, isEmbedded = false }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propActiveTab, onTabChange, onBack, onUpdateUser, onTakeLesson, isEmbedded = false }) => {
   const [internalActiveTab, setInternalActiveTab] = useState<'users' | 'invites' | 'logs' | 'lessons' | 'upload' | 'requests' | 'curated' | 'resources' | 'group-analytics' | 'news' | 'chat'>('users');
   
   const activeTab = propActiveTab || internalActiveTab;
@@ -231,7 +232,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            <button onClick={() => setActiveTab('lessons')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Curriculum</button>
            <button onClick={() => setActiveTab('news')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'news' ? 'bg-orange-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>News</button>
            <button onClick={() => setActiveTab('resources')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'resources' ? 'bg-emerald-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Resources</button>
-           <button onClick={() => setActiveTab('curated')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'curated' ? 'bg-purple-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>My List</button>
+           <button onClick={() => setActiveTab('curated')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'curated' ? 'bg-purple-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Group Library</button>
            {(isMentor || isAdmin) && <button onClick={() => setActiveTab('requests')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'requests' ? 'bg-white text-royal-900 shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Requests</button>}
            <button onClick={() => setActiveTab('logs')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'logs' ? 'bg-white text-royal-900 shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Audit Logs</button>
         </div>
@@ -332,6 +333,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
                 activeTab="lessons" 
                 isManagementMode={true}
                 onUpdateUser={onUpdateUser}
+                onTakeLesson={onTakeLesson}
+                onBack={onBack}
+              />
+           </div>
+        )}
+
+        {activeTab === 'lessons' && (
+           <div className="space-y-6 animate-in fade-in">
+              <StudentPanel 
+                currentUser={currentUser} 
+                activeTab="lessons" 
+                onUpdateUser={onUpdateUser}
+                onTakeLesson={onTakeLesson}
                 onBack={onBack}
               />
            </div>

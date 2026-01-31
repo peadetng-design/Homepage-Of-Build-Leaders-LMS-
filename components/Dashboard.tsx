@@ -87,13 +87,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
   const renderHomeDashboard = () => {
     const firstName = user.name.split(' ')[0];
     
-    // Core Actions present for all users - Cleaned as per request
+    // Core Actions present for all users - Updated labels as per request
     const finalActions = [
       { label: 'TAKE/RESUME COURSE', icon: Play, view: 'lessons', color: 'bg-royal-800', shadow: 'shadow-royal-950/40' },
-      { label: 'CURRICULUM', icon: BookOpen, view: 'lessons', color: 'bg-indigo-600', shadow: 'shadow-indigo-900/40' },
-      { label: 'MY LIST', icon: Bookmark, view: 'curated', color: 'bg-purple-600', shadow: 'shadow-purple-900/40' },
-      { label: 'ANALYTICS', icon: BarChart3, view: 'performance-report', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
-      { label: 'CREDENTIALS', icon: BadgeCheck, view: 'certificates', color: 'bg-gold-500', shadow: 'shadow-gold-600/40' },
+      { label: 'MY STATISTICS', icon: BarChart3, view: 'performance-report', color: 'bg-emerald-600', shadow: 'shadow-emerald-900/40' },
+      { label: 'MY CERTIFICATES', icon: BadgeCheck, view: 'certificates', color: 'bg-gold-500', shadow: 'shadow-gold-600/40' },
     ];
 
     return (
@@ -128,16 +126,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
              </div>
           </div>
 
-          {/* QUICK ACCESS ACTION CENTER - TRIMMED GRID */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-             {finalActions.map((action, i) => (
-                <button key={i} onClick={() => setInternalView(action.view as any)} className="bg-white p-8 rounded-[3rem] border-8 border-gray-50 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all group text-center relative overflow-hidden">
-                   <div className={`p-6 ${action.color} text-white rounded-[2rem] mb-6 shadow-2xl ${action.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform inline-block`}>
-                      <action.icon size={36} />
-                   </div>
-                   <h3 className="font-black text-gray-900 uppercase tracking-[0.2em] text-xs leading-tight">{action.label}</h3>
-                </button>
-             ))}
+          {/* QUICK ACCESS ACTION CENTER - Updated with PERSONAL GOALS header */}
+          <div className="flex flex-col items-center gap-8">
+             <div className="bg-royal-700 px-8 py-2.5 rounded-full shadow-2xl border-2 border-royal-500 animate-in slide-in-from-top-2">
+                <span className="text-[10px] font-black text-white uppercase tracking-[0.5em] leading-none">PERSONAL GOALS</span>
+             </div>
+             
+             <div className="flex flex-wrap justify-center gap-8">
+                {finalActions.map((action, i) => (
+                   <button key={i} onClick={() => setInternalView(action.view as any)} className="bg-white p-8 rounded-[3rem] border-8 border-gray-50 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all group text-center relative overflow-hidden min-w-[200px]">
+                      <div className={`p-6 ${action.color} text-white rounded-[2rem] mb-6 shadow-2xl ${action.shadow} group-hover:scale-110 group-hover:rotate-6 transition-transform inline-block`}>
+                         <action.icon size={36} />
+                      </div>
+                      <h3 className="font-black text-gray-900 uppercase tracking-[0.2em] text-xs leading-tight">{action.label}</h3>
+                   </button>
+                ))}
+             </div>
           </div>
 
           {/* MASTER CONSOLE - Authenticated Security Console Panel */}
@@ -154,6 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
                }} 
                isEmbedded={true}
                onUpdateUser={onUpdateUser}
+               onTakeLesson={setSelectedLessonId}
              />
           </div>
 
@@ -230,9 +235,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onUpdateUser, onChangePassw
     switch (internalView) {
       case 'upload': return <LessonUpload currentUser={user} onSuccess={() => setInternalView('dashboard')} onCancel={() => setInternalView('dashboard')} />;
       case 'admin': case 'users': case 'requests': case 'logs': case 'invites': case 'curated': case 'news': case 'resources':
-        return <AdminPanel currentUser={user} activeTab={internalView === 'admin' ? 'users' : internalView as any} onTabChange={(tab: any) => { if(tab === 'chat') setInternalView('chat'); else setInternalView(tab); }} onBack={() => setInternalView('dashboard')} />;
+        return <AdminPanel currentUser={user} activeTab={internalView === 'admin' ? 'users' : internalView as any} onTabChange={(tab: any) => { if(tab === 'chat') setInternalView('chat'); else setInternalView(tab); }} onBack={() => setInternalView('dashboard')} isEmbedded={true} onUpdateUser={onUpdateUser} onTakeLesson={setSelectedLessonId} />;
       case 'org-panel': case 'staff': return <OrganizationPanel currentUser={user} />;
-      case 'lessons': case 'progress': return <StudentPanel currentUser={user} activeTab="lessons" onTakeLesson={setSelectedLessonId} onBack={() => setInternalView('dashboard')} />;
+      case 'lessons': case 'progress': return <StudentPanel currentUser={user} activeTab="lessons" onTakeLesson={setSelectedLessonId} onBack={() => setInternalView('dashboard')} onUpdateUser={onUpdateUser} />;
       case 'chat': return <ChatPanel currentUser={user} />;
       case 'certificates': return <CertificatesPanel currentUser={user} onBack={() => setInternalView('dashboard')} />;
       case 'performance-report': return <PerformanceReport currentUser={user} onBack={() => setInternalView('dashboard')} />;

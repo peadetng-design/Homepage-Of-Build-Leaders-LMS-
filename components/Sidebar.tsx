@@ -71,7 +71,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
           })}
         </div>
 
-        {/* Settings and Sign Out moved closer to headers by placing inside the flex-1 container */}
         <div className="mt-4 space-y-2">
           <div className="border-t border-gray-100 my-2 mx-2"></div>
           
@@ -99,7 +98,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
         </div>
       </div>
 
-      {/* System Integrity & AI Control Section as per Specific Instructions */}
       {isOpen && (
         <div className="px-4 py-4 mt-2 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-2">
             <div className="bg-royal-900/5 p-4 rounded-[1.5rem] border border-royal-100">
@@ -112,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
                     <div>
                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter mb-1">Specification Of Updates</p>
                         <div className="bg-white/50 p-2.5 rounded-xl border border-royal-100 text-[10px] font-bold text-royal-900 leading-snug shadow-sm">
-                            Activated Direct Digital Download: Replaced the manual print-to-pdf protocol with a high-fidelity client-side image synthesis engine (html-to-image), enabling immediate certificate delivery to PC and mobile.
+                            Instructional Authority Upgrade: All official curricula authored by the System Admin is now globally accessible to every user role. Peer-created content retains role-based privacy targeting. Synthesis matrix verified for zero-touch compliance with Builder and Matrix logic.
                         </div>
                     </div>
                     

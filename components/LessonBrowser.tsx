@@ -28,17 +28,22 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
     setIsLoading(true);
     try {
       const allLessons = await lessonService.getLessons();
+      // Admin Identity Protocol
+      const isSysAdmin = (email: string) => email === 'peadetng@gmail.com';
       
       const roleSpecificLessons = allLessons.filter(l => {
-          // Admin sees everything
-          if (currentUser.role === UserRole.ADMIN) return true;
+          // PROTOCOL UPGRADE: System Admin created lessons are universally visible
+          if (l.authorId === 'usr_main_admin' || l.authorId === 'sys' || isSysAdmin(l.author)) return true;
+
+          // Admin roles see everything
+          if (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CO_ADMIN) return true;
           
           const audience = l.targetAudience as TargetAudience;
 
           // 'All' is public
           if (audience === 'All') return true;
 
-          // Exact Match
+          // Exact Match for non-admin community content
           if (audience === 'Student' && currentUser.role === UserRole.STUDENT) return true;
           if (audience === 'Mentor' && currentUser.role === UserRole.MENTOR) return true;
           if (audience === 'Organization' && currentUser.role === UserRole.ORGANIZATION) return true;
@@ -107,7 +112,7 @@ const LessonBrowser: React.FC<LessonBrowserProps> = ({ currentUser, onLessonSele
                <BookOpen className="text-gold-500" size={32} /> Lesson Library
             </h2>
             <p className="text-indigo-200 mt-2">
-               Curated content specifically for <span className="font-bold text-white capitalize">{currentUser.role.toLowerCase()}s</span>.
+               Official authoritative content from BBL and community contributions.
             </p>
           </div>
           <button onClick={onClose} className="px-4 py-2 border border-white/20 hover:bg-white/10 rounded-lg transition-colors text-sm">

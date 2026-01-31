@@ -524,10 +524,18 @@ const LessonView: React.FC<LessonViewProps> = ({ lesson, currentUser, onBack }) 
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 flex-1">
         <div className="lg:col-span-2 space-y-16">
-          <div className="grid grid-cols-3 gap-4">
-            <button onClick={() => setActiveAboutType('course')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Globe size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Course</span></button>
-            <button onClick={() => setActiveAboutType('module')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Layers size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Module</span></button>
-            <button onClick={() => setActiveAboutType('lesson')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Sparkles size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Lesson</span></button>
+          <div className="space-y-12">
+            <div className="grid grid-cols-3 gap-4">
+              <button onClick={() => setActiveAboutType('course')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Globe size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Course</span></button>
+              <button onClick={() => setActiveAboutType('module')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Layers size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Module</span></button>
+              <button onClick={() => setActiveAboutType('lesson')} className="p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col items-center text-center group"><div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl mb-2 group-hover:scale-110 transition-transform"><Sparkles size={20}/></div><span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">About Lesson</span></button>
+            </div>
+
+            <div className="bg-royal-50 border-4 border-royal-100 p-8 rounded-[2.5rem] shadow-sm animate-in slide-in-from-left-4">
+                <p className="font-black text-royal-900 text-xs md:text-sm leading-relaxed uppercase tracking-wider text-center">
+                    USE THE FLOATING “TOOLS” BUTTON AT THE RIGHT HAND SIDE OF THIS PAGE TO DOWNLOAD THIS LESSON FOR OFFLINE USE, TAKE NOTES, ANNOTATE, HIGHLIGHT (FOR FUTURE REFERENCE), PAUSE & RESUME, AND AUTO-SYNC (TO AUTOMATICALLY SAVE YOUR LESSON CUSTOMIZATIONS). YOU CAN DRAG THE TOOLS PAGE AROUND THE SCREEN TO PREVENT LESSON VIEW OBSTRUCTION. WISH YOU ALL THE BEST!
+                </p>
+            </div>
           </div>
 
           {lesson.bibleQuizzes && lesson.bibleQuizzes.length > 0 && (

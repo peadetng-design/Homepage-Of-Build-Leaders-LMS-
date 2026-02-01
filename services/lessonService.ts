@@ -1,4 +1,4 @@
-import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError, LeadershipNote, ProficiencyLevel } from '../types';
+import { Lesson, User, StudentAttempt, LessonDraft, QuizQuestion, LessonSection, QuizOption, SectionType, LessonType, Resource, NewsItem, TargetAudience, Module, Certificate, CertificateDesign, HomepageContent, Course, AboutSegment, ImportError, LeadershipNote, ProficiencyLevel, LessonHighlight, LessonAnnotation, LessonSessionState, LessonBookmark, SyncLogEntry } from '../types';
 import { authService } from './authService';
 import * as XLSX from 'xlsx';
 
@@ -14,6 +14,11 @@ const DB_HOMEPAGE_KEY = 'bbl_db_homepage';
 const DB_NOTES_KEY = 'bbl_db_user_notes';
 const DB_HIGHLIGHTS_KEY = 'bbl_db_user_highlights';
 const DB_ANNOTATIONS_KEY = 'bbl_db_user_annotations';
+const DB_BOOKMARKS_KEY = 'bbl_db_user_bookmarks';
+const DB_SESSION_STATE_KEY = 'bbl_db_lesson_session_states';
+const DB_DOWNLOADS_LOG_KEY = 'bbl_db_downloads_log';
+const DB_SYNC_LOG_KEY = 'bbl_db_sync_log';
+const DB_DEFERRED_SYNC_QUEUE_KEY = 'bbl_db_deferred_sync_queue';
 
 const DEFAULT_HOMEPAGE: HomepageContent = {
   heroTagline: "The #1 Bible Quiz Platform",
@@ -94,12 +99,20 @@ class LessonService {
   private timers: Record<string, number> = {}; 
   private certificates: Certificate[] = [];
   private userNotes: Record<string, string> = {}; 
-  private highlights: Record<string, any[]> = {};
-  private annotations: Record<string, any[]> = {};
+  private highlights: Record<string, LessonHighlight[]> = {};
+  private annotations: Record<string, LessonAnnotation[]> = {};
+  private bookmarks: Record<string, LessonBookmark[]> = {};
+  private sessionStates: Record<string, LessonSessionState> = {};
+  private downloadsLog: any[] = [];
+  private syncLog: SyncLogEntry[] = [];
+  private deferredSyncQueue: any[] = [];
   private homepage: HomepageContent = DEFAULT_HOMEPAGE;
 
   constructor() {
     this.init();
+    if (typeof window !== 'undefined') {
+        window.addEventListener('online', () => this.processDeferredSyncQueue());
+    }
   }
 
   private init() {
@@ -136,6 +149,21 @@ class LessonService {
     const storedAnnotations = localStorage.getItem(DB_ANNOTATIONS_KEY);
     if (storedAnnotations) this.annotations = JSON.parse(storedAnnotations);
 
+    const storedBookmarks = localStorage.getItem(DB_BOOKMARKS_KEY);
+    if (storedBookmarks) this.bookmarks = JSON.parse(storedBookmarks);
+
+    const storedSessions = localStorage.getItem(DB_SESSION_STATE_KEY);
+    if (storedSessions) this.sessionStates = JSON.parse(storedSessions);
+
+    const storedDownloads = localStorage.getItem(DB_DOWNLOADS_LOG_KEY);
+    if (storedDownloads) this.downloadsLog = JSON.parse(storedDownloads);
+
+    const storedSyncLog = localStorage.getItem(DB_SYNC_LOG_KEY);
+    if (storedSyncLog) this.syncLog = JSON.parse(storedSyncLog);
+
+    const storedDeferred = localStorage.getItem(DB_DEFERRED_SYNC_QUEUE_KEY);
+    if (storedDeferred) this.deferredSyncQueue = JSON.parse(storedDeferred);
+
     const storedHomepage = localStorage.getItem(DB_HOMEPAGE_KEY);
     if (storedHomepage) {
       this.homepage = { ...DEFAULT_HOMEPAGE, ...JSON.parse(storedHomepage) };
@@ -146,7 +174,6 @@ class LessonService {
     this.init();
   }
 
-  // Fix: Renamed private persistence methods to avoid naming collisions with public methods
   private persistCourses() { localStorage.setItem(DB_COURSES_KEY, JSON.stringify(this.courses)); }
   private persistModules() { localStorage.setItem(DB_MODULES_KEY, JSON.stringify(this.modules)); }
   private persistLessons() { localStorage.setItem(DB_LESSONS_KEY, JSON.stringify(this.lessons)); }
@@ -159,18 +186,101 @@ class LessonService {
   private persistNotes() { localStorage.setItem(DB_NOTES_KEY, JSON.stringify(this.userNotes)); }
   private persistHighlights() { localStorage.setItem(DB_HIGHLIGHTS_KEY, JSON.stringify(this.highlights)); }
   private persistAnnotations() { localStorage.setItem(DB_ANNOTATIONS_KEY, JSON.stringify(this.annotations)); }
+  private persistBookmarks() { localStorage.setItem(DB_BOOKMARKS_KEY, JSON.stringify(this.bookmarks)); }
+  private persistSessions() { localStorage.setItem(DB_SESSION_STATE_KEY, JSON.stringify(this.sessionStates)); }
+  private persistDownloads() { localStorage.setItem(DB_DOWNLOADS_LOG_KEY, JSON.stringify(this.downloadsLog)); }
+  private persistSyncLog() { localStorage.setItem(DB_SYNC_LOG_KEY, JSON.stringify(this.syncLog)); }
+  private persistDeferredQueue() { localStorage.setItem(DB_DEFERRED_SYNC_QUEUE_KEY, JSON.stringify(this.deferredSyncQueue)); }
+
+  private async addToSyncLog(action: string, payloadType: string, status: 'SUCCESS' | 'QUEUED' | 'FAILED') {
+      const entry: SyncLogEntry = {
+          id: crypto.randomUUID(),
+          timestamp: new Date().toISOString(),
+          action,
+          status,
+          payloadType
+      };
+      this.syncLog.unshift(entry);
+      if (this.syncLog.length > 20) this.syncLog = this.syncLog.slice(0, 20);
+      this.persistSyncLog();
+  }
+
+  async getSyncLog(): Promise<SyncLogEntry[]> {
+      this.forceSync();
+      return this.syncLog;
+  }
+
+  async forceRegistrySync() {
+      if (!navigator.onLine) {
+          throw new Error("Registry Error: Matrix Offline. Deferred queue active.");
+      }
+      await this.addToSyncLog('MANUAL_SYNC', 'FULL_REGISTRY', 'SUCCESS');
+      this.processDeferredSyncQueue();
+  }
+
+  private async processDeferredSyncQueue() {
+      if (!navigator.onLine || this.deferredSyncQueue.length === 0) return;
+      
+      const count = this.deferredSyncQueue.length;
+      // Simulate registry synchronization delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      this.deferredSyncQueue = [];
+      this.persistDeferredQueue();
+      await this.addToSyncLog('QUEUE_FLUSH', `BATCH_DELTA (${count})`, 'SUCCESS');
+  }
+
+  private async queueSync(payload: any, type: string) {
+      if (!navigator.onLine) {
+          this.deferredSyncQueue.push({ ...payload, type, timestamp: new Date().toISOString() });
+          this.persistDeferredQueue();
+          await this.addToSyncLog('AUTO_SYNC', type, 'QUEUED');
+      } else {
+          await this.addToSyncLog('AUTO_SYNC', type, 'SUCCESS');
+      }
+  }
 
   private purgeStaleLessonData(lessonId: string) {
-    this.attempts = this.attempts.filter(a => a.lessonId !== lessonId);
+    // Normalizing ID matching to prevent whitespace or structure contaminants
+    const normalizedId = lessonId.trim();
+    this.attempts = this.attempts.filter(a => a.lessonId.trim() !== normalizedId);
+    
     Object.keys(this.timers).forEach(key => {
-        if (key.endsWith(`_${lessonId}`)) delete this.timers[key];
+        if (key.endsWith(`_${normalizedId}`)) delete this.timers[key];
     });
     Object.keys(this.userNotes).forEach(key => {
-        if (key.endsWith(`_${lessonId}`)) delete this.userNotes[key];
+        if (key.endsWith(`_${normalizedId}`)) delete this.userNotes[key];
     });
+    
+    // Clear legacy state data for bookmarks and highlights to ensure fresh ingest integrity
+    Object.keys(this.highlights).forEach(key => {
+        if (key.endsWith(`_${normalizedId}`)) delete this.highlights[key];
+    });
+    Object.keys(this.annotations).forEach(key => {
+        if (key.endsWith(`_${normalizedId}`)) delete this.annotations[key];
+    });
+    Object.keys(this.bookmarks).forEach(key => {
+        if (key.endsWith(`_${normalizedId}`)) delete this.bookmarks[key];
+    });
+    Object.keys(this.sessionStates).forEach(key => {
+        if (key.endsWith(`_${normalizedId}`)) delete this.sessionStates[key];
+    });
+
     this.persistAttempts();
     this.persistTimers();
     this.persistNotes();
+    this.persistHighlights();
+    this.persistAnnotations();
+    this.persistBookmarks();
+    this.persistSessions();
+  }
+
+  async trackDownload(userId: string, lessonId: string, format: string) {
+      this.downloadsLog.push({
+          userId, lessonId, format,
+          timestamp: new Date().toISOString()
+      });
+      this.persistDownloads();
   }
 
   async saveUserLessonNote(userId: string, lessonId: string, text: string): Promise<void> {
@@ -178,6 +288,7 @@ class LessonService {
     const key = `${userId}_${lessonId}`;
     this.userNotes[key] = text;
     this.persistNotes();
+    await this.queueSync({ userId, lessonId, text }, 'NOTE_DELTA');
   }
 
   async getUserLessonNote(userId: string, lessonId: string): Promise<string> {
@@ -186,30 +297,93 @@ class LessonService {
     return this.userNotes[key] || "";
   }
 
-  async saveHighlights(userId: string, lessonId: string, highlights: any[]): Promise<void> {
+  async saveHighlights(userId: string, lessonId: string, highlights: LessonHighlight[]): Promise<void> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     this.highlights[key] = highlights;
     this.persistHighlights();
+    await this.queueSync({ userId, lessonId, highlights }, 'HIGHLIGHT_DELTA');
   }
 
-  async getHighlights(userId: string, lessonId: string): Promise<any[]> {
+  async getHighlights(userId: string, lessonId: string): Promise<LessonHighlight[]> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     return this.highlights[key] || [];
   }
 
-  async saveAnnotations(userId: string, lessonId: string, annotations: any[]): Promise<void> {
+  async getAllHighlightsAcrossRegistry(userId: string): Promise<LessonHighlight[]> {
+      this.forceSync();
+      const all: LessonHighlight[] = [];
+      Object.keys(this.highlights).forEach(key => {
+          if (key.startsWith(`${userId}_`)) {
+              all.push(...(this.highlights[key] || []));
+          }
+      });
+      return all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async saveAnnotations(userId: string, lessonId: string, annotations: LessonAnnotation[]): Promise<void> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     this.annotations[key] = annotations;
     this.persistAnnotations();
+    await this.queueSync({ userId, lessonId, annotations }, 'ANNOTATION_DELTA');
   }
 
-  async getAnnotations(userId: string, lessonId: string): Promise<any[]> {
+  async getAnnotations(userId: string, lessonId: string): Promise<LessonAnnotation[]> {
     this.forceSync();
     const key = `${userId}_${lessonId}`;
     return this.annotations[key] || [];
+  }
+
+  async getAllAnnotationsAcrossRegistry(userId: string): Promise<LessonAnnotation[]> {
+      this.forceSync();
+      const all: LessonAnnotation[] = [];
+      Object.keys(this.annotations).forEach(key => {
+          if (key.startsWith(`${userId}_`)) {
+              all.push(...(this.annotations[key] || []));
+          }
+      });
+      return all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async saveBookmarks(userId: string, lessonId: string, bookmarks: LessonBookmark[]): Promise<void> {
+      this.forceSync();
+      const key = `${userId}_${lessonId}`;
+      this.bookmarks[key] = bookmarks;
+      this.persistBookmarks();
+      await this.queueSync({ userId, lessonId, bookmarks }, 'BOOKMARK_DELTA');
+  }
+
+  async getBookmarks(userId: string, lessonId: string): Promise<LessonBookmark[]> {
+      this.forceSync();
+      const key = `${userId}_${lessonId}`;
+      return this.bookmarks[key] || [];
+  }
+
+  async getAllBookmarksAcrossRegistry(userId: string): Promise<LessonBookmark[]> {
+      this.forceSync();
+      const all: LessonBookmark[] = [];
+      Object.keys(this.bookmarks).forEach(key => {
+          if (key.startsWith(`${userId}_`)) {
+              all.push(...(this.bookmarks[key] || []));
+          }
+      });
+      return all.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async saveSessionState(userId: string, lessonId: string, state: LessonSessionState): Promise<void> {
+      this.forceSync();
+      const key = `${userId}_${lessonId}`;
+      this.sessionStates[key] = state;
+      this.persistSessions();
+      await this.queueSync({ userId, lessonId, state }, 'SESSION_DELTA');
+  }
+
+  async getSessionState(userId: string, lessonId: string): Promise<LessonSessionState | null> {
+      this.forceSync();
+      const key = `${userId}_${lessonId}`;
+      return this.sessionStates[key] || null;
   }
 
   async getCourses(): Promise<Course[]> { 
@@ -261,7 +435,11 @@ class LessonService {
     return this.lessons.filter(l => l.moduleId.trim() === moduleId.trim()).sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule)); 
   }
 
-  async getAdjacentLessons(lessonId: string): Promise<{ prev?: string; next?: string }> {
+  /**
+   * REPAIR: Respects custom module ordering from the hierarchy provider (Mentor/Org).
+   * Ensures parity between Table 3 reordering and Prev/Next button behavior.
+   */
+  async getAdjacentLessons(lessonId: string, currentUser?: User): Promise<{ prev?: string; next?: string }> {
       this.forceSync();
       const currentLesson = this.lessons.find(l => l.id.trim() === lessonId.trim());
       if (!currentLesson) return {};
@@ -272,9 +450,18 @@ class LessonService {
       const currentCourse = this.courses.find(c => c.id.trim() === currentModule.courseId.trim());
       if (!currentCourse) return {};
 
-      const courseModules = this.modules
-        .filter(m => m.courseId.trim() === currentCourse.id.trim())
-        .sort((a, b) => Number(a.order) - Number(b.order));
+      // REPAIR LOGIC: Identify the correct curriculum orchestration provider (Mentor or Org overrides)
+      let customOrder: string[] = [];
+      if (currentUser) {
+          const providerId = currentUser.mentorId || currentUser.organizationId || currentUser.id;
+          const provider = await authService.getUserById(providerId);
+          if (provider?.customModuleOrder?.[currentCourse.id]) {
+              customOrder = provider.customModuleOrder[currentCourse.id];
+          }
+      }
+
+      // Fetch modules using the specific custom sorting protocol derived from Table 3 edits
+      const courseModules = await this.getModulesByCourseId(currentCourse.id, customOrder);
 
       const moduleLessons = this.lessons
         .filter(l => l.moduleId.trim() === currentModule.id.trim())
@@ -286,11 +473,11 @@ class LessonService {
       let prevId: string | undefined;
       let nextId: string | undefined;
 
-      // Robust Next Traversal
+      // Next Unit Calculation: Crossing module boundaries according to custom reordering
       if (currentIdx < moduleLessons.length - 1) {
           nextId = moduleLessons[currentIdx + 1].id;
       } else {
-          // Last lesson in module, seek first lesson in next populated modules
+          // If we are at the end of the module, find the next non-empty module in the sorted curriculum sequence
           for (let i = modIdx + 1; i < courseModules.length; i++) {
               const nextMod = courseModules[i];
               const nextModLessons = this.lessons
@@ -303,11 +490,11 @@ class LessonService {
           }
       }
 
-      // Robust Prev Traversal
+      // Previous Unit Calculation: Respecting custom sequence
       if (currentIdx > 0) {
           prevId = moduleLessons[currentIdx - 1].id;
       } else {
-          // First lesson in module, seek last lesson in previous populated modules
+          // Find the previous non-empty module in the reordered list
           for (let i = modIdx - 1; i >= 0; i--) {
               const prevMod = courseModules[i];
               const prevModLessons = this.lessons
@@ -339,14 +526,29 @@ class LessonService {
 
   async publishLesson(lesson: Lesson): Promise<void> {
     this.forceSync();
-    const index = this.lessons.findIndex(l => l.id.trim() === lesson.id.trim());
-    if (index >= 0) { this.purgeStaleLessonData(lesson.id); this.lessons[index] = { ...lesson }; } else { this.lessons.unshift({ ...lesson }); }
+    const normalizedId = lesson.id.trim();
+    
+    // DEEP REPAIR: Always execute a state reset protocol for the incoming Lesson ID.
+    // This prevents contaminating new uploads with orphaned attempt records from previous sessions.
+    this.purgeStaleLessonData(normalizedId);
+    
+    const index = this.lessons.findIndex(l => l.id.trim() === normalizedId);
+    if (index >= 0) { 
+        this.lessons[index] = { ...lesson }; 
+    } else { 
+        this.lessons.unshift({ ...lesson }); 
+    }
+    
     this.persistLessons();
+    
     if (lesson.moduleId) {
         const mod = this.modules.find(m => m.id.trim() === lesson.moduleId.trim());
         if (mod) {
             if (!mod.lessonIds) mod.lessonIds = [];
-            if (!mod.lessonIds.includes(lesson.id)) { mod.lessonIds.push(lesson.id); this.persistModules(); }
+            if (!mod.lessonIds.includes(lesson.id)) { 
+                mod.lessonIds.push(lesson.id); 
+                this.persistModules(); 
+            }
         }
     }
   }
@@ -427,8 +629,10 @@ class LessonService {
 
   async hasUserAttemptedLesson(userId: string, lessonId: string): Promise<boolean> {
       this.forceSync();
-      const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId === lessonId);
-      const lesson = this.lessons.find(l => l.id === lessonId); if (!lesson) return false;
+      const normalizedLessonId = lessonId.trim();
+      const userAttempts = this.attempts.filter(a => a.studentId === userId && a.lessonId.trim() === normalizedLessonId);
+      const lesson = this.lessons.find(l => l.id.trim() === normalizedLessonId); 
+      if (!lesson) return false;
       const totalQ = (lesson.bibleQuizzes?.length || 0) + (lesson.noteQuizzes?.length || 0);
       return totalQ === 0 ? true : new Set(userAttempts.map(a => a.quizId)).size >= totalQ;
   }
@@ -437,11 +641,16 @@ class LessonService {
     this.forceSync();
     this.attempts.push({ id: crypto.randomUUID(), studentId, lessonId, quizId, selectedOptionId, isCorrect, score: isCorrect ? 10 : 0, attempted_at: new Date().toISOString() });
     this.persistAttempts();
+    await this.queueSync({ studentId, lessonId, quizId, selectedOptionId, isCorrect }, 'ATTEMPT_DELTA');
   }
 
-  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { this.forceSync(); return this.attempts.filter(a => a.studentId === studentId && a.lessonId === lessonId); }
-  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId}`; this.timers[key] = seconds; this.persistTimers(); }
-  async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId}`; return this.timers[key] || 0; }
+  async getAttempts(studentId: string, lessonId: string): Promise<StudentAttempt[]> { 
+      this.forceSync(); 
+      const normalizedId = lessonId.trim();
+      return this.attempts.filter(a => a.studentId === studentId && a.lessonId.trim() === normalizedId); 
+  }
+  async saveQuizTimer(userId: string, lessonId: string, seconds: number): Promise<void> { const key = `${userId}_${lessonId.trim()}`; this.timers[key] = seconds; this.persistTimers(); }
+  async getQuizTimer(userId: string, lessonId: string): Promise<number> { const key = `${userId}_${lessonId.trim()}`; return this.timers[key] || 0; }
   async getResources(): Promise<Resource[]> { this.forceSync(); return this.resources; }
   async addResource(resource: Resource, actor: User): Promise<void> { this.forceSync(); this.resources.unshift(resource); this.persistResources(); }
   async deleteResource(id: string, actor: User): Promise<void> { this.forceSync(); this.resources = this.resources.filter(r => r.id !== id); this.persistResources(); }
@@ -521,11 +730,6 @@ class LessonService {
         errors.push({ sheet: 'Course_Metadata', row: 1, column: 'All', message: 'Registry Error: Course record required.', severity: 'error' });
     }
 
-    let lastCourseId = '';
-    let lastModuleId = '';
-    let lastLessonId = '';
-
-    // SUPPORT FOR MULTIPLE COURSES IN ONE SHEET
     const rawCourse = courseData[0];
     const extractedCourseId = (getRowValue(rawCourse, ['course_id', 'id']) || 'ID-MISSING').toString();
     const course: Course = {
@@ -546,9 +750,7 @@ class LessonService {
             }))
             .sort((a, b) => a.order - b.order)
     };
-    lastCourseId = course.id;
 
-    // Reset local tracker for module loop
     let currentSheetModuleId = '';
     const modules: Module[] = moduleData.map((m, idx) => {
         const mid = (getRowValue(m, ['module_id', 'id']) || '').toString();
@@ -580,7 +782,6 @@ class LessonService {
     });
     course.totalModulesRequired = modules.length;
 
-    // Reset local trackers for lesson loop to prevent worksheet identity contamination
     let currentSheetLessonId = '';
     let currentSheetTargetModuleId = '';
     const lessonsMap: Map<string, Lesson> = new Map();
@@ -593,7 +794,7 @@ class LessonService {
         if (lid) currentSheetLessonId = lid;
         
         const targetLid = currentSheetLessonId;
-        const targetMid = currentSheetTargetModuleId || currentSheetModuleId; // Fallback to last known module
+        const targetMid = currentSheetTargetModuleId || currentSheetModuleId; 
         
         if (!lessonsMap.has(targetLid)) {
             lessonsMap.set(targetLid, {

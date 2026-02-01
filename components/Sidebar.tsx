@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
                     <div>
                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter mb-1">Specification Of Updates</p>
                         <div className="bg-white/50 p-2.5 rounded-xl border border-royal-100 text-[10px] font-bold text-royal-900 leading-snug shadow-sm">
-                            Instructional Authority Upgrade: All official curricula authored by the System Admin is now globally accessible to every user role. Peer-created content retains role-based privacy targeting. Synthesis matrix verified for zero-touch compliance with Builder and Matrix logic.
+                            Registry Protocol Update: Resolved visual strobing and layout chaotic artifacts during completion transitions. Optimized celebration layering by removing GPU-intensive backdrop filters and eliminating layout shifts in the lesson body.
                         </div>
                     </div>
                     

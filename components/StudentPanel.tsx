@@ -151,6 +151,12 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
           if (!lesMap[l.moduleId]) lesMap[l.moduleId] = [];
           lesMap[l.moduleId].push(l);
       });
+      
+      // REPAIR: Explicitly sort all lesson arrays by orderInModule ascending to ensure 
+      // index [0] is always the first unit.
+      Object.keys(lesMap).forEach(mId => {
+          lesMap[mId].sort((a, b) => Number(a.orderInModule) - Number(b.orderInModule));
+      });
       setLessonsByModule(lesMap);
 
       const statusMap: Record<string, LessonStatusData> = {};
@@ -174,6 +180,7 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
       }
       setLessonStatuses(statusMap);
 
+      // REPAIR: Correctly anchor initial selections to the FIRST of everything.
       const initialSelections: Record<string, any> = {};
       Object.keys(levels).forEach(tier => {
           const firstCourse = levels[tier][0];
@@ -197,12 +204,14 @@ const StudentPanel: React.FC<StudentPanelProps> = ({ currentUser, activeTab, onT
               current.courseId = id;
               const mods = modulesByCourse[id] || [];
               current.moduleId = mods[0]?.id || '';
+              // REPAIR: Choice of course defaults selection to the FIRST lesson of the first module.
               const lessons = lessonsByModule[current.moduleId] || [];
-              current.lessonId = lessons[0]?.id || '';
+              current.lessonId = lessons[0]?.id || ''; 
           } else if (type === 'module') {
               current.moduleId = id;
+              // REPAIR: Choice of module defaults selection to the FIRST lesson.
               const lessons = lessonsByModule[id] || [];
-              current.lessonId = lessons[0]?.id || '';
+              current.lessonId = lessons[0]?.id || ''; 
           } else if (type === 'lesson') {
               current.lessonId = id;
           }

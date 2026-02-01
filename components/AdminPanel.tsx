@@ -55,6 +55,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
   const [issuedCerts, setIssuedCerts] = useState<Certificate[]>([]);
   const [viewingCert, setViewingCert] = useState<Certificate | null>(null);
 
+  // Resource Management State
+  const [isAddingResource, setIsAddingResource] = useState(false);
+  const [newResource, setNewResource] = useState<Partial<Resource>>({ title: '', description: '', fileType: 'pdf', url: '', targetLessonId: '' });
+
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CO_ADMIN;
   const isMentor = currentUser.role === UserRole.MENTOR;
   const isOrg = currentUser.role === UserRole.ORGANIZATION;
@@ -95,6 +99,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       } else if (activeTab === 'resources') {
         const data = await lessonService.getResources();
         setResources(data);
+        const lesData = await lessonService.getLessons();
+        setLessons(lesData);
       } else if (activeTab === 'news') {
         const data = await lessonService.getNews();
         setNews(data);
@@ -115,6 +121,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleCreateResource = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newResource.title || !newResource.url) return;
+      setIsLoading(true);
+      try {
+          const res: Resource = {
+              id: crypto.randomUUID(),
+              title: newResource.title!,
+              description: newResource.description || '',
+              fileType: newResource.fileType as any || 'pdf',
+              url: newResource.url!,
+              size: '2.5 MB', // Simulated
+              uploadedAt: new Date().toISOString(),
+              targetLessonId: newResource.targetLessonId
+          };
+          await lessonService.addResource(res, currentUser);
+          setNotification({ msg: "Asset deposited in registry.", type: 'success' });
+          setIsAddingResource(false);
+          setNewResource({ title: '', description: '', fileType: 'pdf', url: '', targetLessonId: '' });
+          fetchData();
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handleOpenInsights = async (user: User) => {
@@ -185,7 +216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
               <div className="h-12 w-px bg-white/10 hidden md:block"></div>
               
               <div className="flex flex-col items-center">
-                <Tooltip content="Upload curriculum content workbook.">
+                <Tooltip content="Upload curriculum content workbook. Supports bulk ingest of lessons and modules via Excel protocol.">
                     <button 
                     onClick={() => setActiveTab('upload')}
                     className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-2xl border-b-4 active:scale-95 transform hover:-translate-y-1 ${activeTab === 'upload' ? 'bg-rose-600 border-rose-950 scale-110' : 'bg-rose-500/80 border-rose-800 hover:bg-rose-600'}`}
@@ -197,7 +228,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
               </div>
 
               <div className="flex flex-col items-center">
-                <Tooltip content="Manage and view all registered members.">
+                <Tooltip content="Manage and view all registered members. Adjust access levels and identity permissions.">
                     <button 
                     onClick={() => setActiveTab('users')}
                     className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-2xl border-b-4 active:scale-95 transform hover:-translate-y-1 ${activeTab === 'users' ? 'bg-blue-600 border-blue-950 scale-110' : 'bg-blue-500/80 border-blue-800 hover:bg-blue-600'}`}
@@ -209,7 +240,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
               </div>
 
               <div className="flex flex-col items-center">
-                <Tooltip content="Organization Performance Analysis">
+                <Tooltip content="Organization Performance Analysis: Aggregate score dynamics and completion velocity reports.">
                     <button 
                         onClick={() => setActiveTab('group-analytics')}
                         className={`w-16 h-16 rounded-full flex items-center justify-center transition-all shadow-2xl border-b-4 active:scale-95 transform hover:-translate-y-1 ${activeTab === 'group-analytics' ? 'bg-indigo-600 border-indigo-950 scale-110' : 'bg-indigo-500/80 border-indigo-800 hover:bg-indigo-600'}`}
@@ -231,7 +262,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
            )}
            <button onClick={() => setActiveTab('lessons')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'lessons' ? 'bg-gold-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Curriculum</button>
            <button onClick={() => setActiveTab('news')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'news' ? 'bg-orange-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>News</button>
-           <button onClick={() => setActiveTab('resources')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'resources' ? 'bg-emerald-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Resources</button>
+           <button onClick={() => setActiveTab('resources')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'resources' ? 'bg-emerald-50 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Resources</button>
            <button onClick={() => setActiveTab('curated')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'curated' ? 'bg-purple-500 text-white shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Group Library</button>
            {(isMentor || isAdmin) && <button onClick={() => setActiveTab('requests')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'requests' ? 'bg-white text-royal-900 shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Requests</button>}
            <button onClick={() => setActiveTab('logs')} className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === 'logs' ? 'bg-white text-royal-900 shadow-xl scale-105' : 'bg-transparent text-royal-200 hover:bg-white/5 hover:text-white'}`}>Audit Logs</button>
@@ -248,6 +279,68 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
       <div className="p-8 bg-[#fdfdfd]">
         {activeTab === 'upload' && (
             <LessonUpload currentUser={currentUser} onSuccess={() => setActiveTab('lessons')} onCancel={() => setActiveTab('users')} />
+        )}
+
+        {activeTab === 'resources' && (
+            <div className="space-y-10 animate-in fade-in">
+                <div className="flex justify-between items-end border-b-4 border-gray-50 pb-6">
+                    <div>
+                        <h3 className="text-3xl font-serif font-black uppercase tracking-tight">Institutional Assets</h3>
+                        <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2">Manage unit-linked resources and global study assets.</p>
+                    </div>
+                    <Tooltip content="Execute Asset Deposit: Manually upload Word, PDF, or multimedia references to the Ministry Registry.">
+                        <button onClick={() => setIsAddingResource(!isAddingResource)} className="px-8 py-3.5 bg-emerald-600 text-white font-black rounded-2xl shadow-xl hover:bg-emerald-700 transition-all flex items-center gap-3 uppercase text-[10px] tracking-widest border-b-4 border-emerald-950">
+                            {isAddingResource ? <X size={18}/> : <Plus size={18}/>} {isAddingResource ? "Cancel Deposit" : "Add Master Asset"}
+                        </button>
+                    </Tooltip>
+                </div>
+
+                {isAddingResource && (
+                    <form onSubmit={handleCreateResource} className="bg-white p-10 rounded-[3rem] border-8 border-emerald-50 shadow-2xl space-y-8 animate-in zoom-in-95">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="col-span-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 ml-1">Asset Title</label><input required className="w-full p-4 bg-white border-4 border-gray-100 rounded-2xl font-bold" value={newResource.title} onChange={e => setNewResource({...newResource, title: e.target.value})} placeholder="e.g. Genesis Mastery Guide v1.2" /></div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 ml-1">Registry Scoping (Target Lesson)</label>
+                                <select className="w-full p-4 bg-white border-4 border-gray-100 rounded-2xl font-bold" value={newResource.targetLessonId} onChange={e => setNewResource({...newResource, targetLessonId: e.target.value})}>
+                                    <option value="">Global Resource (Unlinked)</option>
+                                    {lessons.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 ml-1">Derivative Format</label>
+                                <select className="w-full p-4 border-4 border-gray-100 rounded-2xl font-bold" value={newResource.fileType} onChange={e => setNewResource({...newResource, fileType: e.target.value as any})}>
+                                    <option value="pdf">Pedagogical PDF</option>
+                                    <option value="doc">Scholarly Word (DOCX)</option>
+                                    <option value="link">Documentation Link</option>
+                                    <option value="video">Instructional Video</option>
+                                </select>
+                            </div>
+                            <div className="col-span-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 ml-1">Transmission Source (URL)</label><input required className="w-full p-4 border-4 border-gray-100 rounded-2xl font-bold" value={newResource.url} onChange={e => setNewResource({...newResource, url: e.target.value})} placeholder="https://registry.storage/asset.pdf" /></div>
+                        </div>
+                        <div className="flex justify-center pt-4"><button type="submit" className="px-20 py-5 bg-royal-900 text-white font-black rounded-2xl shadow-2xl border-b-8 border-black hover:bg-black transition-all flex items-center gap-4 uppercase text-xs tracking-widest">Commit Asset to Registry</button></div>
+                    </form>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {resources.map(res => (
+                        <div key={res.id} className="bg-white p-6 rounded-[2rem] border-2 border-gray-50 shadow-sm flex flex-col gap-4 group hover:shadow-md transition-all">
+                            <div className="flex justify-between items-start">
+                                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform"><Library size={24}/></div>
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[8px] font-black uppercase rounded-full">{res.fileType}</span>
+                                    {res.targetLessonId && <span className="text-[7px] font-black text-indigo-400 uppercase bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">Linked to Unit</span>}
+                                </div>
+                            </div>
+                            <h4 className="font-black text-gray-900 truncate leading-tight">{res.title}</h4>
+                            <p className="text-[10px] text-gray-400 line-clamp-2 italic">{res.description || "No scholarly description provided."}</p>
+                            <div className="mt-auto flex gap-2">
+                                <a href={res.url} target="_blank" className="flex-1 py-2.5 bg-royal-900 text-white font-black rounded-xl text-center text-[10px] uppercase tracking-widest hover:bg-black transition-all shadow-md">Download</a>
+                                <button onClick={async () => { if(window.confirm("Purge Asset?")) { await lessonService.deleteResource(res.id, currentUser); fetchData(); } }} className="p-2.5 bg-red-50 text-red-400 hover:bg-red-500 hover:text-white rounded-xl transition-all"><Trash2 size={16}/></button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         )}
         
         {activeTab === 'group-analytics' && (
@@ -474,31 +567,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ currentUser, activeTab: propAct
             </div>
         )}
 
-        {activeTab === 'resources' && (
-            <div className="space-y-6 animate-in fade-in">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {resources.map(res => (
-                        <div key={res.id} className="bg-white p-6 rounded-[2rem] border-2 border-gray-50 shadow-sm flex flex-col gap-4">
-                            <div className="flex justify-between items-start">
-                                <div className="p-3 bg-royal-50 text-royal-600 rounded-xl"><Library size={24}/></div>
-                                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-[8px] font-black uppercase rounded-full">{res.fileType}</span>
-                            </div>
-                            <h4 className="font-black text-gray-900 truncate">{res.title}</h4>
-                            <p className="text-xs text-gray-400 line-clamp-2">{res.description}</p>
-                            <a href={res.url} target="_blank" className="mt-auto py-2 bg-royal-900 text-white font-black rounded-xl text-center text-[10px] uppercase tracking-widest hover:bg-black transition-all">Download Asset</a>
-                        </div>
-                    ))}
-                    {resources.length === 0 && (
-                        <div className="col-span-full text-center py-20 bg-gray-50 rounded-[2rem] border-4 border-dashed border-gray-100">
-                             <Library size={48} className="mx-auto mb-4 text-gray-200" />
-                             <p className="text-gray-400 font-black uppercase tracking-widest text-xs">No Assets Deposited</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-        )}
-
-        {/* Performance Insights Modal */}
+        {/* Performance Insights Modal (Unchanged) */}
         {insightUser && insightData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-white rounded-[4rem] shadow-[0_50px_120px_-30px_rgba(0,0,0,0.6)] w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col max-h-[90vh] border-8 border-royal-900">

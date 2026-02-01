@@ -33,6 +33,22 @@ export interface User {
   customModuleOrder?: Record<string, string[]>; // Map of courseId to ordered moduleId array
 }
 
+export interface SyncLogEntry {
+    id: string;
+    timestamp: string;
+    action: string;
+    status: 'SUCCESS' | 'QUEUED' | 'FAILED';
+    payloadType: string;
+}
+
+export interface LessonSessionState {
+    lastScrollPosition: number;
+    activeToolTab: string;
+    isPaused: boolean;
+    timestamp: string;
+    deviceType: string;
+}
+
 export interface AboutSegment {
   order: number;
   title: string;
@@ -55,15 +71,15 @@ export interface Course {
   level: ProficiencyLevel;
   language: string;
   author: string;
-  authorId?: string; // Metadata for access control
-  organizationId?: string; // Metadata for access control
+  authorId?: string; 
+  organizationId?: string; 
   totalModulesRequired: number; 
-  about: AboutSegment[]; // From Sheet 2
+  about: AboutSegment[]; 
 }
 
 export interface Module {
-  id: string; // module_id from Sheet 3
-  courseId: string; // must match course_id
+  id: string; 
+  courseId: string; 
   title: string;
   subtitle?: string;
   description: string;
@@ -72,7 +88,7 @@ export interface Module {
   language?: string;
   lessonIds: string[]; 
   totalLessonsRequired: number; 
-  about: AboutSegment[]; // From Sheet 4
+  about: AboutSegment[]; 
   completionRule: {
     minimumCompletionPercentage: number;
   };
@@ -86,7 +102,7 @@ export interface Module {
 
 export interface QuizOption {
   id: string;
-  label: string; // A, B, C, D
+  label: string; 
   text: string;
   isCorrect: boolean;
   explanation: string;
@@ -95,37 +111,86 @@ export interface QuizOption {
 export interface QuizQuestion {
   id: string;
   type: 'Bible Quiz' | 'Note Quiz';
-  referenceText?: string; // bible_reference for Sheet 7
-  sourceNoteTitle?: string; // source_note_title for Sheet 8
+  referenceText?: string; 
+  sourceNoteTitle?: string; 
   text: string;
   options: QuizOption[];
   sequence: number;
 }
 
+export interface LessonHighlight {
+  id: string;
+  lessonId: string;
+  moduleId?: string;
+  courseId?: string;
+  text: string;
+  note?: string;
+  color: string;
+  category: 'Critical' | 'Exam Tip' | 'Unclear' | 'Theology' | 'General';
+  isPublic: boolean;
+  isInstructorCurated?: boolean;
+  timestamp: string;
+  authorId: string;
+  authorName: string;
+}
+
+export interface LessonAnnotation {
+  id: string;
+  lessonId: string;
+  moduleId?: string;
+  courseId?: string;
+  anchoredText?: string; // If empty, it's a free-floating annotation
+  body: string; // Rich text / markdown supported
+  type: 'Comment' | 'Question' | 'Reflection';
+  tags: string[];
+  color: string;
+  status: 'Needs Response' | 'Resolved' | 'General';
+  isPublic: boolean;
+  timestamp: string;
+  authorId: string;
+  authorName: string;
+}
+
+export interface LessonBookmark {
+  id: string;
+  userId: string;
+  lessonId: string;
+  moduleId?: string;
+  courseId?: string;
+  title: string;
+  textSnippet?: string;
+  scrollPosition: number;
+  tags: string[];
+  color: string;
+  note: string;
+  timestamp: string;
+  type: 'Text' | 'Position';
+  annotationId?: string;
+  highlightId?: string;
+}
+
 export interface Lesson {
-  id: string; // lesson_id from Sheet 5
-  moduleId: string; // Parent module_id
+  id: string; 
+  moduleId: string; 
   orderInModule: number;
   title: string;
   subtitle?: string;
   description: string;
   lesson_type: LessonType;
   targetAudience: TargetAudience;
-  book?: string; // bible_book
-  chapter?: number; // bible_chapter
-  leadership_note_title?: string; // Deprecated but kept for compatibility
-  leadership_note_body?: string;  // Deprecated but kept for compatibility
-  leadershipNotes: LeadershipNote[]; // Updated to support multiple notes
+  book?: string; 
+  chapter?: number; 
+  leadershipNotes: LeadershipNote[]; 
   author: string;
   authorId: string;
   created_at: string;
   updated_at: string;
   status: 'draft' | 'published';
   views: number;
-  about: AboutSegment[]; // From Sheet 6
-  bibleQuizzes: QuizQuestion[]; // From Sheet 7
-  noteQuizzes: QuizQuestion[]; // From Sheet 8
-  sections: LessonSection[]; // Derived for UI rendering
+  about: AboutSegment[]; 
+  bibleQuizzes: QuizQuestion[]; 
+  noteQuizzes: QuizQuestion[]; 
+  sections: LessonSection[]; 
 }
 
 export type LessonType = 'Bible' | 'Leadership' | 'Mixed';
@@ -139,90 +204,6 @@ export interface LessonSection {
   body?: string;
   quizzes?: QuizQuestion[];
   sequence: number;
-}
-
-export interface ImportError {
-  sheet: string;
-  row: number;
-  column: string;
-  message: string;
-  severity: 'error' | 'warning';
-}
-
-export interface LessonDraft {
-  courseMetadata: Course | null;
-  modules: Module[];
-  lessons: Lesson[];
-  isValid: boolean;
-  errors: ImportError[];
-}
-
-export interface HomepageContent {
-  heroTagline: string;
-  heroTitle: string;
-  heroSubtitle: string;
-  
-  stats1Val: string;
-  stats1Label: string;
-  stats2Val: string;
-  stats2Label: string;
-  stats3Val: string;
-  stats3Label: string;
-
-  ctaHeading: string;
-  ctaSubheading: string;
-  ctaButton: string;
-
-  aboutMission: string;
-  aboutHeading: string;
-  aboutBody: string;
-  knowledgeTitle: string;
-  knowledgeDesc: string;
-  communityTitle: string;
-  communityDesc: string;
-  
-  whyBblHeading: string;
-  whyBblItem1: string;
-  whyBblItem2: string;
-  whyBblItem3: string;
-  whyBblItem4: string;
-  
-  resourcesHeading: string;
-  resourcesTitle: string;
-  resourcesSubtitle: string;
-  
-  feature1Title: string;
-  feature1Desc: string;
-  feature1Button: string;
-  feature2Title: string;
-  feature2Desc: string;
-  feature2Button: string;
-  feature3Title: string;
-  feature3Desc: string;
-  feature3Button: string;
-  
-  newsTagline: string;
-  newsHeading: string;
-  news1Tag: string;
-  news1Date: string;
-  news1Title: string;
-  news1Content: string;
-  news2Tag: string;
-  news2Date: string;
-  news2Title: string;
-  news2Content: string;
-  
-  footerTagline: string;
-  footerSocials: string;
-  footerContactHeading: string;
-  footerEmail: string;
-  footerPhone: string;
-  footerAddress: string;
-  footerQuickInfoHeading: string;
-  footerQuickInfoItems: string;
-  footerCopyright: string;
-  footerPrivacyText: string;
-  footerTermsText: string;
 }
 
 export interface AuditLog {
@@ -296,6 +277,7 @@ export interface Resource {
   url: string;
   size: string;
   uploadedAt: string;
+  targetLessonId?: string; // Link resource specifically to a lesson
 }
 
 export interface NewsItem {
@@ -338,4 +320,80 @@ export interface Certificate {
   issuerName: string;
   uniqueCode: string;
   design: CertificateDesign;
+}
+
+export interface HomepageContent {
+  heroTagline: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  stats1Val: string;
+  stats1Label: string;
+  stats2Val: string;
+  stats2Label: string;
+  stats3Val: string;
+  stats3Label: string;
+  ctaHeading: string;
+  ctaSubheading: string;
+  ctaButton: string;
+  aboutMission: string;
+  aboutHeading: string;
+  aboutBody: string;
+  knowledgeTitle: string;
+  knowledgeDesc: string;
+  communityTitle: string;
+  communityDesc: string;
+  whyBblHeading: string;
+  whyBblItem1: string;
+  whyBblItem2: string;
+  whyBblItem3: string;
+  whyBblItem4: string;
+  resourcesHeading: string;
+  resourcesTitle: string;
+  resourcesSubtitle: string;
+  feature1Title: string;
+  feature1Desc: string;
+  feature1Button: string;
+  feature2Title: string;
+  feature2Desc: string;
+  feature2Button: string;
+  feature3Title: string;
+  feature3Desc: string;
+  feature3Button: string;
+  newsTagline: string;
+  newsHeading: string;
+  news1Tag: string;
+  news1Date: string;
+  news1Title: string;
+  news1Content: string;
+  news2Tag: string;
+  news2Date: string;
+  news2Title: string;
+  news2Content: string;
+  footerTagline: string;
+  footerSocials: string;
+  footerContactHeading: string;
+  footerEmail: string;
+  footerPhone: string;
+  footerAddress: string;
+  footerQuickInfoHeading: string;
+  footerQuickInfoItems: string;
+  footerCopyright: string;
+  footerPrivacyText: string;
+  footerTermsText: string;
+}
+
+export interface ImportError {
+  sheet: string;
+  row: number;
+  column: string;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export interface LessonDraft {
+  courseMetadata: Course | null;
+  modules: Module[];
+  lessons: Lesson[];
+  isValid: boolean;
+  errors: ImportError[];
 }

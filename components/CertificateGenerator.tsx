@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Certificate, CertificateDesign } from '../types';
 import { Download, Printer, Share2, Check, ArrowLeft, Loader2 } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import Tooltip from './Tooltip';
 
 interface CertificateGeneratorProps {
   certificate: Certificate;
@@ -277,24 +278,32 @@ const CertificateGenerator: React.FC<CertificateGeneratorProps> = ({ certificate
            </div>
 
            <div className="flex flex-wrap gap-2 justify-center">
-              <button 
-                onClick={copyVerificationLink}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all font-bold ${copied ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-              >
-                 {copied ? <Check size={18} /> : <Share2 size={18} />} 
-                 {copied ? 'Link Copied!' : 'Verification Link'}
-              </button>
-              <button onClick={handlePrint} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors">
-                 <Printer size={18} /> Print
-              </button>
-              <button 
-                onClick={handleDownload} 
-                disabled={isDownloading}
-                className="px-6 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg disabled:opacity-50 active:scale-95"
-              >
-                 {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} 
-                 {isDownloading ? 'Generating...' : 'Download Image'}
-              </button>
+              <Tooltip content="Share Protocol: Copy the secure cryptographic verification link to your clipboard for external validation.">
+                <button 
+                    onClick={copyVerificationLink}
+                    className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-all font-bold ${copied ? 'bg-green-600 text-white' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                >
+                    {copied ? <Check size={18} /> : <Share2 size={18} />} 
+                    {copied ? 'Link Copied!' : 'Verification Link'}
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Hardcopy Protocol: Initiate the system print dialogue to output this credential to physical media or PDF.">
+                <button onClick={handlePrint} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg flex items-center gap-2 transition-colors">
+                    <Printer size={18} /> Print
+                </button>
+              </Tooltip>
+
+              <Tooltip content="Archival Protocol: High-fidelity digital synthesis. Downloads the certificate as a professional-grade image file directly to your device storage.">
+                <button 
+                    onClick={handleDownload} 
+                    disabled={isDownloading}
+                    className="px-6 py-2 bg-gold-500 hover:bg-gold-600 text-white rounded-lg flex items-center gap-2 transition-all font-bold shadow-lg disabled:opacity-50 active:scale-95"
+                >
+                    {isDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} 
+                    {isDownloading ? 'Generating...' : 'Download Image'}
+                </button>
+              </Tooltip>
            </div>
         </div>
 

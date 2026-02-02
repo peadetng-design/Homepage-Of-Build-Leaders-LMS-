@@ -16,7 +16,6 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePath, setActivePath, onSignOut }) => {
-  // Common items visible to all authenticated users
   const commonItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: 'dashboard' },
     { label: 'Home', icon: Home, path: 'home' },
@@ -27,7 +26,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
     { label: 'Certificates', icon: BadgeCheck, path: 'certificates' },
   ];
 
-  // Specific items per role
   const roleItems: Record<string, { label: string, icon: any, path: string }[]> = {
     [UserRole.STUDENT]: [
       { label: 'Progress', icon: Award, path: 'progress' },
@@ -110,7 +108,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggle, currentRole, activePa
                     <div>
                         <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter mb-1">Specification Of Updates</p>
                         <div className="bg-white/50 p-2.5 rounded-xl border border-royal-100 text-[10px] font-bold text-royal-900 leading-snug shadow-sm">
-                            Registry Protocol Update: Resolved visual strobing and layout chaotic artifacts during completion transitions. Optimized celebration layering by removing GPU-intensive backdrop filters and eliminating layout shifts in the lesson body.
+                            Scholarly Persistence Patch: Stabilized text selection within Leadership Notes and resolved viewport-aware taskbar rendering. Implemented anchored inline bookmark markers with multi-layered registry inspection and recursive editing workflows.
                         </div>
                     </div>
                     
